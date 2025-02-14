@@ -21,7 +21,7 @@
     - [ ] `Cycle`: Angle(baseline)
     - [ ] `Prob`: SCUBA
     - [ ] `Cluster`: GrandPrix
-    - [ ] `Proj`: MST(baseline)
+    - [x] `Proj`: MST(baseline)
     - [ ]  `Cell`: Monocle2
 - [ ] `Velocity` wrapper:
     - [ ] Strategy from `Velocity` wrapper to `Direct` wrapper.

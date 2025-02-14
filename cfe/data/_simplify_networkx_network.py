@@ -177,7 +177,7 @@ def simplify_get_neighbours(subgr, is_directed):
             neighs["neighs_in"] .append(in_neighbors)
             neighs["neighs_out"].append(out_neighbors)
         else:
-            neighs["neighs"].append(list(subgr.neighbors(node)))
+            neighs["neighs"].append([name2id[i] for i in list(subgr.neighbors(node))])
     return neighs
 
 
