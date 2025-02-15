@@ -261,6 +261,33 @@ class TestFateAnnData:
         # assert
         assert compare_dataframes_closely(fadata.milestone_wrapper["progressions"], expected_progressions, on_columns="cell_id")
 
+
+        # execute function
+        cluster_key = "clusters"
+        fadata.obs[cluster_key] = ["X", "X", "X", "Z", "Z", "Z"] # cluster names should be consistent with milestone names
+        fadata.add_trajectory_projection(
+            milestone_network=milestone_network,
+            milestone_emb=milestone_emb,
+            X_emb=X_emb,
+            cluster_key=cluster_key,
+        )
+
+        expected_progressions = pd.DataFrame(
+            columns=["cell_id", "from", "to", "percentage"],
+            data=[
+                ["a", "W", "X", 0],
+                ["b", "W", "X", 0.8],
+                ["c", "X", "Z", 0.2],
+                ["d", "X", "Z", 1],
+                ["e", "X", "Z", 0.2], # e -> X-Z edge
+                ["f", "Z", "A", 0.2],
+            ]
+        )
+
+        # assert
+        assert compare_dataframes_closely(fadata.milestone_wrapper["progressions"], expected_progressions, on_columns="cell_id")
+
+
     def test_add_trajectory_velocity(self):
         # TODO
         pass

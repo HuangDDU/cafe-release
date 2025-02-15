@@ -381,6 +381,7 @@ class FateAnnData(ad.AnnData):
             X_emb = pd.DataFrame(X_emb, index=self.obs.index)
 
         if cluster_key is None:
+            # if no cluster key is given, just project all cells to the segments
             proj = project_to_segments(
                 x=X_emb,
                 segment_start=milestone_emb.loc[milestone_network["from"],],
@@ -391,8 +392,38 @@ class FateAnnData(ad.AnnData):
             progressions["percentage"] = proj["progression"]
             progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
         else:
-            # TODO: 给定了聚类标签，把细胞投影到所属聚类对应的线段上
-            pass
+            # project cells onto the line segments corresponding to their respective clusters
+            cluster_series = self.obs[cluster_key]
+            cluster_id_list = cluster_series.unique()
+            progressions = []
+
+            for cluster in cluster_id_list:
+                cids = cluster_series[cluster_series == cluster].index
+                if cids.shape[0] > 0:
+                    # project to segments
+                    mns = milestone_network.query("`from` == @cluster or `to` == @cluster")  # query，`` cloumn，@ value
+                    if mns.shape[0] > 0:
+                        proj = project_to_segments(
+                            x=X_emb.loc[cids],
+                            segment_start=milestone_emb.loc[mns["from"],],
+                            segment_end=milestone_emb.loc[mns["to"],],
+                        )
+                        tmp_progressions = mns.iloc[proj["segment"]-1][["from", "to"]]
+                        tmp_progressions["cell_id"] = cids
+                        tmp_progressions["percentage"] = proj["progression"]
+                        tmp_progressions = tmp_progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
+                    else:
+                        # self loop milestone
+                        tmp_progressions = pd.DataFrame(data=[cell_id for cell_id in cids], columns=["cell_id"])
+                        tmp_progressions["from"] = cluster
+                        tmp_progressions["to"] = cluster
+                        tmp_progressions["percentage"] = 1
+                    progressions.append(tmp_progressions)
+                else:
+                    pass
+
+            progressions = pd.concat(progressions)
+            progressions.reset_index(drop=True)
 
         self.add_trajectory(
             milestone_network=milestone_network,
