@@ -17,7 +17,11 @@ wrapper:
   - convergence
   - multifurcation
   - tree
-  input_required: expression
+  input_required: 
+  - expression
+  input_optional:
+  - groups_id
+  
 
 parameters:
   - id: dimred
@@ -38,8 +42,18 @@ parameters:
     description: Which dimensionality reduction method to use.
   - id: ndim
     type: integer
-    default: 2
+    default: 5
     distribution:
       type: uniform
       lower: 2
       upper: 30
+  - id: distance_metric
+    type: character
+    default: euclidean
+    values:
+    - euclidean
+    - cosine
+    - manhattan
+    - cityblock
+    - l1
+    - l2

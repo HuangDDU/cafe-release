@@ -31,15 +31,23 @@ def cf_mst(
     #     sc.pp.pca(adata, n_comps=parameters["ndim"])
 
     # 3. 聚类细胞，中心点作为里程碑
-    # （1）为了方便，这里直接调用scanpy的聚类方法leiden
-    sc.pp.neighbors(adata)
-    sc.tl.leiden(adata)
+    # （1）聚类细胞
+    if "groups_id" not in prior_information:
+        # 为了方便，这里直接调用scanpy的聚类方法leiden
+        sc.pp.neighbors(adata)
+        sc.tl.leiden(adata)
+        cluster_key = "leiden"
+    else:
+        # 使用先验知识中的里程碑
+        cluster_key = "mst_cluster"
+        adata.obs[cluster_key] = prior_information["groups_id"]
     # （2）计算聚类中心的低维坐标
-    centers = np.array(list(adata.obs.groupby("leiden").apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
+    centers = np.array(list(adata.obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
     milestone_ids = [f"M{i}"for i in range(centers.shape[0])]
     centers = pd.DataFrame(centers, index=milestone_ids)
     # （3）计算聚类中心间的距离
-    dis = pd.DataFrame(pairwise_distances(centers, metric="euclidean"), index=milestone_ids, columns=milestone_ids)
+    distance_metric = parameters["distance_metric"]
+    dis = pd.DataFrame(pairwise_distances(centers, metric=distance_metric), index=milestone_ids, columns=milestone_ids)
     disdf = pd.DataFrame(data=dis.unstack().reset_index().values, columns=["from", "to", "weight"])  # 转化为长数据
 
     # 4. 里程碑之间计算距离并构建最小生成树作为里程碑网络
