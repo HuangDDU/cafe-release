@@ -12,6 +12,7 @@ class MilestoneWrapper(FateWrapper):
     def __init__(
         self,
         milestone_network: pd.DataFrame,
+        cell_id_list: list = None,
         divergence_regions: pd.DataFrame = None,
         milestone_percentages: pd.DataFrame = None,
         progressions: pd.DataFrame = None,
@@ -52,7 +53,9 @@ class MilestoneWrapper(FateWrapper):
         else:
             # progressions -> milestone_percentages, 'add_trajectory_branch' test case
             milestone_percentages = MilestoneWrapper.convert_progressions_to_milestone_percentages(milestone_network, progressions)
-        if milestone_percentages is not None:
+        if cell_id_list is not None:
+            self.cell_id_list = cell_id_list
+        elif milestone_percentages is not None:
             self.cell_id_list = milestone_percentages["cell_id"].unique().tolist()
         else:
             self.cell_id_list = progressions["cell_id"].unique().tolist()

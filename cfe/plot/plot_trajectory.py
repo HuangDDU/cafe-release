@@ -130,7 +130,8 @@ def project_waypoints(
 
     # calculate wayppoint embedding based geodesic distances and gaussian kernel
     # calculate weight
-    weights = norm.pdf(wps["waypoint_geodesic_distances"], scale=trajectory_projection_sd)  # gaussian kernel
+    weights = wps["waypoint_geodesic_distances"].values
+    weights = norm.pdf(weights, scale=trajectory_projection_sd)  # gaussian kernel
     weights /= weights.sum(axis=1, keepdims=True)  # weight normalization
     # get cell embedding
     positions = cell_positions[["cell_id", "comp_1", "comp_2"]].set_index("cell_id")

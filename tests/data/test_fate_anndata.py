@@ -10,8 +10,6 @@ import scanpy as sc
 
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
-# test case for add_trajectory, add_waypoints
-
 
 def setup_method_data():
     counts = np.array([
@@ -316,7 +314,7 @@ class TestFateAnnData:
         assert compare_dataframes_closely(fadata.milestone_wrapper["progressions"], expected_progressions, on_columns="cell_id")
 
     def test_add_trajectory_velocity(self):
-        # TODO
+        # TODO: paga reference
         pass
 
     def test_group_onto_trajectory_edges(self):
@@ -387,10 +385,10 @@ class TestFateAnnData:
         )
 
         test_data = {
-            "id":id,
-            "cell_ids":cell_ids,
-            "milestone_network":milestone_network,
-            "progressions":progressions,
+            "id": id,
+            "cell_ids": cell_ids,
+            "milestone_network": milestone_network,
+            "progressions": progressions,
             "fadata": fadata,
             "expected_milestone_network": expected_milestone_network,
             "expected_progressions": expected_progressions,
@@ -406,9 +404,8 @@ class TestFateAnnData:
         simplified_milestone_wrapper = fadata.simplify_trajectory()
 
         # expected result
-        expected_milestone_network =  test_data["expected_milestone_network"]
-        expected_progressions =  test_data["expected_progressions"]
-        
+        expected_milestone_network = test_data["expected_milestone_network"]
+        expected_progressions = test_data["expected_progressions"]
 
         # assert
         assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
@@ -420,9 +417,9 @@ class TestFateAnnData:
         id = test_data["id"]
         cell_ids = test_data["cell_ids"]
         milestone_network = test_data["milestone_network"]
-        progressions =test_data["progressions"]
+        progressions = test_data["progressions"]
         fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
-        milestone_network["directed"] = False # undirected graph
+        milestone_network["directed"] = False  # undirected graph
         fadata.add_trajectory(
             milestone_network=milestone_network,
             progressions=progressions
@@ -432,16 +429,13 @@ class TestFateAnnData:
         simplified_milestone_wrapper = fadata.simplify_trajectory()
 
         # expected result
-        expected_milestone_network =  test_data["expected_milestone_network"]
+        expected_milestone_network = test_data["expected_milestone_network"]
         expected_milestone_network["directed"] = False
-        expected_progressions =  test_data["expected_progressions"]
-        
+        expected_progressions = test_data["expected_progressions"]
 
         # assert
         assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
         assert compare_dataframes_closely(simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id")
-
-
 
 
 if __name__ == "__main__":

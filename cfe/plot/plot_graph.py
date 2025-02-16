@@ -92,7 +92,8 @@ def plot_graph(
                 ax=ax,
                 **nx_draw_kwrags,
                 )
-        plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
+        if divergence_regions.shape[0] > 0:
+            plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
 
         
 

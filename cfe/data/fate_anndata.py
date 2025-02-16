@@ -163,7 +163,7 @@ class FateAnnData(ad.AnnData):
             fadata.obs["grouping"] = pd.Categorical(dataset["grouping"], dataset["group_ids"])
         # TODO: waypoint add
         return fadata
-
+    
     def add_prior_information(self, **kwargs) -> None:
         """Add prior information to the FateAnnData object.
 
@@ -207,6 +207,7 @@ class FateAnnData(ad.AnnData):
 
         milestone_wrapper = MilestoneWrapper(
             milestone_network=milestone_network,
+            cell_id_list=self.obs.index,
             divergence_regions=divergence_regions,
             milestone_percentages=milestone_percentages,
             progressions=progressions
@@ -226,6 +227,37 @@ class FateAnnData(ad.AnnData):
         if self.model_name not in self.trajectory_history_dict:
             self.trajectory_history_dict[self.model_name] = {}
         self.trajectory_history_dict[self.model_name]["milestone_wrapper"] = milestone_wrapper
+
+    def add_trajectory_mannually(
+            self,
+            milestone_network,
+            cluster_key="clusters",
+            basis="X_umap",
+            distance_metric="euclidean"
+            ):
+        
+        from sklearn.metrics.pairwise import pairwise_distances
+        
+        obs = self.obs.reset_index() # change index
+        milestone_id_list = list(obs[cluster_key].cat.categories)
+        X_emb = self.obsm[basis]
+        milestone_emb = np.array(list(obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
+        milestone_emb = pd.DataFrame(milestone_emb, index=milestone_id_list)
+        # self.obs = self.obs.set_index("index")
+
+        # milestone network
+        dis = pd.DataFrame(pairwise_distances(milestone_emb, metric=distance_metric), index=milestone_id_list, columns=milestone_id_list)
+        milestone_network["length"] = milestone_network.apply(lambda row: dis.loc[row["from"], row["to"]], axis=1)
+        milestone_network["directed"] = True
+
+        # progressions
+        self.add_trajectory_projection(
+            milestone_network=milestone_network,
+            milestone_emb=milestone_emb,
+            X_emb=X_emb,
+            cluster_key=cluster_key
+        )
+        
 
     def add_trajectory_by_type(self, trajectory_dict: dict) -> None:
         """Call the trajectory addition method based on specific trajectory types
@@ -261,6 +293,7 @@ class FateAnnData(ad.AnnData):
         logger.debug("FateAnnData add_waypoints")
         milestone_wrapper = milestone_wrapper if milestone_wrapper is not None else self.milestone_wrapper  # waypoint is based on milestone
         waypoint_wrapper = WaypointWrapper(milestone_wrapper)
+        # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] # 
         self.waypoint_wrapper = waypoint_wrapper
         self.cfe_dict["waypoint_wrapper"] = waypoint_wrapper
         self.is_wrapped_with_waypoints = True
@@ -333,7 +366,9 @@ class FateAnnData(ad.AnnData):
         directed: bool = False,
         do_scale_minmax: bool = True,
     ) -> None:
-        """add linear trajectory, such as Comp1, Palantir, Cytotrace.
+        """add linear trajectory, such as Comp1(baseline), Palantir, Cytotrace.
+
+        ref: PyDynverse/pydynverse/wrap/wrap_add_linear_trajector.wrap_add_linear_trajector.add_linear_trajectory
 
         Args:
             pseudotime (list): pseudotime sequence.
@@ -373,11 +408,21 @@ class FateAnnData(ad.AnnData):
             X_emb: pd.DataFrame | np.ndarray | str,
             cluster_key: str = None,
     ):
+        """add projection trajectory, such as MST(baseline)
+
+        ref: yDynverse/pydynverse/wrap/wrap_add_dimred_projection.add_dimred_projection
+
+        Args:
+            milestone_network (pd.DataFrame): milestone network
+            milestone_emb (pd.DataFrame | np.ndarray): embbeding for milestones.
+            X_emb (pd.DataFrame | np.ndarray | str): embedding for cells.
+            cluster_key (str, optional): cluster key.
+        """
         from ..util import project_to_segments
 
         if type(X_emb) == str:
             X_emb = self.obsm[X_emb]
-        if type(milestone_emb) == np.array:
+        if not type(X_emb) == pd.DataFrame:
             X_emb = pd.DataFrame(X_emb, index=self.obs.index)
 
         if cluster_key is None:
@@ -433,6 +478,8 @@ class FateAnnData(ad.AnnData):
 
     def add_trajectory_velocity(self):
         # TODO: add velocity trajectory, such as scVelo, VeloAE
+        # ref: PAGA transform 
+
         pass
 
     def group_onto_trajectory_edges(self, cluster_key="_cfe_te_group"):
