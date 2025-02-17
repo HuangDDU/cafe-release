@@ -113,7 +113,11 @@ class FateAnnData(ad.AnnData):
         return fadata
 
     @classmethod
-    def read_dynverse_simulation_data(cls, data_filename="synthetic/dyntoy/bifurcating_1.rds", data_dir="/usr/share/CellFateExplorer/dynbenchmark/data/"):
+    def read_dynverse_simulation_data(
+        cls,
+        data_filename="synthetic/dyntoy/bifurcating_1.rds",
+        data_dir="/usr/share/CellFateExplorer/dynbenchmark/data/"
+    ):
         # read dynverse simulation data and create FateAnnData object, default data dir is in /usr/share/CellFateExplorer/dynbenchmark/data/
         import rpy2.robjects as ro
         from ..util import rpy2_read  # rpy2 data structure transfer automatically
@@ -163,7 +167,7 @@ class FateAnnData(ad.AnnData):
             fadata.obs["grouping"] = pd.Categorical(dataset["grouping"], dataset["group_ids"])
         # TODO: waypoint add
         return fadata
-    
+
     def add_prior_information(self, **kwargs) -> None:
         """Add prior information to the FateAnnData object.
 
@@ -230,15 +234,28 @@ class FateAnnData(ad.AnnData):
 
     def add_trajectory_mannually(
             self,
-            milestone_network,
-            cluster_key="clusters",
-            basis="X_umap",
-            distance_metric="euclidean"
-            ):
-        
+            milestone_network: pd.DataFrame,
+            cluster_key: str = "clusters",
+            basis: str = "X_umap",
+            distance_metric: str = "euclidean",
+            model_name: str = "ref"
+    ):
+        """add trajectory mannually as ref trajectory, reuse add_trajectory_projection to get progression
+
+        Args:
+            milestone_network (pd.DataFrame): milestone network
+            cluster_key (str, optional): _description_. Defaults to "clusters".
+            basis (str, optional):cell embedding key. Defaults to "X_umap".
+            distance_metric (str, optional): distance metric. Defaults to "euclidean".
+            model_name (str, optional): _description_. Defaults to "ref".
+        """
+        # TODO: add divergence
+
         from sklearn.metrics.pairwise import pairwise_distances
-        
-        obs = self.obs.reset_index() # change index
+
+        self.add_model_name(model_name)
+
+        obs = self.obs.reset_index()  # change index
         milestone_id_list = list(obs[cluster_key].cat.categories)
         X_emb = self.obsm[basis]
         milestone_emb = np.array(list(obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
@@ -257,7 +274,6 @@ class FateAnnData(ad.AnnData):
             X_emb=X_emb,
             cluster_key=cluster_key
         )
-        
 
     def add_trajectory_by_type(self, trajectory_dict: dict) -> None:
         """Call the trajectory addition method based on specific trajectory types
@@ -266,22 +282,29 @@ class FateAnnData(ad.AnnData):
             trajectory_dict (dict): trajectory dict result based on specific trajectory types
         """
 
+        trajectory_dict_keys = trajectory_dict.keys()
         # TODO: for more wrapper
-        if "pseudotime" in trajectory_dict.keys():
+        if "pseudotime" in trajectory_dict_keys:
             self.add_trajectory_linear(trajectory_dict["pseudotime"])
-        elif "branch_network" in trajectory_dict.keys():
+        elif "branch_network" in trajectory_dict_keys:
             self.add_trajectory_branch(
                 branch_network=trajectory_dict["branch_network"],
                 branches=trajectory_dict["branches"],
                 branch_progressions=trajectory_dict["branch_progressions"]
             )
-        elif "milestone_emb" in trajectory_dict.keys():
+        elif "milestone_emb" in trajectory_dict_keys:
             self.add_trajectory_projection(
                 milestone_network=trajectory_dict["milestone_network"],
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
                 cluster_key=trajectory_dict.get("cluster_key", None)
             )
+        # elif "velocity" in trajectory_dict_keys:
+        #     self.add_trajectory_velocity(
+        #         neighbors=trajectory_dict["neighbors"],
+        #         velocity=trajectory_dict["velocity"],
+        #         velocity_graph=trajectory_dict["velocity_graph"],
+        #     )
         else:
             # defult direct output
             self.add_trajectory(**trajectory_dict)
@@ -293,7 +316,7 @@ class FateAnnData(ad.AnnData):
         logger.debug("FateAnnData add_waypoints")
         milestone_wrapper = milestone_wrapper if milestone_wrapper is not None else self.milestone_wrapper  # waypoint is based on milestone
         waypoint_wrapper = WaypointWrapper(milestone_wrapper)
-        # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] # 
+        # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] #
         self.waypoint_wrapper = waypoint_wrapper
         self.cfe_dict["waypoint_wrapper"] = waypoint_wrapper
         self.is_wrapped_with_waypoints = True
@@ -410,7 +433,7 @@ class FateAnnData(ad.AnnData):
     ):
         """add projection trajectory, such as MST(baseline)
 
-        ref: yDynverse/pydynverse/wrap/wrap_add_dimred_projection.add_dimred_projection
+        ref: PyDynverse/pydynverse/wrap/wrap_add_dimred_projection.add_dimred_projection
 
         Args:
             milestone_network (pd.DataFrame): milestone network
@@ -476,11 +499,46 @@ class FateAnnData(ad.AnnData):
             progressions=progressions,
         )
 
-    def add_trajectory_velocity(self):
-        # TODO: add velocity trajectory, such as scVelo, VeloAE
-        # ref: PAGA transform 
+    # def add_trajectory_velocity(
+    #         self,
+    #         neighbors: dict,
+    #         velocity: np.array,
+    #         velocity_graph,
+    #         cluster_key: str = None
+    # ):
+    #     # TODO: add velocity trajectory using PAGA transform, such as scVelo, VeloAE
+    #     import scvelo as scv
 
-        pass
+    #     cluster_key = "clusters"
+    #     shape = velocity.shape
+    #     adata = self.copy()[:shape[0], :shape[1]] # 强行维度一致
+    #     adata.uns["neighbors"] = neighbors
+    #     adata.layers["velocity"] = velocity
+    #     adata.uns["velocity_graph"] = velocity_graph
+
+    #     scv.tl.paga(adata, groups=cluster_key)
+
+    #     df = scv.get_df(adata, 'paga/transitions_confidence', precision=2).T
+
+    #     milestone_network = df.reset_index()\
+    #         .rename(columns={'index': 'from'})\
+    #         .melt(id_vars="from", var_name="to", value_name="length")\
+    #         .query("`length` > 0")
+    #     milestone_network["length"] = 1  # 暂时统一设置为1
+    #     milestone_network["directed"] = True
+
+    #     obs = self.obs.reset_index()  # change index
+    #     milestone_id_list = list(obs[cluster_key].cat.categories)
+    #     X_emb = self.obsm["X_umap"]
+    #     milestone_emb = np.array(list(obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
+    #     milestone_emb = pd.DataFrame(milestone_emb, index=milestone_id_list)
+
+    #     self.add_trajectory_projection(
+    #         milestone_network=milestone_network,
+    #         milestone_emb=milestone_emb,
+    #         X_emb=X_emb,
+    #         cluster_key=cluster_key
+    #     )
 
     def group_onto_trajectory_edges(self, cluster_key="_cfe_te_group"):
         """group cells to edges

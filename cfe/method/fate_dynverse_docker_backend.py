@@ -166,6 +166,11 @@ class DynverseDockerBackend(DockerBackend):
 # ref: pydynverse/util/h5.py
 class DynverseDockerInput():
     def __init__(self, expression, expression_id, cell_ids, feature_ids, parameters, priors, seed, verbose):
+        from scipy import sparse
+
+        if sparse.isspmatrix_csr(expression):
+            expression = expression.tocsc()
+            logger.debug("expression transfer to csc from csr")
         self.expression = expression
         self.expression_id = expression_id
         self.cell_ids = cell_ids

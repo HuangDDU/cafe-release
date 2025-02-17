@@ -13,7 +13,7 @@
 - **Milestone**: The key nodes in the trajectory of cell fate are milestones, and the milestone network is a simplification of the cell trajectory.
 - **Waypoint**: Sampling points for cell fate and trajectories, can be used to simplify calculations and visualize trajectories in embedding space.
 
-**FateMethod**: Unified trajectory inference method interface, includes [three types of backend(Users can select one of the calls during the execution process)](trajectory_methods.md), we highly recommend **Python Function** or **CFE Docker** backend:
+**FateMethod**: Unified trajectory inference method interface, includes [three types of backend(Users can select one of the calls during the execution process)](./shedule/method.md), we highly recommend **Python Function** or **CFE Docker** backend:
 
 ## Toc
 
