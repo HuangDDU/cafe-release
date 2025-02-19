@@ -80,9 +80,10 @@ def simplify_subgraph(subgr, is_directed, force_keep, edge_points):
     neighs = simplify_get_neighbours(subgr, is_directed)
     to_process = [not i for i in keep_v]
     for v_rem in range(num_vs):
+        # 从特定位置开始，向前（入度）向后（出度）搜索删除链
         if to_process[v_rem]:
             to_process[v_rem] = False
-            # 入度前驱节点、边处理
+            # 向前、入度前驱节点、边处理
             i = simplify_get_i(neighs, v_rem, is_directed)  # 前驱节点
             i_prev = v_rem
             left_path = [{"from": i, "to": i_prev, "weight": simplify_get_edge(subgr, i, i_prev)["weight"]}]
@@ -95,7 +96,7 @@ def simplify_subgraph(subgr, is_directed, force_keep, edge_points):
                 # left_path.append({"from": i, "to": i_prev, "weight": simplify_get_edge(subgr, i, i_prev)["weight"]})
                 left_path.append({"from": i, "to": i_prev, "weight": subgr.edges[(node_list[i], node_list[i_prev])]["weight"]})
 
-            # 出度的后继节点边处理
+            # 向后、出度后继节点、边处理
             j = simplify_get_j(neighs, v_rem, is_directed)  # 后继节点
             j_prev = v_rem
             right_path = [{"from": j_prev, "to": j, "weight": simplify_get_edge(subgr, j_prev, j)["weight"]}]
@@ -116,6 +117,7 @@ def simplify_subgraph(subgr, is_directed, force_keep, edge_points):
             right_path["from"] = [node_list[i] for i in right_path["from"]]
             right_path["to"] = [node_list[i] for i in right_path["to"]]
 
+            # 此时i,j为删除链的前驱后继序号
             if i == j:
                 # TODO: 自环等操作
                 pass
@@ -216,6 +218,7 @@ def anti_join(df_left, df_right, on=None):
 
 
 def simplify_get_edge_points_on_path(sub_edge_points, path):
+    # TODO: 对于无向边的处理有问题
     # 对于边上点的处理
     rev_path = path.rename({"from": "to", "to": "from"})[["from", "to"]]
 

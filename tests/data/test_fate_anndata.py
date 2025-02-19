@@ -434,9 +434,9 @@ class TestFateAnnData:
         assert cluster_key in self.fadata.obs.columns
         assert excepted_group == self.fadata.obs[cluster_key].tolist()
 
-    def get_simplify_trajectory_test_data(self):
+    def get_simplify_trajectory_test_data_linear(self):
         # input data
-        id = "directed_linear"
+        id = "linear_directed"
         cell_ids = ["a", "b", "c", "d", "e"]
         milestone_network = pd.DataFrame(
             data=[
@@ -489,9 +489,9 @@ class TestFateAnnData:
         }
         return test_data
 
-    def test_simplify_trajectory(self):
+    def test_simplify_trajectory_linear_directed(self):
         # input data
-        test_data = self.get_simplify_trajectory_test_data()
+        test_data = self.get_simplify_trajectory_test_data_linear()
         fadata = test_data["fadata"]
 
         # execute function
@@ -505,10 +505,10 @@ class TestFateAnnData:
         assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
         assert compare_dataframes_closely(simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id")
 
-    def test_simplify_trajectory_with_undirection(self):
+    def test_simplify_trajectory_linear_undirected(self):
         # input data
-        test_data = self.get_simplify_trajectory_test_data()
-        id = test_data["id"]
+        test_data = self.get_simplify_trajectory_test_data_linear()
+        id = "linear_undirected"
         cell_ids = test_data["cell_ids"]
         milestone_network = test_data["milestone_network"]
         progressions = test_data["progressions"]
@@ -530,6 +530,131 @@ class TestFateAnnData:
         # assert
         assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
         assert compare_dataframes_closely(simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id")
+
+    def get_simplify_trajectory_test_data_bifurcation(self):
+        # input data
+        id = "bifurcation_directed"
+        cell_ids = ["a", "b", "c", "d", "e", "f"]
+        milestone_ids = ["A", "B", "C", "D", "E", "F", "G"]
+        milestone_network = pd.DataFrame(
+            data=[
+                ["A", "B", 4, True],
+                ["A", "C", 4, True],
+                ["B", "D", 1, True],
+                ["C", "E", 1, True],
+                ["E", "F", 1, True],
+                ["E", "G", 1, True],
+            ],
+            columns=["from", "to", "length", "directed"],
+        )
+        progressions = pd.DataFrame(
+            data=[
+                ["a", "A", "B", 0.5],
+                ["b", "A", "C", 0.5],
+                ["c", "B", "D", 0.5],
+                ["d", "C", "E", 0.5],
+                ["e", "E", "F", 0.5],
+                ["f", "E", "G", 0.5],
+            ],
+            columns=["cell_id", "from", "to", "percentage"]
+        )
+
+        fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
+        fadata.add_trajectory(
+            milestone_network=milestone_network,
+            progressions=progressions
+        )
+
+        # expected result
+        expected_milestone_network = pd.DataFrame(
+            data=[
+                ["A", "D", 5, True],
+                ["A", "E", 5, True],
+                ["E", "F", 1, True],
+                ["E", "G", 1, True]
+            ],
+            columns=["from", "to", "length", "directed"],
+        )
+        expected_progressions = pd.DataFrame(
+            data=[
+                ["a", "A", "D", 0.4],
+                ["b", "A", "E", 0.4],
+                ["c", "A", "D", 0.9],
+                ["d", "A", "E", 0.9],
+                ["e", "E", "F", 0.5],
+                ["f", "E", "G", 0.5],
+            ],
+            columns=["cell_id", "from", "to", "percentage"]
+        )
+
+        test_data = {
+            "id": id,
+            "cell_ids": cell_ids,
+            "milestone_network": milestone_network,
+            "progressions": progressions,
+            "fadata": fadata,
+            "expected_milestone_network": expected_milestone_network,
+            "expected_progressions": expected_progressions,
+        }
+        return test_data
+
+    def test_simplify_trajectory_bifurcation_directed(self):
+        # input data
+        test_data = self.get_simplify_trajectory_test_data_bifurcation()
+        fadata = test_data["fadata"]
+
+        # execute function
+        simplified_milestone_wrapper = fadata.simplify_trajectory()
+
+        # expected result
+        expected_milestone_network = test_data["expected_milestone_network"]
+        expected_progressions = test_data["expected_progressions"]
+
+        # assert
+        assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
+        assert compare_dataframes_closely(simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id")
+
+    def test_simplify_trajectory_bifurcation_undirected(self):
+        # input data
+        test_data = self.get_simplify_trajectory_test_data_bifurcation()
+        id = "bifurcation_undirected"
+        cell_ids = test_data["cell_ids"]
+        milestone_network = test_data["milestone_network"]
+        progressions = test_data["progressions"]
+        fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
+        milestone_network["directed"] = False  # undirected graph
+        fadata.add_trajectory(
+            milestone_network=milestone_network,
+            progressions=progressions
+        )
+
+        # execute function
+        simplified_milestone_wrapper = fadata.simplify_trajectory()
+
+        # expected result
+        expected_milestone_network = pd.DataFrame(
+            data=[
+                ["D", "E", 10, False],
+                ["E", "F", 1, False],
+                ["E", "G", 1, False],
+            ],
+            columns=["from", "to", "length", "directed"],
+        )
+        expected_progressions = pd.DataFrame(
+            data=[
+                ["a", "D", "E", 0.3],
+                ["b", "D", "E", 0.7],
+                ["c", "D", "E", 0.05],
+                ["d", "D", "E", 0.95],
+                ["e", "E", "F", 0.5],
+                ["f", "E", "G", 0.5],
+            ],
+            columns=["cell_id", "from", "to", "percentage"]
+        )
+
+        # assert
+        assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
+        assert compare_dataframes_closely(simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id") # TODO: 这里暂时有问题，progression里出现了milestone_network中没有的milestone
 
 
 if __name__ == "__main__":
