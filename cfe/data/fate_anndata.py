@@ -499,6 +499,84 @@ class FateAnnData(ad.AnnData):
             progressions=progressions,
         )
 
+    def add_trajectory_cell_graph(
+            self,
+            cell_graph: pd.DataFrame,
+            to_keep: pd.Series | dict = None,
+            milestone_prefix: str = "milestone_",
+            backend: str = "networkx"
+    ):
+        if not "length" in cell_graph.columns:
+            cell_graph["length"] = 1
+        if not "directed" in cell_graph.columns:
+            cell_graph["directed"] = False
+
+        cell_ids = self.obs.index
+        is_directed = cell_graph["directed"].any()
+
+        # keep points are key cells for milestone network, where they have to appear.
+        if to_keep is None:
+            to_keep = pd.Series(True, index=dataset.cell_ids)
+        elif type(to_keep) == dict:
+            to_keep = pd.Series(to_keep)
+        v_keeps = to_keep[to_keep].index.to_list()
+
+        if backend.lower() == "networkx":
+            # construct graph object using networkX as backend, which are more convenient for dataframe.
+            G = nx.from_pandas_edgelist(cell_graph, source="from", target="to", edge_attr=["length", "directed"], create_using=nx.DiGraph if is_directed else nx.Graph)
+
+            # simplify graph preliminary
+            # step 1: for each cell, find closest milestone
+            distance_df = pd.DataFrame(dict(nx.shortest_path_length(G.to_undirected(),  weight="length"))).loc[cell_ids, v_keeps]  # calucate distance as undirected graph, like "mode=all" in igraph
+            closest_trajpoint = distance_df.idxmin(axis=1)  # closest keep point for each cell
+
+            # step 2: simplify backbone
+            G = G.subgraph(v_keeps)
+            milestone_ids = G.nodes
+
+            # STEP 3: Calculate progressions of cell_ids to determine which nodes were on each path
+            milestone_network_proto = nx.to_pandas_edgelist(G, source="from", target="to")
+            milestone_network_proto["path"] = milestone_network_proto.apply(lambda x: nx.shortest_path(G, source=x["from"], target=x["to"]), axis=1)
+            # calculate progressions for keep point
+            progressions_v_keeps = milestone_network_proto\
+                .explode("path")\
+                .groupby("path")\
+                .agg(lambda x: x.iloc[0]).reset_index()\
+                .rename(columns={"path": "node"})[["from", "to", "length", "node"]]  # save first edge for keep point
+            progressions_v_keeps["percentage"] = progressions_v_keeps.apply(lambda x: nx.shortest_path_length(G, source=x["from"], target=x["node"],  weight="length")/x["length"], axis=1)
+
+            closest_trajpoint_df = pd.DataFrame()
+            closest_trajpoint_df["node"] = closest_trajpoint
+            closest_trajpoint_df["cell_id"] = cell_ids
+            progressions = pd.merge(progressions_v_keeps, closest_trajpoint_df, on="node")  # map all cells to closest keep point
+            progressions = progressions[["cell_id", "from", "to", "percentage"]]
+
+            milestone_network = milestone_network_proto[["from", "to", "length", "directed"]]
+
+            # add prefix for milestone
+            milestone_ids = [f"{milestone_prefix}{milestone_id}" for milestone_id in milestone_ids]
+            milestone_network[["from", "to"]] = milestone_prefix + milestone_network[["from", "to"]]
+            progressions[["from", "to"]] = milestone_prefix + progressions[["from", "to"]]
+        else:
+            # construct graph object using igraph as backend, which are faster
+            milestone_network = None
+            progressions = None
+
+        # first add 
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=None,
+            progressions=progressions
+        )
+        # simplify and add
+        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)
+        self.add_trajectory(
+            milestone_network=simplified_milestone_wrapper["milestone_network"],
+            divergence_regions=None,
+            progressions=simplified_milestone_wrapper["progressions"]
+
+        )
+
     # def add_trajectory_velocity(
     #         self,
     #         neighbors: dict,
@@ -567,7 +645,7 @@ class FateAnnData(ad.AnnData):
         self.obs[cluster_key] = group_df.loc[self.obs.index]
 
     def simplify_trajectory(self, model_name="default") -> MilestoneWrapper:
-        """ simplify trajectory for metric comparison
+        """ simplify trajectory for metric comparison, also used in FateAnnData.add_trajectory_cell_graph
         ref: PyDynverse/pydynverse/wrap/simplify_trajectory.py
 
         Args:
@@ -581,12 +659,12 @@ class FateAnnData(ad.AnnData):
         else:
             raise ValueError(f"model '{model_name}' not found in trajectory_history_dict")
 
-        milestone_network = milestone_wrapper.milestone_network
+        milestone_network = milestone_wrapper.milestone_network.copy()
         divergence_regions = milestone_wrapper.divergence_regions
-        progressions = milestone_wrapper.progressions
+        progressions = milestone_wrapper.progressions.copy()
 
         G = nx.from_pandas_edgelist(
-            milestone_network,
+            milestone_network.rename(columns={"length": "weight"}),  # need length to adjust weight
             source="from",
             target="to",
             edge_attr=True,

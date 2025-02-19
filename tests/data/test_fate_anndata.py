@@ -206,6 +206,100 @@ class TestFateAnnData:
         assert fadata.milestone_wrapper["milestone_network"].equals(expected_milestone_network)
         assert fadata.milestone_wrapper["progressions"].equals(expected_progressions)
 
+    def test_add_trajectory_cell_graph(self):
+        # input data
+        name = "test_add_trajectory_cell_graph"
+        cell_ids = ["W", "X", "Y", "Z", "A", "WbX", "XcZ", "XeY", "ZfA", "a", "b", "c", "d", "e", "f"]
+        expression = np.zeros([len(cell_ids), 2])
+        fadata = cfe.data.FateAnnData(X=expression, name=name)
+        fadata.obs.index = cell_ids
+
+        cell_graph = pd.DataFrame(
+            columns=["from", "to", "length", "directed"],
+            data=[
+                ["W", "WbX", 0.8, False],
+                ["WbX", "X", 0.2, False],
+                ["X", "XeY", 0.5, False],
+                ["XeY", "Y", 0.5, False],
+                ["X", "XcZ", 0.2, False],
+                ["XcZ", "Z", 0.8, False],
+                ["Z", "ZfA", 0.2, False],
+                ["ZfA", "A", 0.8, False],
+                ["W", "a", 0.5, False],
+                ["WbX", "b", 0.5, False],
+                ["XcZ", "c", 0.5, False],
+                ["Z", "d", 0.5, False],
+                ["XeY", "e", 0.2, False],
+                ["ZfA", "f", 0.5, False],
+            ]
+        )
+        cell_graph["directed"] = True  # easier for directed graph
+
+        to_keep = dict(
+            W=True,
+            X=True,
+            Y=True,
+            Z=True,
+            A=True,
+            WbX=True,
+            XcZ=True,
+            XeY=True,
+            ZfA=True,
+            a=False,
+            b=False,
+            c=False,
+            d=False,
+            e=False,
+            f=False
+        )
+        to_keep = pd.Series(to_keep)
+
+        # execute function
+        fadata.add_trajectory_cell_graph(
+            cell_graph=cell_graph,
+            to_keep=to_keep,
+            milestone_prefix="ML_",
+        )
+
+        # expected result
+        expected_milestone_ids = [f"ML_{i}"for i in ["W", "X", "Y", "A"]]
+        expected_milestone_network = pd.DataFrame(
+            columns=["from", "to", "length", "directed"],
+            data=[
+                ["ML_W", "ML_X", 1, False],
+                ["ML_X", "ML_Y", 1, False],
+                ["ML_X", "ML_A", 2, False],
+            ]
+        )
+        expected_milestone_network["directed"] = True  # easier for directed graph
+
+        expected_progressions = pd.DataFrame(
+            columns=["cell_id", "from", "to", "percentage"],
+            data=[
+                ["W", "ML_W", "ML_X", 0],
+                ["X", "ML_W", "ML_X", 1],
+                ["Y", "ML_X", "ML_Y", 1],
+                ["Z", "ML_X", "ML_A", 0.5],
+                ["A", "ML_X", "ML_A", 1],
+                ["WbX", "ML_W", "ML_X", 0.8],
+                ["XcZ", "ML_X", "ML_A", 0.1],
+                ["XeY", "ML_X", "ML_Y", 0.5],
+                ["ZfA", "ML_X", "ML_A", 0.6],
+                ["a", "ML_W", "ML_X", 0],
+                ["b", "ML_W", "ML_X", 0.8],
+                ["c", "ML_X", "ML_A", 0.1],
+                ["d", "ML_X", "ML_A", 0.5],
+                ["e", "ML_X", "ML_Y", 0.5],
+                ["f", "ML_X", "ML_A", 0.6],
+            ]
+        )
+
+        # assert
+        milestone_wrapper = fadata.milestone_wrapper
+        assert sorted(milestone_wrapper["id_list"]) == sorted(expected_milestone_ids)
+        assert compare_dataframes_closely(milestone_wrapper["milestone_network"], expected_milestone_network, on_columns=["from", "to"])
+        assert compare_dataframes_closely(milestone_wrapper["progressions"], expected_progressions, on_columns=["cell_id"])
+
     def get_add_trajectory_projection_test_data(self):
         self.test_add_trajectory()
         fadata = self.fadata
