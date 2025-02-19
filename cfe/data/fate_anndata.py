@@ -285,19 +285,28 @@ class FateAnnData(ad.AnnData):
         trajectory_dict_keys = trajectory_dict.keys()
         # TODO: for more wrapper
         if "pseudotime" in trajectory_dict_keys:
+            # linear wrapper
             self.add_trajectory_linear(trajectory_dict["pseudotime"])
         elif "branch_network" in trajectory_dict_keys:
+            # branch wrapper
             self.add_trajectory_branch(
                 branch_network=trajectory_dict["branch_network"],
                 branches=trajectory_dict["branches"],
                 branch_progressions=trajectory_dict["branch_progressions"]
             )
         elif "milestone_emb" in trajectory_dict_keys:
+            # projection
             self.add_trajectory_projection(
                 milestone_network=trajectory_dict["milestone_network"],
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
                 cluster_key=trajectory_dict.get("cluster_key", None)
+            )
+        elif "cell_graph" in trajectory_dict_keys:
+            # cell graph
+            self.add_trajectory_cell_graph(
+                cell_graph=trajectory_dict["cell_graph"],
+                to_keep=trajectory_dict["to_keep"],
             )
         # elif "velocity" in trajectory_dict_keys:
         #     self.add_trajectory_velocity(
@@ -562,14 +571,14 @@ class FateAnnData(ad.AnnData):
             milestone_network = None
             progressions = None
 
-        # first add 
+        # first add
         self.add_trajectory(
             milestone_network=milestone_network,
             divergence_regions=None,
             progressions=progressions
         )
         # simplify and add
-        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)
+        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name) # TODO: 此处轨迹简化有问题
         self.add_trajectory(
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,

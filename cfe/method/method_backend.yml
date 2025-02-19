@@ -14,5 +14,8 @@ mst:
   python_function: cf_mst
   dynverse_docker: dynverse/ti_mst:v0.9.9.01
 
+cell_mst:
+  python_function: cf_cell_mst
+
 scvelo:
   python_function: cf_scvelo
