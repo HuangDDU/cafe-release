@@ -3,7 +3,6 @@ from .fate_method import FateMethod
 from .fate_dynverse_docker_backend import DynverseDockerBackend
 from .fate_cfe_docker_backend import CFEDockerBackend
 from .fate_function_backend import FunctionBackend
-from .function import cf_paga
 
 __all__ = [
     "Definition",
@@ -11,5 +10,4 @@ __all__ = [
     "DynverseDockerBackend",
     "CFEDockerBackend",
     "FunctionBackend",
-    "cf_paga"
 ]

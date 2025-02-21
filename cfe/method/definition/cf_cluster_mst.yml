@@ -1,15 +1,15 @@
 method:
-  id: cell_mst
-  name: Cell_MST
+  id: cluster_mst
+  name: Cluster_MST
   source: xxx
-  platform: R
+  platform: Python
 
 container:
   url: xxx
   docker: xxx
 
 wrapper:
-  type: cell_graph
+  type: cluster_graph
   topology_inference: free
   trajectory_types:
     - linear
@@ -38,7 +38,7 @@ parameters:
     description: Which dimensionality reduction method to use.
   - id: ndim
     type: integer
-    default: 5
+    default: 2
     distribution:
       type: uniform
       lower: 2

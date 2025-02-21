@@ -294,6 +294,12 @@ class FateAnnData(ad.AnnData):
                 branches=trajectory_dict["branches"],
                 branch_progressions=trajectory_dict["branch_progressions"]
             )
+        elif "cluster" in trajectory_dict:
+            # cluster graph
+            self.add_trajectory_cluster_graph(
+                milestone_network=trajectory_dict["milestone_network"],
+                cluster=trajectory_dict["cluster"]
+            )
         elif "milestone_emb" in trajectory_dict_keys:
             # projection
             self.add_trajectory_projection(
@@ -433,6 +439,31 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
 
+    def add_trajectory_cluster_graph(
+            self,
+            milestone_network: pd.DataFrame,
+            cluster: str | list,
+    ):
+        cluster_list = cluster
+        mn_ft = milestone_network[["from", "to"]]
+        both_direction = pd.concat([
+            mn_ft.assign(label=mn_ft["from"], percentage=0),
+            mn_ft.assign(label=mn_ft["to"], percentage=1)
+        ])
+
+        progressions = pd.DataFrame({"cell_id": self.obs.index, "label": cluster_list})\
+            .merge(both_direction, on="label")\
+            .groupby("cell_id")\
+            .apply(lambda x: x.sort_values("percentage", ascending=False).iloc[0])\
+            .reset_index(drop=True)\
+            .drop("label", axis=1)
+
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=None,
+            progressions=progressions,
+        )
+
     def add_trajectory_projection(
             self,
             milestone_network: pd.DataFrame,
@@ -525,7 +556,7 @@ class FateAnnData(ad.AnnData):
 
         # keep points are key cells for milestone network, where they have to appear.
         if to_keep is None:
-            to_keep = pd.Series(True, index=dataset.cell_ids)
+            to_keep = pd.Series(True, index=cell_ids)
         elif type(to_keep) == dict:
             to_keep = pd.Series(to_keep)
         v_keeps = to_keep[to_keep].index.to_list()
@@ -578,7 +609,7 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
         # simplify and add
-        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name) # TODO: 此处轨迹简化有问题
+        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)  # TODO: 此处轨迹简化有问题
         self.add_trajectory(
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,

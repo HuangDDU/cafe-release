@@ -17,7 +17,8 @@ def cf_cell_mst(
     sc.pp.pca(adata, n_comps=parameters["ndim"])
 
     # 3. 直接构建细胞间的最小生成树
-    sc.pp.neighbors(adata)
+    distance_metric = parameters["distance_metric"]
+    sc.pp.neighbors(adata, metric=distance_metric)
     G = nx.from_scipy_sparse_array(adata.obsp["distances"])  # 从稀疏矩阵构造图
     cell_mst = nx.minimum_spanning_tree(G, weight="weight")
 
@@ -25,10 +26,10 @@ def cf_cell_mst(
     cell_graph = nx.to_pandas_edgelist(cell_mst, source="from", target="to").rename(columns={"weight": "length"})
     cell_graph["from"] = cell_graph["from"].apply(lambda x: cell_ids[x])
     cell_graph["to"] = cell_graph["to"].apply(lambda x: cell_ids[x])
-    to_keep = pd.Series(data=True, index=cell_ids)
+    # to_keep = pd.Series(data=True, index=cell_ids)
 
     trajectory_dict = {
         "cell_graph": cell_graph,
-        "to_keep": to_keep,
+        "to_keep": None,
     }
     return trajectory_dict

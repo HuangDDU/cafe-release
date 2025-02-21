@@ -10,6 +10,9 @@ comp1:
   python_function: cf_comp1
   dynverse_docker: dynverse/ti_comp1:v0.9.9.01
 
+cluster_mst:
+  python_function: cf_cluster_mst
+
 mst:
   python_function: cf_mst
   dynverse_docker: dynverse/ti_mst:v0.9.9.01
