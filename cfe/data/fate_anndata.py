@@ -396,7 +396,10 @@ class FateAnnData(ad.AnnData):
 
         milestone_network = milestone_network[["from", "to", "length", "directed"]]
 
-        self.add_trajectory(milestone_network=milestone_network, progressions=progressions)
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            progressions=progressions
+        )
 
     def add_trajectory_linear(
         self,

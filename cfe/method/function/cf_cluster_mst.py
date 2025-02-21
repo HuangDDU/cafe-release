@@ -31,9 +31,11 @@ def cf_cluster_mst(
         # 使用先验知识中的里程碑
         cluster_key = "mst_cluster"
         adata.obs[cluster_key] = prior_information["groups_id"]
+    adata.obs[cluster_key] = pd.Categorical(adata.obs[cluster_key])
     # （2）计算聚类中心的低维坐标
     centers = np.array(list(adata.obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
     milestone_ids = [f"M{i}"for i in range(centers.shape[0])]
+    cluster_milestones = [milestone_ids[i] for i in adata.obs[cluster_key].cat.codes]
     centers = pd.DataFrame(centers, index=milestone_ids)
     # （3）计算聚类中心间的距离
     distance_metric = parameters["distance_metric"]
@@ -51,7 +53,7 @@ def cf_cluster_mst(
 
     trajectory_dict = {
         "milestone_network": milestone_network,
-        "cluster": adata.obs[cluster_key],
+        "cluster": cluster_milestones,
     }
 
     return trajectory_dict
