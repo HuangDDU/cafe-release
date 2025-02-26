@@ -284,7 +284,7 @@ class FateAnnData(ad.AnnData):
 
         trajectory_dict_keys = trajectory_dict.keys()
         # TODO: for more wrapper
-        if "pseudotime" in trajectory_dict_keys:
+        if ("pseudotime" in trajectory_dict_keys) and ("end_state_probabilities" not in trajectory_dict_keys):
             # linear wrapper
             self.add_trajectory_linear(trajectory_dict["pseudotime"])
         elif "branch_network" in trajectory_dict_keys:
@@ -293,6 +293,11 @@ class FateAnnData(ad.AnnData):
                 branch_network=trajectory_dict["branch_network"],
                 branches=trajectory_dict["branches"],
                 branch_progressions=trajectory_dict["branch_progressions"]
+            )
+        elif "end_state_probabilities" in trajectory_dict_keys:
+            self.add_trajectory_end_state_probibalities(
+                end_state_probabilities=trajectory_dict["end_state_probabilities"],
+                pseudotime=trajectory_dict["pseudotime"]
             )
         elif "cluster" in trajectory_dict:
             # cluster graph
@@ -442,6 +447,53 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
 
+    def add_trajectory_end_state_probibalities(
+        self,
+        end_state_probabilities: pd.DataFrame,
+        pseudotime: list,
+        do_scale_minmax: bool = True
+    ):
+        if do_scale_minmax:
+            pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
+        if end_state_probabilities.shape[1] == 1:
+            # 只有一个终端状态，就是线性轨迹了
+            trajectory = self.add_trajectory_linear(
+                pseudotime=pseudotime,
+                directed=True,
+                do_scale_minmax=do_scale_minmax,
+            )
+        else:
+            # 多个终端状态， 构建里程碑网络
+            start_milestone_id = "milestone_begin"  # 起始点是一个完全虚拟点
+            end_milestone_ids = end_state_probabilities.columns[1:].tolist()  # 终端点从列名中提取, 默认第一列为cell_id
+            milestone_ids = [start_milestone_id] + end_milestone_ids
+
+            # 起始点作为中心的星型里程碑网络
+            milestone_network = pd.DataFrame({
+                "from": start_milestone_id,
+                "to": end_milestone_ids,
+                "length": 1,
+                "directed": True
+            })
+
+            # 添加发散区域，由所有里程碑节点共同构成构成
+            divergence_regions = pd.DataFrame({
+                "milestone_id": milestone_ids,
+                "divergence_id": "D",
+                "is_start": pd.Series(milestone_ids) == start_milestone_id
+            })
+
+            pseudotime = pd.Series(pseudotime, index=end_state_probabilities["cell_id"])
+            progressions = end_state_probabilities.melt(id_vars=["cell_id"], var_name="to", value_name="percentage")
+            progressions["from"] = start_milestone_id
+            progressions["percentage"] = progressions.groupby("cell_id")["percentage"].transform(lambda x: x / x.sum() * pseudotime[x.name])  # 缩放使其之和为1，暂时不理解这个
+            progressions = progressions[["cell_id", "from", "to", "percentage"]]
+
+            self.add_trajectory(
+                milestone_network=milestone_network,
+                divergence_regions=divergence_regions,
+                progressions=progressions
+            )
     def add_trajectory_cluster_graph(
             self,
             milestone_network: pd.DataFrame,

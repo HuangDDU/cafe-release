@@ -206,6 +206,95 @@ class TestFateAnnData:
         assert fadata.milestone_wrapper["milestone_network"].equals(expected_milestone_network)
         assert fadata.milestone_wrapper["progressions"].equals(expected_progressions)
 
+    def get_add_trajectory_end_state_probibalities_test_data(self):
+        id = "test_add_end_state_probabilities"
+        cell_ids = ["a", "aa", "b", "bb", "c", "cc"]
+        fdata = cfe.data.FateAnnData(X=np.zeros((len(cell_ids), 2)), name=id)
+        end_state_ids = ["A", "B", "C"]
+        end_state_probabilities = pd.DataFrame(
+            columns=["cell_id", "A", "B", "C"],
+            data=[
+                ["a", .5, 0, 0],
+                ["aa", 1, 0, 0],
+                ["b", 0, .5, 0],
+                ["bb", 0, 1, 0],
+                ["c", 0, 0, .5],
+                ["cc", 0, 0, 1],
+            ]
+        )
+        pseudotime = [.5, 1, .5, 1, .5, 1]
+        pseudotime = pd.Series(pseudotime, index=cell_ids)
+        test_data = {
+            "id": id,
+            "cell_ids": cell_ids,
+            "fadata": fdata,
+            "end_state_ids": end_state_ids,
+            "end_state_probabilities": end_state_probabilities,
+            "pseudotime": pseudotime,
+        }
+        return test_data
+
+    def test_add_trajectory_end_state_probibalities_3_states(self):
+        test_data = self.get_add_trajectory_end_state_probibalities_test_data()
+        fadata = test_data["fadata"]
+        end_state_probabilities = test_data["end_state_probabilities"]
+        end_state_ids = test_data["end_state_ids"]
+        pseudotime = test_data["pseudotime"]
+
+        fadata.add_trajectory_end_state_probibalities(
+            end_state_probabilities=end_state_probabilities,
+            pseudotime=pseudotime,
+        )
+
+        # 预期输出
+        start_milestone_id = "milestone_begin"
+        milestone_ids = [start_milestone_id] + end_state_ids
+        expected_milestone_network = pd.DataFrame({
+            "from": start_milestone_id,
+            "to": end_state_ids,
+            "length": 1,
+            "directed": True
+        })
+        expected_divergence_regions = pd.DataFrame({
+            "milestone_id": milestone_ids,
+            "divergence_id": "D",
+            "is_start": pd.Series(milestone_ids) == start_milestone_id
+        })
+        scaled_pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
+        expected_progressions = end_state_probabilities.melt(id_vars=["cell_id"], var_name="to", value_name="percentage")
+        expected_progressions["from"] = start_milestone_id
+        expected_progressions["percentage"] = expected_progressions.groupby("cell_id")["percentage"].transform(lambda x: x / x.sum() * scaled_pseudotime[x.name])  # 缩放使其之和为1，暂时不理解这个
+        expected_progressions = expected_progressions[["cell_id", "from", "to", "percentage"]]
+
+        milestone_wrapper = fadata.milestone_wrapper
+        assert milestone_wrapper["milestone_network"].equals(expected_milestone_network)
+        assert milestone_wrapper["divergence_regions"].equals(expected_divergence_regions)
+        assert milestone_wrapper["progressions"].equals(expected_progressions)
+
+    def test_add_trajectory_end_state_probibalities_without_state(self):
+        test_data = self.get_add_trajectory_end_state_probibalities_test_data()
+        fadata = test_data["fadata"]
+        end_state_probabilities = test_data["end_state_probabilities"]
+        pseudotime = test_data["pseudotime"]
+        end_state_probabilities = end_state_probabilities["cell_id"].to_frame()  # 没有终端状态
+
+        fadata.add_trajectory_end_state_probibalities(
+            end_state_probabilities=end_state_probabilities,
+            pseudotime=pseudotime,
+        )
+        milestone_wrapper = fadata.milestone_wrapper
+
+        # 预期输出，相当于直接调用线性轨迹
+        fadata.add_trajectory_linear(
+            pseudotime=pseudotime,
+            directed=True,
+        )
+        excepted_milestone_network = fadata.milestone_wrapper
+
+        assert milestone_wrapper["milestone_network"].equals(excepted_milestone_network["milestone_network"])
+        assert milestone_wrapper["divergence_regions"].equals(excepted_milestone_network["divergence_regions"])
+        assert milestone_wrapper["progressions"].equals(excepted_milestone_network["progressions"])
+
     def test_add_trajectory_cluster_graph(self):
         # input data
         from .test_fate_milestone_wrapper import setup_method_data
