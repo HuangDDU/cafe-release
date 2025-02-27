@@ -1,6 +1,7 @@
 import pandas as pd
 import anndata as ad
 import scanpy as sc
+from sklearn.preprocessing import MinMaxScaler, normalize
 
 
 def cf_state_comp(
@@ -17,11 +18,13 @@ def cf_state_comp(
     sc.pp.pca(adata, n_comps=ndim)
 
     # 3. 提取PCA结果作为状态转移概率
-    pseudotime = adata.obsm["X_pca"][:, parameters["component"]-1]  # 伪时间用指定的分量
+    X_pca = adata.obsm["X_pca"]
+    X_pca_scaled = MinMaxScaler().fit_transform(X_pca)  # 归一化
+    pseudotime = X_pca_scaled[:, parameters["component"]-1]  # 伪时间用指定的分量
     comp_column_list = [f"comp_{i}" for i in range(1, ndim+1)]  # 前ndim个分量对应n个状态
     end_state_probabilities = pd.DataFrame(
         columns=comp_column_list,
-        data=adata.obsm["X_pca"],
+        data=normalize(X_pca_scaled, norm="l1"),  # 归一化后的PCA结果作为状态转移概率, 从from的概率为0
         index=cell_ids,
     )
     end_state_probabilities["cell_id"] = cell_ids

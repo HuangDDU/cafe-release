@@ -2,7 +2,7 @@ import pytest
 import cfe
 
 import pandas as pd
-from ..test_util import compare_dataframes
+from ..test_util import compare_dataframes, compare_dataframes_closely
 
 
 def setup_method_data():
@@ -98,6 +98,52 @@ class TestMilestoneWrapper:
     # this test case can't execute the method
     # def test_convert_progressions_to_milestone_percentages(self):
     #     pass
+
+    def test_convert_progressions_to_milestone_percentages(self):
+        from cfe.data import MilestoneWrapper
+        milestone_network = pd.DataFrame(
+            columns=["from", "to", "length", "directed"],
+            data=[
+                ["milestone_begin", "A", 1, True],
+                ["milestone_begin", "B", 1, True],
+                ["milestone_begin", "C", 1, True],
+            ],
+        )
+        end_state_probabilities = pd.DataFrame(
+            columns=["cell_id", "A", "B", "C"],
+            data=[
+                ["a", 0.5, 0.2, 0.2],
+                ["b", 0.2, 0.5, 0.2],
+                ["c", 0.2, 0.2, 0.5],
+            ],
+        )
+        progressions = end_state_probabilities.melt(id_vars=["cell_id"], var_name="to", value_name="percentage")
+        progressions["from"] = "milestone_begin"
+
+        milestone_percentages = MilestoneWrapper.convert_progressions_to_milestone_percentages(
+            milestone_network=milestone_network,
+            progressions=progressions,
+        )
+
+        expected_milestone_percentages = pd.DataFrame(
+            columns=["cell_id", "milestone_id", "percentage"],
+            data=[
+                ["a", "milestone_begin", 0.1],  # for start milestone， percentage = 1 - sum(other end milestone percentages)
+                ["a", "A", 0.5],
+                ["a", "B", 0.2],
+                ["a", "C", 0.2],
+                ["b", "milestone_begin", 0.1],
+                ["b", "A", 0.2],
+                ["b", "B", 0.5],
+                ["b", "C", 0.2],
+                ["c", "milestone_begin", 0.1],
+                ["c", "A", 0.2],
+                ["c", "B", 0.2],
+                ["c", "C", 0.5],
+            ],
+        )
+
+        assert compare_dataframes_closely(milestone_percentages, expected_milestone_percentages, on_columns=["cell_id", "milestone_id"])
 
 
 if __name__ == "__main__":

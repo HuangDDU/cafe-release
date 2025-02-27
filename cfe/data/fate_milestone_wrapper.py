@@ -116,17 +116,21 @@ class MilestoneWrapper(FateWrapper):
         Returns:
             pd.DataFrame: milestone percentage with column list: ["cell_id", "milestone_id", "percentage"]
         """
+        # TODO: check if from milestone is the only one for each cell
+
         # self loops
-        selfs = progressions[progressions["from"] == progressions["to"]]
+        selfs = progressions.query("`from` == `to`")
         selfs = selfs[["cell_id", "from"]].copy().rename(columns={"from": "milestone_id"})
         selfs["percentage"] = 1
 
         # not self loops
-        progressions = progressions[~(progressions["from"] == progressions["to"])]
-        # percentage for "from milestone"
-        froms = progressions[["cell_id", "from", "percentage"]].copy().rename(columns={"from": "milestone_id"})
-        froms["percentage"] = 1 - froms["percentage"]
-        # percentage for "to milestone"
+        progressions = progressions.query("`from` != `to`")
+
+        # percentage for "from milestone", for start milestone， percentage = 1 - sum(other end milestone percentages). it's important to for divergence region.
+        froms = progressions.groupby(["cell_id", "from"]).apply(lambda x: 1- x["percentage"].sum()).rename().reset_index()
+        froms.columns = ["cell_id", "milestone_id","percentage"]
+
+        # percentage for "to milestone", save directly
         tos = progressions[["cell_id", "to", "percentage"]].copy().rename(columns={"to": "milestone_id"})
 
         milestone_percentages = pd.concat([selfs, froms, tos]).reset_index(drop=True)
