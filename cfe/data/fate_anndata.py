@@ -284,9 +284,22 @@ class FateAnnData(ad.AnnData):
 
         trajectory_dict_keys = trajectory_dict.keys()
         # TODO: for more wrapper
-        if ("pseudotime" in trajectory_dict_keys) and ("end_state_probabilities" not in trajectory_dict_keys):
-            # linear wrapper
-            self.add_trajectory_linear(trajectory_dict["pseudotime"])
+        if "pseudotime" in trajectory_dict_keys:
+            # there are 3 wrapper with pseudotime
+            if "cycle" in trajectory_dict_keys:
+                # cycle wrapper
+                self.add_trajectory_cycle(
+                    pseudotime=trajectory_dict["pseudotime"]
+                )
+            elif "end_state_probabilities" in trajectory_dict_keys:
+                # probibalitiy wrapper
+                self.add_trajectory_end_state_probibalities(
+                    end_state_probabilities=trajectory_dict["end_state_probabilities"],
+                    pseudotime=trajectory_dict["pseudotime"]
+                )
+            else:
+                # linear wrapper
+                self.add_trajectory_linear(trajectory_dict["pseudotime"])
         elif "branch_network" in trajectory_dict_keys:
             # branch wrapper
             self.add_trajectory_branch(
@@ -294,11 +307,7 @@ class FateAnnData(ad.AnnData):
                 branches=trajectory_dict["branches"],
                 branch_progressions=trajectory_dict["branch_progressions"]
             )
-        elif "end_state_probabilities" in trajectory_dict_keys:
-            self.add_trajectory_end_state_probibalities(
-                end_state_probabilities=trajectory_dict["end_state_probabilities"],
-                pseudotime=trajectory_dict["pseudotime"]
-            )
+        
         elif "cluster" in trajectory_dict:
             # cluster graph
             self.add_trajectory_cluster_graph(
