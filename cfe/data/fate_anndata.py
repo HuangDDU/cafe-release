@@ -447,6 +447,47 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
 
+    def add_trajectory_cycle(self,
+                             pseudotime: list,
+                             directed: bool = False,
+                             do_scale_minmax: bool = True,
+                             ) -> None:
+        pseudotime = np.array(pseudotime)
+
+        # min-max scale pseudotime to [0, 1]
+        if do_scale_minmax:
+            pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
+        else:
+            assert (pseudotime >= 0).all() and (pseudotime <= 1).all()
+
+        # milestone_network: A->B, B->C, C->A
+        milestone_ids = ["A", "B", "C"]
+        milestone_network = pd.DataFrame({
+            "from": milestone_ids,
+            "to": milestone_ids[1:] + [milestone_ids[0]],
+            "length": 1,
+            "directed": directed,
+            "edge_id": range(len(milestone_ids))
+        })
+
+        # progression: 3 segement
+        progressions = pd.DataFrame({
+            "cell_id": self.obs.index,
+            "time": [3*i for i in pseudotime],
+        })
+        progressions["edge_id"] = progressions["time"].apply(lambda x: 0 if x <= 1 else 1 if x <= 2 else 2).astype("int")
+        progressions = pd.merge(progressions, milestone_network[["from", "to", "edge_id"]], on="edge_id")
+        progressions["percentage"] = progressions["time"] - progressions["edge_id"]
+        progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
+
+        milestone_network = milestone_network[["from", "to", "length", "directed"]]
+
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=None,
+            progressions=progressions
+        )
+
     def add_trajectory_end_state_probibalities(
         self,
         end_state_probabilities: pd.DataFrame,
@@ -494,6 +535,7 @@ class FateAnnData(ad.AnnData):
                 divergence_regions=divergence_regions,
                 progressions=progressions
             )
+
     def add_trajectory_cluster_graph(
             self,
             milestone_network: pd.DataFrame,
