@@ -9,7 +9,7 @@ container:
   docker: xxx
 
 wrapper:
-  type: cluster_graph
+  type: cluster
   topology_inference: free
   trajectory_types:
     - linear

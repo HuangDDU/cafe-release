@@ -9,7 +9,7 @@ container:
   docker: dynverse/ti_comp1
 
 wrapper:
-  type: linear_trajectory
+  type: linear
   topology_inference: fixed
   trajectory_types: linear
   input_required: expression

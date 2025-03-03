@@ -5,7 +5,7 @@ method:
   platform: Python
 
 wrapper:
-  type: cyclic_trajectory
+  type: cycle
   topology_inference: fixed
   trajectory_types: cycle
   input_required: expression

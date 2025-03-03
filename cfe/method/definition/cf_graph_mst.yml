@@ -1,6 +1,6 @@
 method:
-  id: cell_mst
-  name: Cell_MST
+  id: graph_mst
+  name: Graph_MST
   source: xxx
   platform: R
 
@@ -9,7 +9,7 @@ container:
   docker: xxx
 
 wrapper:
-  type: cell_graph
+  type: graph
   topology_inference: free
   trajectory_types:
     - linear

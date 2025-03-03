@@ -19,12 +19,12 @@ cluster_mst:
 state_comp:
   python_function: cf_state_comp
 
-mst:
-  python_function: cf_mst
+projection_mst:
+  python_function: cf_projection_mst
   dynverse_docker: dynverse/ti_mst:v0.9.9.01
 
-cell_mst:
-  python_function: cf_cell_mst
+graph_mst:
+  python_function: cf_graph_mst
 
 scvelo:
   python_function: cf_scvelo

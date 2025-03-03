@@ -53,6 +53,7 @@ class FunctionBackend(Backend):
 
         trajectory_dict = self.function(fadata, prior_information, parameters)
 
+        trajectory_dict["wrapper_type"] = self.definition["wrapper"]["type"]
         fadata.add_trajectory_by_type(trajectory_dict)
 
     def _load_definition(self) -> None:

@@ -4,7 +4,7 @@ import anndata as ad
 import scanpy as sc
 
 
-def cf_cell_mst(
+def cf_graph_mst(
     adata: ad.AnnData,
     prior_information: dict = {},
     parameters: dict = {}

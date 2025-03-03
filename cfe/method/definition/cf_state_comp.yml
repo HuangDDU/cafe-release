@@ -9,7 +9,7 @@ container:
   docker: xxx
 
 wrapper:
-  type: end_state_probabilities
+  type: probability
   topology_inference: free
   trajectory_types:
     - linear

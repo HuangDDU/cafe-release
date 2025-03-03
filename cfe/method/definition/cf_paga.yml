@@ -18,7 +18,7 @@ method:
     github: theislab
 
 wrapper:
-  type: branch_trajectory
+  type: branch
   topology_inference: free
   trajectory_types:
   - cycle

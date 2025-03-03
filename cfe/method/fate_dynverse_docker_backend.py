@@ -100,6 +100,7 @@ class DynverseDockerBackend(DockerBackend):
             fadata (FateAnnData): FateAnnData to be added the trajectory dict
             trajectory (dict): trajectory dict
         """
+        # trajectory is a "DynverseDockerOutput" object that have been transformed from other wrapper
         fadata.add_trajectory(
             milestone_network=trajectory.milestone_network,
             divergence_regions=trajectory.divergence_regions,

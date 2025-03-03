@@ -10,7 +10,7 @@ import scanpy as sc
 from sklearn.metrics.pairwise import pairwise_distances
 
 
-def cf_mst(
+def cf_projection_mst(
     adata: ad.AnnData,
     prior_information: dict = {},
     parameters: dict = {}

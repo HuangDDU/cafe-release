@@ -257,7 +257,7 @@ class TestFateAnnData:
         assert compare_dataframes_closely(milestone_wrapper["milestone_network"], expected_milestone_network, on_columns=["from", "to"])
         assert compare_dataframes_closely(milestone_wrapper["progressions"], expected_progressions, on_columns=["cell_id"])
 
-    def get_add_trajectory_end_state_probibalities_test_data(self):
+    def get_add_trajectory_probability_test_data(self):
         id = "test_add_end_state_probabilities"
         cell_ids = ["a", "aa", "b", "bb", "c", "cc"]
         fdata = cfe.data.FateAnnData(X=np.zeros((len(cell_ids), 2)), name=id)
@@ -285,14 +285,14 @@ class TestFateAnnData:
         }
         return test_data
 
-    def test_add_trajectory_end_state_probibalities_3_states(self):
-        test_data = self.get_add_trajectory_end_state_probibalities_test_data()
+    def test_add_trajectory_probablity_3_states(self):
+        test_data = self.get_add_trajectory_probability_test_data()
         fadata = test_data["fadata"]
         end_state_probabilities = test_data["end_state_probabilities"]
         end_state_ids = test_data["end_state_ids"]
         pseudotime = test_data["pseudotime"]
 
-        fadata.add_trajectory_end_state_probibalities(
+        fadata.add_trajectory_probability(
             end_state_probabilities=end_state_probabilities,
             pseudotime=pseudotime,
         )
@@ -322,14 +322,14 @@ class TestFateAnnData:
         assert milestone_wrapper["divergence_regions"].equals(expected_divergence_regions)
         assert milestone_wrapper["progressions"].equals(expected_progressions)
 
-    def test_add_trajectory_end_state_probibalities_without_state(self):
-        test_data = self.get_add_trajectory_end_state_probibalities_test_data()
+    def test_add_trajectory_probablity(self):
+        test_data = self.get_add_trajectory_probability_test_data()
         fadata = test_data["fadata"]
         end_state_probabilities = test_data["end_state_probabilities"]
         pseudotime = test_data["pseudotime"]
         end_state_probabilities = end_state_probabilities["cell_id"].to_frame()  # 没有终端状态
 
-        fadata.add_trajectory_end_state_probibalities(
+        fadata.add_trajectory_probability(
             end_state_probabilities=end_state_probabilities,
             pseudotime=pseudotime,
         )
@@ -346,7 +346,7 @@ class TestFateAnnData:
         assert milestone_wrapper["divergence_regions"].equals(excepted_milestone_network["divergence_regions"])
         assert milestone_wrapper["progressions"].equals(excepted_milestone_network["progressions"])
 
-    def test_add_trajectory_cluster_graph(self):
+    def test_add_trajectory_cluster(self):
         # input data
         from .test_fate_milestone_wrapper import setup_method_data
 
@@ -356,7 +356,7 @@ class TestFateAnnData:
         cluster_list = ["W", "X", "X", "Z", "Z", "Z"]
 
         # execute function
-        fadata.add_trajectory_cluster_graph(
+        fadata.add_trajectory_cluster(
             milestone_network=milestone_network,
             cluster=cluster_list,
         )
@@ -471,7 +471,7 @@ class TestFateAnnData:
         # assert
         assert compare_dataframes_closely(fadata.milestone_wrapper["progressions"], expected_progressions, on_columns="cell_id")
 
-    def test_add_trajectory_cell_graph(self):
+    def test_add_trajectory_graph(self):
         # input data
         name = "test_add_trajectory_cell_graph"
         cell_ids = ["W", "X", "Y", "Z", "A", "WbX", "XcZ", "XeY", "ZfA", "a", "b", "c", "d", "e", "f"]
@@ -520,7 +520,7 @@ class TestFateAnnData:
         to_keep = pd.Series(to_keep)
 
         # execute function
-        fadata.add_trajectory_cell_graph(
+        fadata.add_trajectory_graph(
             cell_graph=cell_graph,
             to_keep=to_keep,
             milestone_prefix="ML_",
