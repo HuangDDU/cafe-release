@@ -276,6 +276,11 @@ class FateAnnData(ad.AnnData):
         )
 
     def add_trajectory_by_type(self, trajectory_dict: dict) -> None:
+        """automatically add trajectory by wrapper type in trajectory_dict
+
+        Args:
+            trajectory_dict (dict): _description_
+        """
         wrapper_type = trajectory_dict["wrapper_type"]
         if wrapper_type == "directed":
             self.add_trajectory(**trajectory_dict)
@@ -461,9 +466,9 @@ class FateAnnData(ad.AnnData):
         directed: bool = False,
         do_scale_minmax: bool = True,
     ) -> None:
-        """add linear trajectory, such as Comp1(baseline), Palantir, Cytotrace.
+        """add linear trajectory, such as Comp1(baseline), Palantir(TODO), Cytotrace(TODO).
 
-        ref: PyDynverse/pydynverse/wrap/wrap_add_linear_trajector.wrap_add_linear_trajector.add_linear_trajectory
+        ref: PyDynverse/pydynverse/wrap/wrap_add_linear_trajector.add_linear_trajectory
 
         Args:
             pseudotime (list): pseudotime sequence.
@@ -496,11 +501,20 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
 
-    def add_trajectory_cycle(self,
-                             pseudotime: list,
-                             directed: bool = False,
-                             do_scale_minmax: bool = True,
-                             ) -> None:
+    def add_trajectory_cycle(
+        self,
+            pseudotime: list,
+            directed: bool = False,
+            do_scale_minmax: bool = True,
+    ) -> None:
+        """add cycle trajectory, such as Angle(baseline).
+        ref: PyDynverse/pydynverse/wrap/wrap_add_cyclic_trajectory.add_cyclic_trajectory
+
+        Args:
+            pseudotime (list): pseudotime sequence.
+            directed (bool, optional): is directed graph. Defaults to False.
+            do_scale_minmax (bool, optional): scale pseudotime to [0, 1]. Defaults to True.
+        """
         pseudotime = np.array(pseudotime)
 
         # min-max scale pseudotime to [0, 1]
@@ -543,22 +557,33 @@ class FateAnnData(ad.AnnData):
         pseudotime: list,
         do_scale_minmax: bool = True
     ):
+        """add probability trajectory, such as StatComp(baseline), Palantir(TODO).
+
+        ref: PyDynverse/pydynverse/wrap/wrap_add_end_state_probabilities.add_end_state_probabilities
+
+        Args:
+            end_state_probabilities (pd.DataFrame): the probability from start point to multiple endpoint.
+            pseudotime (list): pseudotime sequence
+            do_scale_minmax (bool, optional): scale pseudotime to [0, 1]. Defaults to True.
+        """
         if do_scale_minmax:
             pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
         if end_state_probabilities.shape[1] == 1:
-            # 只有一个终端状态，就是线性轨迹了
-            trajectory = self.add_trajectory_linear(
+            # there is only one terminal state, which is a linear trajectory
+            self.add_trajectory_linear(
                 pseudotime=pseudotime,
                 directed=True,
                 do_scale_minmax=do_scale_minmax,
             )
         else:
-            # 多个终端状态， 构建里程碑网络
-            start_milestone_id = "milestone_begin"  # 起始点是一个完全虚拟点
-            end_milestone_ids = end_state_probabilities.columns[1:].tolist()  # 终端点从列名中提取, 默认第一列为cell_id
+            # multiple terminal states, building a milestone network
+            # the starting point is a completely virtual point
+            start_milestone_id = "milestone_begin"
+            # the terminal point is extracted from the column name, and the default first column is cell_id
+            end_milestone_ids = end_state_probabilities.columns[1:].tolist()
             milestone_ids = [start_milestone_id] + end_milestone_ids
 
-            # 起始点作为中心的星型里程碑网络
+            # star shaped milestone network with starting point as the center
             milestone_network = pd.DataFrame({
                 "from": start_milestone_id,
                 "to": end_milestone_ids,
@@ -566,7 +591,7 @@ class FateAnnData(ad.AnnData):
                 "directed": True
             })
 
-            # 添加发散区域，由所有里程碑节点共同构成构成
+            # add a divergence region composed of all milestone nodes together
             divergence_regions = pd.DataFrame({
                 "milestone_id": milestone_ids,
                 "divergence_id": "D",
@@ -590,6 +615,14 @@ class FateAnnData(ad.AnnData):
             milestone_network: pd.DataFrame,
             cluster: str | list,
     ):
+        """add cluster trajectory, such as ClusterMST(baseline).
+
+        ref: PyDynverse/pydynverse/wrap/wrap_add_cluster_graph.add_cluster_graph
+
+        Args:
+            milestone_network (pd.DataFrame): milestone network.
+            cluster (str | list): cluster key or list.
+        """
         cluster_list = cluster
         mn_ft = milestone_network[["from", "to"]]
         both_direction = pd.concat([
@@ -617,12 +650,12 @@ class FateAnnData(ad.AnnData):
             X_emb: pd.DataFrame | np.ndarray | str,
             cluster_key: str = None,
     ):
-        """add projection trajectory, such as MST(baseline)
+        """add projection trajectory, such as CellMST(baseline).
 
         ref: PyDynverse/pydynverse/wrap/wrap_add_dimred_projection.add_dimred_projection
 
         Args:
-            milestone_network (pd.DataFrame): milestone network
+            milestone_network (pd.DataFrame): milestone network.
             milestone_emb (pd.DataFrame | np.ndarray): embbeding for milestones.
             X_emb (pd.DataFrame | np.ndarray | str): embedding for cells.
             cluster_key (str, optional): cluster key.
@@ -692,6 +725,16 @@ class FateAnnData(ad.AnnData):
             milestone_prefix: str = "milestone_",
             backend: str = "networkx"
     ):
+        """add graph trajectory, such as GraphMST(baseline).
+
+        ref: PyDynverse/pydynverse/wrap/wrap_add_cell_graph.add_cell_graph
+
+        Args:
+            cell_graph (pd.DataFrame): _description_
+            to_keep (pd.Series | dict, optional): _description_. Defaults to None.
+            milestone_prefix (str, optional): _description_. Defaults to "milestone_".
+            backend (str, optional): _description_. Defaults to "networkx".
+        """
         if not "length" in cell_graph.columns:
             cell_graph["length"] = 1
         if not "directed" in cell_graph.columns:
@@ -755,7 +798,7 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
         # simplify and add
-        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)  # TODO: 此处轨迹简化有问题
+        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)  # TODO: update
         self.add_trajectory(
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,

@@ -167,6 +167,7 @@ class TestFateAnnData:
             ]
         )
 
+        # assert
         milestone_wrapper = self.fadata.milestone_wrapper
         assert compare_dataframes(milestone_wrapper["milestone_network"], expected_milestone_network, on_columns=["from", "to"])
         assert compare_dataframes(milestone_wrapper["progressions"], expected_progressions, on_columns=["cell_id", "from", "to"])
@@ -286,18 +287,20 @@ class TestFateAnnData:
         return test_data
 
     def test_add_trajectory_probablity_3_states(self):
+        # input data
         test_data = self.get_add_trajectory_probability_test_data()
         fadata = test_data["fadata"]
         end_state_probabilities = test_data["end_state_probabilities"]
         end_state_ids = test_data["end_state_ids"]
         pseudotime = test_data["pseudotime"]
 
+        # execute function
         fadata.add_trajectory_probability(
             end_state_probabilities=end_state_probabilities,
             pseudotime=pseudotime,
         )
 
-        # 预期输出
+        # expected result
         start_milestone_id = "milestone_begin"
         milestone_ids = [start_milestone_id] + end_state_ids
         expected_milestone_network = pd.DataFrame({
@@ -317,31 +320,35 @@ class TestFateAnnData:
         expected_progressions["percentage"] = expected_progressions.groupby("cell_id")["percentage"].transform(lambda x: x / x.sum() * scaled_pseudotime[x.name])  # 缩放使其之和为1，暂时不理解这个
         expected_progressions = expected_progressions[["cell_id", "from", "to", "percentage"]]
 
+        # assert
         milestone_wrapper = fadata.milestone_wrapper
         assert milestone_wrapper["milestone_network"].equals(expected_milestone_network)
         assert milestone_wrapper["divergence_regions"].equals(expected_divergence_regions)
         assert milestone_wrapper["progressions"].equals(expected_progressions)
 
     def test_add_trajectory_probablity(self):
+        # input data
         test_data = self.get_add_trajectory_probability_test_data()
         fadata = test_data["fadata"]
         end_state_probabilities = test_data["end_state_probabilities"]
         pseudotime = test_data["pseudotime"]
-        end_state_probabilities = end_state_probabilities["cell_id"].to_frame()  # 没有终端状态
+        end_state_probabilities = end_state_probabilities["cell_id"].to_frame()  # no terminal state
 
+        # execute function
         fadata.add_trajectory_probability(
             end_state_probabilities=end_state_probabilities,
             pseudotime=pseudotime,
         )
         milestone_wrapper = fadata.milestone_wrapper
 
-        # 预期输出，相当于直接调用线性轨迹
+        # expected result
         fadata.add_trajectory_linear(
             pseudotime=pseudotime,
             directed=True,
         )
         excepted_milestone_network = fadata.milestone_wrapper
 
+        # assert
         assert milestone_wrapper["milestone_network"].equals(excepted_milestone_network["milestone_network"])
         assert milestone_wrapper["divergence_regions"].equals(excepted_milestone_network["divergence_regions"])
         assert milestone_wrapper["progressions"].equals(excepted_milestone_network["progressions"])
@@ -570,25 +577,34 @@ class TestFateAnnData:
     #     pass
 
     def test_group_onto_trajectory_edges(self):
+        # input data
         self.test_add_trajectory()  # reuse test case from test_add_trajectory
         fadata = self.fadata
-
         cluster_key = "group"
+
+        # execute function
         fadata.group_onto_trajectory_edges(cluster_key=cluster_key)
+
+        # expected result
         excepted_group = ["W->W", "W->X", "X->Z", "Z->Z", "X->Z", "Z->A"]
 
-        cluster_key = "group"
+        # assert
         assert cluster_key in self.fadata.obs.columns
         assert excepted_group == self.fadata.obs[cluster_key].tolist()
 
     def test_group_onto_nearest_milestones(self):
+        # input data
         self.test_add_trajectory()  # reuse test case from test_add_trajectory
         fadata = self.fadata
-
         cluster_key = "group"
+
+        # execute function
         fadata.group_onto_nearest_milestones(cluster_key=cluster_key)
+
+        # expected result
         excepted_group = ["W", "X", "X", "Z", "Z", "Z"]
 
+        # assert
         assert cluster_key in self.fadata.obs.columns
         assert excepted_group == self.fadata.obs[cluster_key].tolist()
 

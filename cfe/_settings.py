@@ -1,8 +1,12 @@
 from ._logging import logger
+import warnings
 
 
 class CellFateExplorerConfig:
     def __init__(self):
+        # warning
+        self.filter_warning = True
+
         # plot settings
         self.plot_format = "pdf"
 
@@ -33,3 +37,16 @@ class CellFateExplorerConfig:
 
 
 settings = CellFateExplorerConfig()
+
+if settings.filter_warning:
+    import warnings
+    import sys
+    import os
+
+    sys.stderr = open(os.devnull, "w")
+
+    os.environ["PYTHONWARNINGS"] = "ignore"
+
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
