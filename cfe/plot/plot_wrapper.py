@@ -1,4 +1,5 @@
 
+from .plot_trajectory import plot_trajectory
 from ..data import FateAnnData
 from .._logging import logger
 
@@ -37,12 +38,16 @@ def plot_wrapper(
 
 # plot_{wrapper_type}
 
-# from .plot_graph import plot_graph
-# plot_directed = plot_graph
-def plot_directed(fadata):
-    # 降低背景细胞透明度并绘制
-    # 计算里程碑位置并绘制图结构
-    pass
+def plot_directed(
+    fadata: FateAnnData,
+    color: str | list = "milestone",
+    basis: str = "umap",
+):
+    # TODO: beautify
+    plot_trajectory(
+        fadata=fadata,
+        curve=False,
+    )
 
 
 def plot_linear(fadata):
