@@ -17,6 +17,7 @@ def get_plot_fadata():
         divergence_regions=milestone_wrapper.divergence_regions,
         milestone_percentages=milestone_wrapper.milestone_percentages,
     )
+    fadata.wrapper_type = "directed"
     return fadata
 
 

@@ -1,6 +1,6 @@
 method:
   id: cluster_mst
-  name: Cluster_MST
+  name: Cluster MST
   source: xxx
   platform: Python
 

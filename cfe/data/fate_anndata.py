@@ -44,6 +44,8 @@ class FateAnnData(ad.AnnData):
         self.trajectory_history_dict = cfe_dict.get("trajectory_history_dict", {})
 
         # NOTE: Other attributes will be added later.
+        self.wrapper_type = None
+        self.raw_wrapper_dict = {}
         self.is_wrapped_with_trajectory = False
         self.is_wrapped_with_waypoints = False
 
@@ -217,20 +219,14 @@ class FateAnnData(ad.AnnData):
             progressions=progressions
         )
 
-        # if self.milestone_wrapper is not None:
-        #     trajectory_history = {}
-        #     trajectory_history["milestone_wrapper"] = self.milestone_wrapper
-        #     if self.waypoint_wrapper is not None:
-        #         trajectory_history["waypoint_wrapper"] = self.waypoint_wrapper
-        #     self.trajectory_history_dict[self.model_name] = trajectory_history
-
         self.milestone_wrapper = milestone_wrapper
-        # TODO: save multiple trajectory in cfe_dict
         self.is_wrapped_with_trajectory = True
 
+        # save multiple trajectory in cfe_dict
         if self.model_name not in self.trajectory_history_dict:
             self.trajectory_history_dict[self.model_name] = {}
         self.trajectory_history_dict[self.model_name]["milestone_wrapper"] = milestone_wrapper
+        self.trajectory_history_dict[self.model_name]["raw_wrapper_dict"] = self.raw_wrapper_dict
 
     def add_trajectory_mannually(
             self,
@@ -268,6 +264,7 @@ class FateAnnData(ad.AnnData):
         milestone_network["directed"] = True
 
         # progressions
+        self.wrapper_type = "directed"
         self.add_trajectory_projection(
             milestone_network=milestone_network,
             milestone_emb=milestone_emb,
@@ -282,6 +279,7 @@ class FateAnnData(ad.AnnData):
             trajectory_dict (dict): _description_
         """
         wrapper_type = trajectory_dict["wrapper_type"]
+        self.wrapper_type = wrapper_type
         if wrapper_type == "directed":
             self.add_trajectory(**trajectory_dict)
         elif wrapper_type == "branch":
@@ -295,13 +293,11 @@ class FateAnnData(ad.AnnData):
         elif wrapper_type == "cycle":
             self.add_trajectory_cycle(pseudotime=trajectory_dict["pseudotime"])
         elif wrapper_type == "probability":
-            # self.add_trajectory_end_state_probibalities
             self.add_trajectory_probability(
                 end_state_probabilities=trajectory_dict["end_state_probabilities"],
                 pseudotime=trajectory_dict["pseudotime"],
             )
         elif wrapper_type == "cluster":
-            # self.add_trajectory_cluster_graph
             self.add_trajectory_cluster(
                 milestone_network=trajectory_dict["milestone_network"],
                 cluster=trajectory_dict["cluster"]
@@ -314,74 +310,19 @@ class FateAnnData(ad.AnnData):
                 cluster_key=trajectory_dict.get("cluster_key", None)
             )
         elif wrapper_type == "graph":
-            # self.add_trajectory_cell_graph
             self.add_trajectory_graph(
                 cell_graph=trajectory_dict["cell_graph"],
                 to_keep=trajectory_dict["to_keep"],
             )
-
-    # def add_trajectory_by_type_bak(self, trajectory_dict: dict) -> None:
-    #     """Call the trajectory addition method based on specific trajectory types
-
-    #     Args:
-    #         trajectory_dict (dict): trajectory dict result based on specific trajectory types
-    #     """
-
-    #     trajectory_dict_keys = trajectory_dict.keys()
-    #     # TODO: choose trajectory type automatically by method object from yaml file
-    #     if "pseudotime" in trajectory_dict_keys:
-    #         # there are 3 wrapper with pseudotime
-    #         if "cycle" in trajectory_dict_keys:
-    #             # cycle wrapper
-    #             self.add_trajectory_cycle(
-    #                 pseudotime=trajectory_dict["pseudotime"]
-    #             )
-    #         elif "end_state_probabilities" in trajectory_dict_keys:
-    #             # probibalitiy wrapper
-    #             self.add_trajectory_end_state_probibalities(
-    #                 end_state_probabilities=trajectory_dict["end_state_probabilities"],
-    #                 pseudotime=trajectory_dict["pseudotime"]
-    #             )
-    #         else:
-    #             # linear wrapper
-    #             self.add_trajectory_linear(trajectory_dict["pseudotime"])
-    #     elif "branch_network" in trajectory_dict_keys:
-    #         # branch wrapper
-    #         self.add_trajectory_branch(
-    #             branch_network=trajectory_dict["branch_network"],
-    #             branches=trajectory_dict["branches"],
-    #             branch_progressions=trajectory_dict["branch_progressions"]
-    #         )
-
-    #     elif "cluster" in trajectory_dict:
-    #         # cluster graph
-    #         self.add_trajectory_cluster_graph(
-    #             milestone_network=trajectory_dict["milestone_network"],
-    #             cluster=trajectory_dict["cluster"]
-    #         )
-    #     elif "milestone_emb" in trajectory_dict_keys:
-    #         # projection
-    #         self.add_trajectory_projection(
-    #             milestone_network=trajectory_dict["milestone_network"],
-    #             milestone_emb=trajectory_dict["milestone_emb"],
-    #             X_emb=trajectory_dict["X_emb"],
-    #             cluster_key=trajectory_dict.get("cluster_key", None)
-    #         )
-    #     elif "cell_graph" in trajectory_dict_keys:
-    #         # cell graph
-    #         self.add_trajectory_cell_graph(
-    #             cell_graph=trajectory_dict["cell_graph"],
-    #             to_keep=trajectory_dict["to_keep"],
-    #         )
-    #     # elif "velocity" in trajectory_dict_keys:
-    #     #     self.add_trajectory_velocity(
-    #     #         neighbors=trajectory_dict["neighbors"],
-    #     #         velocity=trajectory_dict["velocity"],
-    #     #         velocity_graph=trajectory_dict["velocity_graph"],
-    #     #     )
-    #     else:
-    #         # defult direct output
-    #         self.add_trajectory(**trajectory_dict)
+        elif wrapper_type == "velocity":
+            # TODO: reuse projection wrapper
+            self.add_trajectory_projection(
+                milestone_network=trajectory_dict["milestone_network"],
+                milestone_emb=trajectory_dict["milestone_emb"],
+                X_emb=trajectory_dict["X_emb"],
+                cluster_key=trajectory_dict.get("cluster_key", None)
+            )
+        self.raw_wrapper_dict = trajectory_dict
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None) -> None:
         """Create WaypointWrapper object

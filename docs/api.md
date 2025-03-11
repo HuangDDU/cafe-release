@@ -22,3 +22,4 @@
 |module|reference|
 | ---- | ---- |
 | [plot_trajectory](api/plot/plot_trajectory.md) | plot_trajectory |
+| [plot_wrapper](api/plot/plot_wrapper.md) | plot_wrapper |

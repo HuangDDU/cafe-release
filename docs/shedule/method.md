@@ -1,6 +1,6 @@
 # Methods
 
-## Backend
+## 1. Backend
 
 |Backend|Description|Advantage|Disadvantage|
 | ---- | ---- | ---- | ---- |
@@ -13,19 +13,31 @@
 - **Dynverse**[@dynverse]: 45 methods filtered from 70 methods before 2019 years. Output results of them can be classfied to 7 wrapper. Paper, github reository, document are available.
 - **Github Reporsitory**[@sc_pseudotime_github]: A repository keeps track of the latest trajectory infernce methods in real-time. Related topics such as upstream opertion(data imputation, dimsional reduction), donstream analysis(GRN inference, trajectory alignment) and reviews are also included.
 
-## Implementation order (TODO List)
+## 2.Implementation order
 
-- [ ] Dynverse represtive methods for 7 basic wrapper:
-    - [x] `Direct`: PAGA
-    - [x] `Linear`: Component 1(baseline)
-    - [ ] `Cycle`: Angle(baseline)
-    - [ ] `Prob`: SCUBA
-    - [ ] `Cluster`: GrandPrix
-    - [x] `Proj`: MST(baseline)
-    - [ ]  `Cell`: Monocle2
+### 2.1 wrapper and baseline(Completed on 2023.03.11)
+
+> Here, baseline methods are easy way to get the specified aimed wrapper input data structure, where MST(Minimum Spanning Tree) are widely used.
+
+- [x] Dynverse represtive methods for 7 basic wrapper:
+  - [x] `Direct`: PAGA
+  - [x] `Linear`: Component 1(baseline)
+  - [x] `Cycle`: Angle(baseline)
+  - [x] `Probability`: State Component(baseline)
+  - [x] `Cluster`: Cluster MST(baseline)
+  - [x] `Proj`: Projection MST(baseline)
+  - [x]  `Cell`: Graph MST(baseline)
 - [x] `Velocity` wrapper:
-    - [x] Strategy from `Velocity` wrapper to `Direct` wrapper.
-    - [x] represtive method scVelo.
-- [ ] For other methods, the higher the citation count of the paper, the higher the implementation order(need statistics from google scholar).
+  - [x] Strategy from `Velocity` wrapper to `Direct` wrapper.
+  - [x] represtive method scVelo.
+- [] CFE Docker:
+  - Use Docker to manage environments and version of specific methods.
+  - Use Github Action to build and push docker images automatically.
 
+### 2.2 More published methods (Working)
+
+- For other methods, the higher the citation count of the paper, the higher the implementation order(need statistics from google scholar).
+
+### TODO
+>
 > The work integrate trajectory methods from the issue area continuously.

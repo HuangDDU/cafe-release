@@ -8,7 +8,7 @@ method:
   url: https://github.com/theislab/scvelo
 
 wrapper:
-  type: projection
+  type: velocity
   # # topology_inference: free
   # trajectory_types:
   # - cycle

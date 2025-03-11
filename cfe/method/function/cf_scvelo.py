@@ -23,6 +23,7 @@ def cf_scvelo(
     # 3. execute method
     scv.tl.velocity(adata)  # compute high dimensional velocity
     scv.tl.velocity_graph(adata)  # compute transition probability
+    # scv.pl.velocity_embedding_stream(adata, basis="umap", show=False)  # NOTE: compared with plot_wrapper
 
     # 4. PAGA calculation of milestone network directed graph
     milestone_id_list = list(adata.obs[cluster_key].cat.categories)
@@ -46,12 +47,21 @@ def cf_scvelo(
     X_emb = adata.obsm["X_umap"]
     milestone_emb = np.array(list(obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
     milestone_emb = pd.DataFrame(milestone_emb, index=milestone_id_list)
+    # TODO: minimal anndata for plot_wrapper
+    velocity_adata = adata
 
     # 5. save results
     trajectory_dict = {
+        # for trajectory transform
         "milestone_network": milestone_network,
         "X_emb": X_emb,
         "milestone_emb": milestone_emb,
+        # for wrapper plot
+        # "velocity": adata.layers["velocity"],  # high dimensional velocity matrix(n_obs*n_obs)
+        # "neighbors": adata.uns["neighbors"],
+        # "cell_index": adata.obs.index,
+        # "gene_index": adata.var.index,
+		"velocity_adata": velocity_adata,
     }
 
     # TODO: need update wrapper

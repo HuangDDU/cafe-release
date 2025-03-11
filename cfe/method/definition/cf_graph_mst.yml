@@ -1,8 +1,8 @@
 method:
   id: graph_mst
-  name: Graph_MST
+  name: Graph MST
   source: xxx
-  platform: R
+  platform: Python
 
 container:
   url: xxx

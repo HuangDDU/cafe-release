@@ -1,6 +1,6 @@
 method:
   id: state_comp
-  name: state_comp
+  name: State Component
   source: xxx
   platform: Python
 
