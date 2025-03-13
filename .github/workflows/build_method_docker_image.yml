@@ -16,5 +16,7 @@ jobs:
     steps:
       - name: Build, Test, Push
         id: build-test-push
-        run: bash build_method_docker_image.sh ${{ matrix.var }}
-    
+        run: |
+          pwd
+          bash ./build_method_docker_image.sh ${{ matrix.var }}
+
