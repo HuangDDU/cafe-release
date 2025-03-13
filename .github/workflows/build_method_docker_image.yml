@@ -3,20 +3,33 @@ name: Build Method Docker Image
 on:
   push:
     branches: [ "dev_method" ]
-#   pull_request:
-#     branches: [ "main" ]
+
 
 jobs:
+  check-docker-version:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.get-method-name-list.method_name_list }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-docker-version
+        id: get-method-name-list
+        run: |
+          method_name_list = '["cf_paga", "cf_comp1"]'
+          echo "method_name_list=$method_name_list" >> $GITHUB_OUTPUT
+
   push-docker-image:
+    needs: check-docker-version
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        var: ["cf_paga", "cf_comp1"]
+        var: ${{needs.check-docker-version.outputs.method_name_list}}
+        # var: ["cf_paga", "cf_comp1"]
     steps:
       - uses: actions/checkout@v4
       - name: Build, Test, Push
         id: build-test-push
         run: |
-          ls -alhp
+          
           bash ./build_method_docker_image.sh ${{ matrix.var }}
 
