@@ -1,0 +1,20 @@
+name: Build Method Docker Image
+
+on:
+  push:
+    branches: [ "dev_method" ]
+#   pull_request:
+#     branches: [ "main" ]
+
+jobs:
+  push-docker-image:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # var: ["cf_paga", "cf_comp1"]
+        var: ["cf_paga"]
+    steps:
+      - name: Build, Test, Push
+        id: build-test-push
+        run: bash build_method_docker_image.bash ${{ matrix.var }}
+    

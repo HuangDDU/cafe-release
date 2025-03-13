@@ -1,6 +1,7 @@
 method:
   id: comp1
   name: Component 1
+  version: 0.0.1
   source: offtheshelf
   platform: R
 

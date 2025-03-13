@@ -1,0 +1,1 @@
+{"filter_features": false, "n_neighbors": 15, "n_comps": 50, "n_dcs": 15, "resolution": 1, "embedding_type": "fa", "connectivity_cutoff": 0.5}

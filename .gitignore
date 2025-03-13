@@ -10,3 +10,7 @@ tmp
 
 # mkdoc
 site
+
+# # method docker image
+# build_method_docker_image*
+# method_docker
