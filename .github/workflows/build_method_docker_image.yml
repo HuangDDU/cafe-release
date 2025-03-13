@@ -15,7 +15,7 @@ jobs:
       - name: check-docker-version
         id: get-method-name-list
         run: |
-          method_name_list = '["cf_paga", "cf_comp1"]'
+          method_name_list='["cf_paga", "cf_comp1"]' # TODO: need check from yaml file
           echo "method_name_list=$method_name_list" >> $GITHUB_OUTPUT
 
   push-docker-image:
