@@ -35,7 +35,7 @@ docker build -t ${image_name} "./${destination_dir}"
 echo "Docker image:${image_name} built successfully."
 
 docker run \
-    -it --rm \
+    --rm \
     -v ./method_docker_input:/data \
     --workdir /code \
     ${image_name}\

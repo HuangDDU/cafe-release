@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # var: ["cf_paga", "cf_comp1"]
-        var: ["cf_paga"]
+        var: ["cf_paga", "cf_comp1"]
     steps:
       - uses: actions/checkout@v4
       - name: Build, Test, Push
