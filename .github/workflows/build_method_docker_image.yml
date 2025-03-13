@@ -9,7 +9,7 @@ jobs:
   check-docker-version:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.get-method-name-list.method_name_list }}
+      method_name_list: ${{ steps.get-method-name-list.method_name_list }}
     steps:
       - uses: actions/checkout@v4
       - name: check-docker-version
@@ -23,8 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        var: ${{needs.check-docker-version.outputs.method_name_list}}
         # var: ["cf_paga", "cf_comp1"]
+        var: ${{ fromJson(needs.check-docker-version.outputs.method_name_list)}}
+        
     steps:
       - uses: actions/checkout@v4
       - name: Build, Test, Push
