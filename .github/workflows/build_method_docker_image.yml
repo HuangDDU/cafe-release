@@ -17,6 +17,6 @@ jobs:
       - name: Build, Test, Push
         id: build-test-push
         run: |
-          ll -ah
+          ls -alhp
           bash ./build_method_docker_image.sh ${{ matrix.var }}
 
