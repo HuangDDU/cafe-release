@@ -1,5 +1,3 @@
-import pickle
-
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -84,13 +82,11 @@ def cf_paga(
 
 
 if __name__ == "__main__":
-    # TODO: for auto docker update, github action script is need in .github directory
+    import pickle
     from parse_args import parse_args
 
     adata, prior_information, parameters, output_filename = parse_args()
-
     trajectory_dict = cf_paga(adata, prior_information, parameters)
-
     with open(output_filename, "wb") as f:
         pickle.dump(trajectory_dict, f)
     print("PAGA Finish!")

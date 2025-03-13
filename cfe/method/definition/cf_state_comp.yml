@@ -1,6 +1,7 @@
 method:
   id: state_comp
   name: State Component
+  version: 0.0.1
   source: xxx
   platform: Python
 

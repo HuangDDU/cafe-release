@@ -1,4 +1,3 @@
-import pickle
 import anndata as ad
 import scanpy as sc
 
@@ -26,12 +25,11 @@ def cf_comp1(
 
 
 if __name__ == "__main__":
+    import pickle
     from parse_args import parse_args
 
     adata, prior_information, parameters, output_filename = parse_args()
-
     trajectory_dict = cf_comp1(adata, prior_information, parameters)
-
     with open(output_filename, "wb") as f:
         pickle.dump(trajectory_dict, f)
     print("Comp1 Finish!")

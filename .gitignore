@@ -14,3 +14,4 @@ site
 # # method docker image
 # build_method_docker_image*
 # method_docker
+method_docker_input/output.pkl

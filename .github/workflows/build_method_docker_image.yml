@@ -15,7 +15,7 @@ jobs:
       - name: check-docker-version
         id: get-method-name-list
         run: |
-          method_name_list='["cf_paga", "cf_comp1"]' # TODO: need check from yaml file
+          method_name_list='["cf_paga", "cf_comp1", "cf_angle", "cf_state_comp"]' # TODO: need check from yaml file, get image name and version
           echo "method_name_list=$method_name_list" >> $GITHUB_OUTPUT
 
   push-docker-image:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # var: ["cf_paga", "cf_comp1"]
+        # TODO: 
         var: ${{ fromJson(needs.check-docker-version.outputs.method_name_list)}}
         
     steps:
@@ -31,6 +31,7 @@ jobs:
       - name: Build, Test, Push
         id: build-test-push
         run: |
-          
           bash ./build_method_docker_image.sh ${{ matrix.var }}
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          # TODO: docker push
 

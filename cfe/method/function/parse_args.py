@@ -17,6 +17,7 @@ def parse_args():
         prior_information = json.load(prior_file)
 
     with open(args.parameters, 'r') as params_file:
+        # TODO: update from yml parameter dict
         parameters = json.load(params_file)
 
     return adata, prior_information, parameters, args.output_filename

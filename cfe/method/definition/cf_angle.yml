@@ -1,6 +1,7 @@
 method:
   id: angle
   name: Angle
+  version: 0.0.1
   source: offtheshelf
   platform: Python
 
