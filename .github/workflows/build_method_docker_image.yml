@@ -14,6 +14,7 @@ jobs:
         # var: ["cf_paga", "cf_comp1"]
         var: ["cf_paga"]
     steps:
+      - uses: actions/checkout@v4
       - name: Build, Test, Push
         id: build-test-push
         run: |
