@@ -41,13 +41,14 @@ def plot_wrapper(
 def plot_directed(
     fadata: FateAnnData,
     color: str | list = "milestone",
-    basis: str = "umap",
 ):
-    # TODO: beautify
-    plot_trajectory(
-        fadata=fadata,
-        curve=False,
-    )
+    # # TODO: beautify
+    # plot_trajectory(
+    #     fadata=fadata,
+    #     curve=False,
+    # )
+    from .plot_graph import plot_graph  
+    plot_graph(fadata, color=color)
 
 
 def plot_linear(fadata):

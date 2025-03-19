@@ -8,6 +8,8 @@ import scanpy as sc
 from ..data import FateAnnData
 from .add_color import add_milestone_color, add_milestone_cell_color
 
+# NOTE: Direct wrapper plot , will be moved to plot_wrapper.py
+
 
 def plot_graph(
     fadata: FateAnnData,
@@ -79,7 +81,7 @@ def plot_graph(
         ax = ax_list[i]
         c = color[i]
         if c == "milestone":
-            ax.legend().remove() # remove legend for color with milestone , but it waste time for show and remove 
+            ax.legend().remove()  # remove legend for color with milestone , but it waste time for show and remove
 
         nx.draw(G,
                 milestone_emb_dict,
@@ -94,8 +96,6 @@ def plot_graph(
                 )
         if divergence_regions.shape[0] > 0:
             plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
-
-        
 
         # tmp_kwargs = sc_pl_embedding_kwargs.copy()
         # tmp_kwargs["legend_loc"] = None if c == "milestone" else tmp_kwargs.get("legend_loc", None)
