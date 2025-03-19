@@ -1,6 +1,6 @@
 import pandas as pd
 import networkx as nx
-
+from ._topology_metric.metric_flip import calculate_edge_flip
 
 def calc_isomorphic(net1: pd.DataFrame, net2: pd.DataFrame):
     """Judge if two milestone network are  isomorphic
@@ -21,9 +21,7 @@ def calc_isomorphic(net1: pd.DataFrame, net2: pd.DataFrame):
         return 0
 
 
-def calculate_edge_flip(net1, net2):
-    # TODO: 边反转，最大公共边子图
-    return 0
+calc_edge_flip = calculate_edge_flip
 
 
 def calculate_him(net1, net2):

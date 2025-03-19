@@ -6,15 +6,17 @@ def calculate_metrics(
         fadata,
         now_model=None,
         ref_model=None,
-        metrics=["isomorphic"]
+        simplify=True,
+        metrics=["isomorphic", "edge_flip"]
 ):
     summary_dict = {}
-
-    ref_simplified_milestone_wrapper = fadata.simplify_trajectory(ref_model)
-    simplified_milestone_wrapper = fadata.simplify_trajectory(now_model)
-
-    net1 = ref_simplified_milestone_wrapper.milestone_network  # ref model
-    net2 = simplified_milestone_wrapper.milestone_network
+    
+    if simplify:
+        net1 = fadata.simplify_trajectory(ref_model)["milestone_network"]
+        net2 = fadata.simplify_trajectory(now_model)["milestone_network"]
+    else:
+        net1 = fadata.trajectory_history_dict[ref_model]["milestone_wrapper"]["milestone_network"]
+        net2 = fadata.trajectory_history_dict[now_model]["milestone_wrapper"]["milestone_network"]
 
     # topology metric
     if "isomorphic" in metrics:

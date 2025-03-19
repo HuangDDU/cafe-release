@@ -32,10 +32,18 @@ def generate_trajectory(milestone_network: pd.DataFrame, id: str = ""):
     fadata.obs.index = ["a"]
 
     divergence_regions = pd.DataFrame(columns=["divergence_id", "milestone_id", "is_star"])
-    milestone_percentages = pd.DataFrame(
-        data=[["a", milestone_network.iloc[0, 0], 1.0],],
-        columns=["cell_id", "milestone_id", "percentage"])
-
-    fadata.add_trajectory(milestone_network, divergence_regions, milestone_percentages)
+    # milestone_percentages = pd.DataFrame(
+    #     data=[["a", milestone_network.iloc[0, 0], 1.0],],
+    #     columns=["cell_id", "milestone_id", "percentage"])
+    # fadata.add_trajectory(milestone_network, divergence_regions, milestone_percentages)
+    from_milestone, to_milestone = milestone_network["from"][0], milestone_network["to"][0]
+    progressions = pd.DataFrame(
+        columns=["cell_id", "from", "to", "percentage"],
+        data=[["a", from_milestone, to_milestone, 0.5]],
+    )
+    fadata.add_trajectory(
+        milestone_network=milestone_network, 
+        divergence_regions=divergence_regions, 
+        progressions=progressions)
 
     return fadata

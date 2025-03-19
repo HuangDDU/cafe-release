@@ -58,9 +58,12 @@ def test_calculate_metrics():
 
     summary_dict_self = cfe.metric.calculate_metrics(fadata, now_model="new", ref_model="new")  # calculate metric with self, max metric value
     summary_dict = cfe.metric.calculate_metrics(fadata, now_model="new", ref_model="ref")  # calculate metric with ref
+
     assert summary_dict_self["isomorphic"] == 1
     assert summary_dict["isomorphic"] == 0
 
+    assert summary_dict_self["edge_flip"] == 1
+    assert summary_dict["edge_flip"] == 0
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
