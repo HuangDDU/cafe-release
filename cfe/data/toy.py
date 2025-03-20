@@ -17,6 +17,22 @@ topologies_with_same_n_milestones = {
         "from": ["A", "B", "B", "B", "C"],
         "to": ["B", "C", "D", "E", "F"],
     }),
+    "tree": pd.DataFrame({
+        "from": ["A", "B", "B", "C", "C"],
+        "to": ["B", "C", "D", "E", "F"],
+    }),
+    "cycle": pd.DataFrame({
+        "from": ["A", "B", "C", "D", "E", "F"],
+        "to": ["B", "C", "D", "E", "F", "A"],
+    }),
+    "connected": pd.DataFrame({
+        "from": ["A", "B", "B", "D", "E", "C"],
+        "to": ["B", "C", "D", "E", "A", "F"],
+    }),
+    "disconnected": pd.DataFrame({
+        "from": ["A", "B", "C", "D", "E"],
+        "to": ["B", "C", "A", "E", "F"],
+    })
 }
 
 
@@ -42,8 +58,8 @@ def generate_trajectory(milestone_network: pd.DataFrame, id: str = ""):
         data=[["a", from_milestone, to_milestone, 0.5]],
     )
     fadata.add_trajectory(
-        milestone_network=milestone_network, 
-        divergence_regions=divergence_regions, 
+        milestone_network=milestone_network,
+        divergence_regions=divergence_regions,
         progressions=progressions)
 
     return fadata
