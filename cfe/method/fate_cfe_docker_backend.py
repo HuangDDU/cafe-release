@@ -86,14 +86,14 @@ class CFEDockerBackend(DockerBackend):
                 trajectory_dict = pickle.load(f)
             return trajectory_dict
 
-    def postprocess(self, fadata: FateAnnData, trajectory_dict: dict) -> None:
-        """Save trajectory_dict
+    # def postprocess(self, fadata: FateAnnData, trajectory_dict: dict) -> None:
+    #     """Save trajectory_dict
 
-        Args:
-            fadata (FateAnnData): FateAnnData to be added the trajectory dict
-            trajectory_dict (dict): trajectory dict
-        """
-        fadata.add_trajectory_by_type(trajectory_dict)
+    #     Args:
+    #         fadata (FateAnnData): FateAnnData to be added the trajectory dict
+    #         trajectory_dict (dict): trajectory dict
+    #     """
+    #     fadata.add_trajectory_by_type(trajectory_dict)
 
     def run(self, fadata: FateAnnData, parameters: dict) -> None:
         """Run cfe docker pipeline to infer the trajectory
@@ -114,4 +114,5 @@ class CFEDockerBackend(DockerBackend):
 
             trajectory_dict = self.execute(tmp_wd)
 
-            self.postprocess(fadata, trajectory_dict)
+            trajectory_dict["wrapper_type"] = self.definition["wrapper"]["type"]
+            fadata.add_trajectory_by_type(trajectory_dict)
