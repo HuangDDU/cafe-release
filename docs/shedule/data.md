@@ -8,5 +8,5 @@
     - [x] dynbenchmark simulation datasets.
 - [ ] Real data:
     - [x] scvelo datasets: pancreas
-    - [ ] lineage datasets
+    - [ ] lineage datasets:
     

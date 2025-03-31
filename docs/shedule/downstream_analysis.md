@@ -2,8 +2,11 @@
 
 ## 1. Interactive web platform based cellxgene
 
-1. technology stack:
-
+1. function:
+   - result visualization
+   - method selection
+  
+2. technology stack:
    - Backend: Flask
    - Frontend: React
 

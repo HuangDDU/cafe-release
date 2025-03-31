@@ -20,19 +20,19 @@
 > Here, baseline methods are easy way to get the specified aimed wrapper input data structure, where MST(Minimum Spanning Tree) are widely used.
 
 - [x] Dynverse represtive methods for 7 basic wrapper:
-  - [x] `Direct`: PAGA
-  - [x] `Linear`: Component 1(baseline)
-  - [x] `Cycle`: Angle(baseline)
-  - [x] `Probability`: State Component(baseline)
-  - [x] `Cluster`: Cluster MST(baseline)
-  - [x] `Proj`: Projection MST(baseline)
-  - [x]  `Cell`: Graph MST(baseline)
+    - [x] `Direct`: PAGA
+    - [x] `Linear`: Component 1(baseline)
+    - [x] `Cycle`: Angle(baseline)
+    - [x] `Probability`: State Component(baseline)
+    - [x] `Cluster`: Cluster MST(baseline)
+    - [x] `Proj`: Projection MST(baseline)
+    - [x]  `Cell`: Graph MST(baseline)
 - [x] `Velocity` wrapper:
-  - [x] Strategy from `Velocity` wrapper to `Direct` wrapper.
-  - [x] represtive method scVelo.
+    - [x] Strategy from `Velocity` wrapper to `Direct` wrapper.
+    - [x] represtive method scVelo.
 - [] CFE Docker:
-  - Use Docker to manage environments and version of specific methods.
-  - Use Github Action to build and push docker images automatically.
+    - [x]Use Docker to manage environments and version of specific methods.
+    - [] Use Github Action to build and push docker images automatically, (now, the action script is triggerd manually).
 
 ### 2.2 More published methods (Working)
 

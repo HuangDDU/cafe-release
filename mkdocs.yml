@@ -5,7 +5,9 @@ repo_name: HuangDDU/CellFateExplorer
 nav:
   - Home: index.md
   - Tutorial:
+      - Tutorial Summary: tutorial.md
       - Quick Start: tutorial/quickstart.ipynb
+      - Benchmark: tutorial/benchmark.ipynb
   - API:
       - API Summary: api.md
       - Data:
@@ -29,7 +31,6 @@ nav:
       - Plot: shedule/plot.md
       - Benchmark: shedule/benchmark.md
       - Downstream Analysis: shedule/downstream_analysis.md
-      - Website: shedule/website.md
 
   - Change Log: change_log.md
 
@@ -79,7 +80,3 @@ plugins:
             # show_source: false
           selection:
             docstring_style: google
-
-
-markdown_extensions:
-  - footnotes
