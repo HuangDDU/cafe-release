@@ -10,8 +10,8 @@ source_method_file="cfe/method/function/${method_name}.py"
 source_dockerfile="cfe/method/Dockerfile/${method_name}.dockerfile"
 source_definition="cfe/method/definition/${method_name}.yml"
 
-destination_parse_file="${destination_dir}/parse_args.py"
-destination_method_file="${destination_dir}/run.py"
+destination_parse_file="${destination_dir}/run.py"
+destination_method_file="${destination_dir}/${method_name}.py"
 destination_dockerfile="${destination_dir}/Dockerfile"
 destination_definition="${destination_dir}/definition.yml"
 
@@ -38,7 +38,7 @@ docker run \
 	-v ./method_docker_input:/data \
 	--workdir /code \
 	${image_name} \
-	python /code/run.py --adata_path /data/adata.h5ad --prior_information /data/prior_information.json --parameters /data/parameters.json --output_filename /data/output.pkl
+	python /code/run.py --function_name ${method_name} --adata_path /data/adata.h5ad --prior_information /data/prior_information.json --parameters /data/parameters.json --output_filename ./output.pkl
 echo "Docker image:${image_name} test successfully."
 
 # push docker image on github workflow
