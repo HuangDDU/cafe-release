@@ -35,3 +35,6 @@ graph_mst:
 
 scvelo:
   python_function: cf_scvelo
+
+palantir:
+  python_function: cf_palantir

@@ -125,7 +125,7 @@ def plot_trajectory(
                     return t
             milestone_positions.apply(lambda row: get_milestone, axis=1)
             milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
-            milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0])
+            milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
             pos = dict(zip(milestone_positions["milestone_id"], milestone_positions[["comp_1", "comp_2"]].values))
             milestone_color_dict = fadata.uns["milestone_color_dict"]
 
@@ -137,6 +137,7 @@ def plot_trajectory(
                 arrowsize=15,
                 linewidths=3,
                 edgecolors="black",
+                ax=ax
             )
 
             # TODO: legend  setting

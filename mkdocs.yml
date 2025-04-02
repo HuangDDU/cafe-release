@@ -80,3 +80,8 @@ plugins:
             # show_source: false
           selection:
             docstring_style: google
+
+markdown_extensions:
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      
