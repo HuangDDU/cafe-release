@@ -10,10 +10,14 @@ container:
   docker: dynverse/ti_comp1
 
 wrapper:
-  type: linear
+  type: probability
   topology_inference: fixed
   trajectory_types: linear
-  input_required: expression
+  input_required:
+  - counts
+  - start_id
+  input_optional:
+  - terminal_states
 
 parameters:
   - id: dimred
@@ -44,5 +48,5 @@ parameters:
     default: 30
     distribution:
       type: uniform
-      lower: 1
-      upper: 10
+      lower: 10
+      upper: 50

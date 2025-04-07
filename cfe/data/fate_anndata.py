@@ -280,6 +280,7 @@ class FateAnnData(ad.AnnData):
         """
         wrapper_type = trajectory_dict["wrapper_type"]
         self.wrapper_type = wrapper_type
+        logger.debug(f"Wrapper type: {wrapper_type}")
         if wrapper_type == "directed":
             self.add_trajectory(**trajectory_dict)
         elif wrapper_type == "branch":
@@ -521,7 +522,8 @@ class FateAnnData(ad.AnnData):
             # the starting point is a completely virtual point
             start_milestone_id = "milestone_begin"
             # the terminal point is extracted from the column name, and the default first column is cell_id
-            end_milestone_ids = end_state_probabilities.columns[1:].tolist()
+            end_milestone_ids = end_state_probabilities.columns.tolist()
+            end_milestone_ids.remove("cell_id")
             milestone_ids = [start_milestone_id] + end_milestone_ids
 
             # star shaped milestone network with starting point as the center

@@ -23,12 +23,32 @@ from .fate_anndata import FateAnnData
 #         pass
 
 
-def read_palantir_bone_marrow(filename="/home/huang/PyCode/scRNA/data/BoneMarrow/setty_bone_marrow.h5ad", basis="X_tsne", n_obs=-1):
-    # 读取palantir的示例骨髓数据
-    # read palantir case study dataset: bone marrow
+# TODO: add to public directory
+def read_bonemarrow(
+    filename="/home/huang/PyCode/scRNA/data/BoneMarrow/setty_bone_marrow.h5ad",
+    cluster_key="clusters",
+    basis="X_tsne",
+    n_obs=-1,
+    save_cell_list=[],
+):
+    # read case study dataset of palantir and scvelo: bone marrow
     adata = sc.read_h5ad(filename)
+
+    # TODO: abstractly extract from the function to common tools
+    # subsample and save a subset of cells such as start or terminal state cells.
     if n_obs > 0:
+        if len(save_cell_list) > 0:
+            adata_save = adata[save_cell_list, :].copy()
+            n_obs -= len(adata_save)
+            adata = adata[~(adata.obs.index.map(lambda x: x in save_cell_list))].copy()
+        else:
+            adata_save = None
+
         sc.pp.subsample(adata, n_obs=n_obs)  # subsample
+
+        if adata_save is not None:
+            adata = sc.concat([adata_save, adata])
+
     fadata = FateAnnData.from_anndata(adata)
     # fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
 
@@ -46,12 +66,56 @@ def read_palantir_bone_marrow(filename="/home/huang/PyCode/scRNA/data/BoneMarrow
         ],
         columns=["from", "to"]
     )
-    fadata.add_trajectory_mannually(milestone_network, basis=basis)
+    fadata.add_trajectory_mannually(
+        milestone_network=milestone_network,
+        cluster_key=cluster_key,
+        basis=basis,
+    )
 
     return fadata
 
 
-def read_scvelo_pancrease(filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.h5ad", basis="X_umap", n_obs=-1):
+def read_erythroid_lineage(
+    filename="/home/huang/PyCode/scRNA/data/Gastrulation/erythroid_lineage.h5ad",
+    n_obs=-1,
+    cluster_key="celltype",
+    basis="X_umap"
+):
+    # read case study dataset of palantir and scvelo: bone marrow
+    adata = sc.read_h5ad(filename)
+    if n_obs > 0:
+        sc.pp.subsample(adata, n_obs=n_obs)  # subsample
+    fadata = FateAnnData.from_anndata(adata)
+
+    milestone_network = pd.DataFrame(
+        data=[
+            ["Blood progenitors 1", "Blood progenitors 2"],
+            ["Blood progenitors 2", "Erythroid1"],
+            ["Erythroid1", "Erythroid2"],
+            ["Erythroid2", "Erythroid3"],
+        ],
+        columns=["from", "to"]
+    )
+    fadata.add_trajectory_mannually(
+        milestone_network=milestone_network,
+        cluster_key=cluster_key,
+        basis=basis,
+    )
+
+    return fadata
+
+
+def read_dentategyrus():
+    # TODO:
+    pass
+
+
+def read_pancrease(
+    filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.h5ad",
+    basis="X_umap",
+    cluster_key="clusters",
+    n_obs=-1
+):
     # read scvelo case study dataset: pancrease
     adata = sc.read_h5ad(filename)
     if n_obs > 0:
@@ -74,6 +138,10 @@ def read_scvelo_pancrease(filename="/home/huang/PyCode/scRNA/data/Pancreas/endoc
         ],
         columns=["from", "to"]
     )
-    fadata.add_trajectory_mannually(milestone_network)
+    fadata.add_trajectory_mannually(
+        milestone_network=milestone_network,
+        cluster_key=cluster_key,
+        basis=basis,
+    )
 
     return fadata

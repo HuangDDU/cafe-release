@@ -2,6 +2,6 @@ FROM python:3.10.15
 
 ARG CellFateExplorer
 
-RUN pip install scanpy
+RUN pip install scanpy palantir
 
 COPY run.py cf_palantir.py definition.yml /code/
