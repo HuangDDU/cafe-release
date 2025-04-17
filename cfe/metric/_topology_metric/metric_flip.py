@@ -14,6 +14,18 @@ def calculate_edge_flip(
     limit_flips=5,
     limit_combinations=12650
 ):
+    """Edge flip metric
+
+    Args:
+        net1 (pd.DataFrame): reference milestone network
+        net2 (pd.DataFrame): predict milestone network
+        return_type (str, optional): score or dict. Defaults to "score".
+        simplify (bool, optional): if simplify. Defaults to False.
+        limit_combinations (int, optional): filp num restriction. Defaults to 12650.
+
+    Returns:
+        _type_: _description_
+    """
     # get the matched adjacencies
     # 提取邻接矩阵，忽略边权
     adjacencies = get_matched_adjacencies(net1, net2, simplify=simplify)
