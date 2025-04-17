@@ -8,16 +8,19 @@ def cf_palantir(
     adata: ad.AnnData,
     prior_information: dict = {},
     parameters: dict = {},
-    copy: bool = True,
-    repreprocess: bool = True
+    # copy和reprecess 应该在参数字典parameters中
+    # copy: bool = True,
+    # repreprocess: bool = True
 ):
     # ref: https://palantir.readthedocs.io/en/latest/notebooks/Palantir_sample_notebook.html
     # ref: https://scanpy.readthedocs.io/en/stable/external/generated/scanpy.external.tl.palantir.html
     # 1. prepare data
+    copy = parameters.get("copy", True)
     adata = adata.copy() if copy else adata
     cell_ids = adata.obs.index
 
     # 2. preprocess and execute method simutaneously with pca
+    repreprocess = parameters.get("repreprocess", True)
     n_comps = parameters["ndim"]
     knn = knn = parameters["knn"]
     if repreprocess:
@@ -55,16 +58,15 @@ def cf_palantir(
         pseudotime = pr_res.entropy
 
     if wrapper_type == "linear":
-        print("linear")
+        # for linear wrapper
         trajectory_dict = {"pseudotime": pseudotime}
         return trajectory_dict
     else:
-        # probability
+        # for probability wrapper
         end_state_probabilities = pr_res.branch_probs
         end_state_probabilities["cell_id"] = cell_ids
         print(end_state_probabilities.shape)
         trajectory_dict = {
             "end_state_probabilities": end_state_probabilities,
-            "pseudotime": pseudotime,
         }
         return trajectory_dict

@@ -38,3 +38,6 @@ scvelo:
 
 palantir:
   python_function: cf_palantir
+
+cellrank:
+  python_function: cf_cellrank

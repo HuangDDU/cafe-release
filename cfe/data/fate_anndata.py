@@ -296,7 +296,7 @@ class FateAnnData(ad.AnnData):
         elif wrapper_type == "probability":
             self.add_trajectory_probability(
                 end_state_probabilities=trajectory_dict["end_state_probabilities"],
-                pseudotime=trajectory_dict["pseudotime"],
+                pseudotime=trajectory_dict["pseudotime"] if "pseudotime" in trajectory_dict.keys() else None,
             )
         elif wrapper_type == "cluster":
             self.add_trajectory_cluster(
@@ -496,10 +496,10 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_probability(
         self,
         end_state_probabilities: pd.DataFrame,
-        pseudotime: list,
+        pseudotime: list = None,
         do_scale_minmax: bool = True
     ):
-        """add probability trajectory, such as StatComp(baseline), Palantir(TODO).
+        """add probability trajectory, such as StatComp(baseline), Palantir.
 
         ref: PyDynverse/pydynverse/wrap/wrap_add_end_state_probabilities.add_end_state_probabilities
 
@@ -508,8 +508,14 @@ class FateAnnData(ad.AnnData):
             pseudotime (list): pseudotime sequence
             do_scale_minmax (bool, optional): scale pseudotime to [0, 1]. Defaults to True.
         """
+        # TODO: optimize this strategy to new wrapper: lineage.
+
+        if pseudotime is None:
+            pseudotime = np.ones(end_state_probabilities.shape[0])
+            do_scale_minmax = False
         if do_scale_minmax:
             pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
+
         if end_state_probabilities.shape[1] == 1:
             # there is only one terminal state, which is a linear trajectory
             self.add_trajectory_linear(
