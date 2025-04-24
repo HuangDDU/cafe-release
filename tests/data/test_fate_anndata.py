@@ -572,6 +572,82 @@ class TestFateAnnData:
         assert compare_dataframes_closely(milestone_wrapper["milestone_network"], expected_milestone_network, on_columns=["from", "to"])
         assert compare_dataframes_closely(milestone_wrapper["progressions"], expected_progressions, on_columns=["cell_id"])
 
+    def test_add_trajectory_lineage(self):
+        name = "test_add_trajectory_lineage"
+        cell_ids = ["a1", "a2", "b1", "b2", "c1", "c2", "c3", "d1", "d2", "d3"]
+        expression = np.zeros([len(cell_ids), 2])
+        fadata = cfe.data.FateAnnData(X=expression, name=name)
+        fadata.obs.index = cell_ids
+
+        cluster_key = "clusters"
+        fadata.obs[cluster_key] = ["A", "A", "B", "B", "C", "C", "C", "D", "D", "D"]
+        probability = pd.DataFrame(
+            columns=["C", "D"],
+            index=cell_ids,
+            data=[
+                [0, 0.1],
+                [0.2, 0.3],
+                [0.3, 0.4],
+                [0.5, 0.6],
+                [0.6, 0.6],
+                [0.8, 0.6],
+                [1, 0.3],
+                [0.6, 0.7],
+                [0.6, 0.8],
+                [0.3, 0.9],
+            ]
+        )
+
+        # execute function
+        fadata.add_trajectory_lineage(
+            probability=probability,
+            cluster_key=cluster_key
+        )
+
+        # expected result
+        expected_milestone_ids = ["A", "B", "C", "D"]
+        expected_milestone_network = pd.DataFrame(
+            columns=["from", "to", "length", "directed"],
+            data=[
+                ["A", "B", 1, True],
+                ["B", "C", 1, True],
+                ["B", "D", 1, True],
+            ]
+        )
+        expected_progressions = pd.DataFrame(
+            columns=["cell_id", "from", "to", "percentage"],
+            data=[
+                ["a1", "A", "B", 0],
+                ["a2", "A", "B", 1/3],
+                ["b1", "A", "B", 2/3],
+                ["b2", "B", "C", 0],
+                ["b2", "B", "D", 0],
+                ["c1", "B", "C", 0],
+                ["c1", "B", "D", 0],
+                ["c2", "B", "C", 0],
+                ["c2", "B", "D", 0],
+                ["c3", "B", "C", 0],
+                ["d1", "B", "C", 0],
+                ["d1", "B", "D", 0],
+                ["d2", "B", "C", 0],
+                ["d2", "B", "D", 0],
+                ["d3", "B", "D", 0],
+            ]
+        )
+        expected_divergence_regions = pd.DataFrame(
+            columns=["milestone_id", "divergence_id", "is_start"],
+            data=[
+                ["B", "BCD", True],
+                ["C", "BCD", False],
+                ["D", "BCD", False],
+            ]
+        )
+
+        # TODO: assert
+        milestone_wrapper = fadata.milestone_wrapper
+        assert expected_milestone_network.equals(milestone_wrapper["milestone_network"])
+        assert expected_divergence_regions.equals(milestone_wrapper["divergence_regions"])
+
     # def test_add_trajectory_velocity(self):
     #     # TODO: paga reference
     #     pass
