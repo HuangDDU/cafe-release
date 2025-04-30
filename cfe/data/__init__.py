@@ -8,6 +8,7 @@ from .fate_dataset import (
     read_erythroid_lineage,
     read_dentategyrus,
     read_pancrease,
+    read_pancrease_cellrank
 )  # read dataset
 
 

@@ -279,6 +279,7 @@ class FateAnnData(ad.AnnData):
             trajectory_dict (dict): _description_
         """
         wrapper_type = trajectory_dict["wrapper_type"]
+        logger.debug(f"Add trajectory by wrapper type: {wrapper_type}")
         self.wrapper_type = wrapper_type
         logger.debug(f"Wrapper type: {wrapper_type}")
         if wrapper_type == "directed":
@@ -322,6 +323,12 @@ class FateAnnData(ad.AnnData):
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
                 cluster_key=trajectory_dict.get("cluster_key", None)
+            )
+        elif wrapper_type == "lineage":
+            self.add_trajectory_lineage(
+                probability=trajectory_dict["probability"],
+                cluster_key=trajectory_dict.get("cluster_key", None),
+                new_cluster_list=trajectory_dict.get("new_cluster_list", None),
             )
         self.raw_wrapper_dict = trajectory_dict
 
@@ -757,18 +764,30 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_lineage(
         self,
         probability: pd.DataFrame,
-        cluster_key: str
+        cluster_key: str = None,
+        new_cluster_list: list = None,
     ):
         # TODO: for palantir, cellrank
         from ..util import project_to_segments
 
+        if cluster_key is None:
+            # use new cluster list
+            if new_cluster_list is None:
+                raise ValueError("cluster_key and new_cluster_list cannot be None at the same time.")
+            else:
+                cluster_list = pd.Series(new_cluster_list)
+        else:
+            # use cluster attribute in adata.obs
+            cluster_list = self.obs[cluster_key]
         lineage_name_list = probability.columns.tolist()  # 终端状态聚类名称
-        main_cluster_list = [i for i in self.obs[cluster_key].unique().tolist() if i not in lineage_name_list]  # 主干道上的聚类名称
+        main_cluster_list = [i for i in list(set(cluster_list)) if i not in lineage_name_list]  # 主干道上的聚类名称
 
         # 概率空间的的里程碑计算
         cluster_probability = probability.copy()
-        cluster_probability["cluster"] = self.obs[cluster_key]
+        cluster_probability["cluster"] = cluster_list
         cluster_probability = cluster_probability.groupby("cluster").agg("mean")
+        print("cluster_probability")
+        print(cluster_probability)
 
         # 寻找谱系串
         lineage_list_list = []
@@ -776,6 +795,7 @@ class FateAnnData(ad.AnnData):
             tmp_cluster_list = main_cluster_list+[lineage_name]
             lineage_list = cluster_probability.loc[tmp_cluster_list, lineage_name].sort_values().index.tolist()
             lineage_list_list.append(lineage_list)
+        print(lineage_list_list)
 
         # 合并谱系串计算得到milestone_network与divergence_regions
         # 最长公共前缀
@@ -805,7 +825,11 @@ class FateAnnData(ad.AnnData):
             "is_start": [True] + [False] * len(lineage_name_list)
         })
 
-        # 直接投影计算
+        # 暂时直接投影计算
+        print("probability")
+        print(probability)
+        print(cluster_probability.loc[milestone_network["from"],])
+        print(cluster_probability.loc[milestone_network["to"],])
         proj = project_to_segments(
             x=probability,
             segment_start=cluster_probability.loc[milestone_network["from"],],
@@ -815,6 +839,7 @@ class FateAnnData(ad.AnnData):
         progressions["cell_id"] = self.obs.index
         progressions["percentage"] = proj["progression"]
         progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
+        print(progressions)
 
         # TODO: 区分投影计算
         # # 投影到边上

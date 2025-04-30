@@ -2,6 +2,7 @@ from ._settings import settings
 from ._logging import logger
 
 from . import data
+from . import preprocess
 from . import method
 from . import plot
 from . import util
@@ -24,6 +25,7 @@ __all__ = [
     "settings",
     "logger",
     "data",
+    "preprocess",
     "method",
     "plot",
     "util",

@@ -10,7 +10,9 @@ container:
   docker: dynverse/ti_comp1
 
 wrapper:
-  type: probability
+  type: 
+    - probability
+    - lineage
   topology_inference: fixed
   trajectory_types: linear
   input_required:

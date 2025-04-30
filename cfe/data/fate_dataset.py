@@ -145,3 +145,39 @@ def read_pancrease(
     )
 
     return fadata
+
+
+def read_pancrease_cellrank(
+    filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.5_velocity_kernel.h5ad",
+    basis="X_umap",
+    cluster_key="clusters",
+    n_obs=-1
+):
+    # read cellrank case study dataset: pancrease
+    adata = sc.read_h5ad(filename)
+    if n_obs > 0:
+        sc.pp.subsample(adata, n_obs=n_obs)  # subsample
+    fadata = FateAnnData.from_anndata(adata)
+    fadata.layers["expression"] = fadata.layers["spliced"]
+    fadata.layers["count"] = fadata.layers["spliced"]
+    fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
+
+    # add milestone mannually
+    milestone_network = pd.DataFrame(
+        data=[
+            ["Ngn3 low EP", "Ngn3 high EP"],
+            ["Ngn3 high EP", "Fev+"],
+            ["Fev+", "Alpha"],
+            ["Fev+", "Beta"],
+            ["Fev+", "Delta"],
+            ["Fev+", "Epsilon"],
+        ],
+        columns=["from", "to"]
+    )
+    fadata.add_trajectory_mannually(
+        milestone_network=milestone_network,
+        cluster_key=cluster_key,
+        basis=basis,
+    )
+
+    return fadata

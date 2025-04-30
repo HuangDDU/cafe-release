@@ -1,8 +1,29 @@
 import numpy as np
 
 
-def project_to_segments(x, segment_start, segment_end):
-    # Generated
+def project_to_segments(
+    x: np.ndarray,
+    segment_start: np.ndarray,
+    segment_end: np.ndarray,
+):
+    """project points to segments
+
+    Args:
+        x (np.ndarray): point array (n_obs, n_dim)
+        segment_start (np.ndarray): segement start array (n_segement, n_dim)
+        segment_end (np.ndarray): segement start array (n_segement, n_dim)
+
+    Raises:
+        ValueError: The number of columns of 'x', 'segment_start' and 'segment_end' should be exactly the same
+        ValueError: The number of rows of 'segment_start' and 'segment_end' should be exactly the same
+
+    Returns:
+        dict: dict with key-value pair :
+            "x_proj": projection points of raw points on segments (n_obs, n_dim)
+            "distance": distance of raw proints to projection points (n_obs)
+            "segment": segement index of projection points(n_obs)
+            "progression": progression of projection points on segement (n_obs)
+    """
 
     # Ensure inputs are numpy arrays
     x = np.array(x)
@@ -65,6 +86,26 @@ def project_to_segments(x, segment_start, segment_end):
         segment[i] = best_segment + 1  # Increase by 1 for R-like indexing
         progression[i] = best_progression
 
+    out = {
+        "x_proj": x_proj,
+        "distance": distance,
+        "segment": segment,
+        "progression": progression
+    }
+
+    return out
+
+
+def project_to_divergence_regions(
+    x: np.ndarray,
+):
+    # project points to divergence regions
+
+    x_proj = None
+    distance = None
+    segment = None
+    progression = None
+    
     out = {
         "x_proj": x_proj,
         "distance": distance,
