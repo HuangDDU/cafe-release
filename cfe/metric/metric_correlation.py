@@ -25,7 +25,7 @@ def calc_correlation(
     # 验证数据结构
     """
     此处出自pydynverse
-    #TODO:这里的逻辑需要补齐
+    #TODO:这里的逻辑可能需要补齐（不过暂时不管）
     if not is_wrapper_with_waypoint_cells(dataset):
         raise ValueError("Dataset must contain waypoint cells")
     if prediction is not None and not is_wrapper_with_waypoint_cells(prediction):

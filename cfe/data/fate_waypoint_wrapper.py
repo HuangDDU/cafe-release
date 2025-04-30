@@ -136,6 +136,10 @@ class WaypointWrapper(FateWrapper):
 
         # remae all milestone ids to MILESTONE_ID
         def milestone_trafo_fun(x):
+            #可能的补丁如下，这里我加了一个检查
+            x = str(x)
+            if x.startswith("MILESTONE_"):
+                return x
             return f"MILESTONE_{x}"
         milestone_network = milestone_network.copy()  # don't affect the original milestone_network
         milestone_network["from"] = milestone_network["from"].apply(milestone_trafo_fun)

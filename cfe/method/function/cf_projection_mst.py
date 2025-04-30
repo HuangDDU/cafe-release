@@ -70,8 +70,8 @@ if __name__ == "__main__":
 
     adata, prior_information, parameters, output_filename = parse_args()
 
-    trajectory_dict = cf_mst(adata, prior_information, parameters)
+    trajectory_dict = cf_projection_mst(adata, prior_information, parameters)
 
     with open(output_filename, "wb") as f:
         pickle.dump(trajectory_dict, f)
-    print("PAGA Finish!")
+    print("projection_mst Finish!")

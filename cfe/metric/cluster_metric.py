@@ -41,10 +41,16 @@ def calculate_mapping(
 
     # 根据分组方式设置不同的分组键和调用相应的分组方法
     if grouping == 'branches':
-        group_key = "_cfe_te_group"
+        # # TODO: 
+        # ref_cluster_key=f"_cfe_te_group_{ref_model}"
+        # pred_cluster_key=f"_cfe_te_group_{pred_model}"
+        # fadata.group_onto_trajectory_edges(ref_cluster_key)
+        # fadata.group_onto_trajectory_edges(pred_cluster_key)
+
         fadata_ref.group_onto_trajectory_edges(cluster_key=group_key)
         fadata_pred.group_onto_trajectory_edges(cluster_key=group_key)
     else:  # grouping == 'milestones'
+        # TODO:
         group_key = "_cfe_nm_group"
         fadata_ref.group_onto_nearest_milestones(cluster_key=group_key)
         fadata_pred.group_onto_nearest_milestones(cluster_key=group_key)
@@ -53,6 +59,10 @@ def calculate_mapping(
     def get_group_series(fadata: FateAnnData, key: str) -> pd.Series:
         return fadata.obs.groupby(key).apply(lambda df: set(df.index))
     
+    # # TODO: 
+    # groups_ref = get_group_series(fadata, ref_cluster_key)
+    # groups_ref = get_group_series(fadata, pred_cluster_key)
+
     groups_ref = get_group_series(fadata_ref, group_key)
     groups_pred = get_group_series(fadata_pred, group_key)
 
