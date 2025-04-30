@@ -2,6 +2,7 @@
 method:
   id: scvelo
   name: scVelo
+  version: 0.0.1
   tool_id: scvelo
   source: tool
   platform: Python

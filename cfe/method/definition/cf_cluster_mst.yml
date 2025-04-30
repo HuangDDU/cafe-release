@@ -1,6 +1,7 @@
 method:
   id: cluster_mst
   name: Cluster MST
+  version: 0.0.1
   source: xxx
   platform: Python
 

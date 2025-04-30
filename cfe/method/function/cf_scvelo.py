@@ -36,7 +36,7 @@ def cf_scvelo(
     df.columns = milestone_id_list
 
     milestone_network = df.reset_index()\
-        .rename(columns={'index': 'from'})\
+        .rename(columns={"index": "from"})\
         .melt(id_vars="from", var_name="to", value_name="length")\
         .query("`length` > 0")
     milestone_network["length"] = 1  # Temporarily set uniformly to 1

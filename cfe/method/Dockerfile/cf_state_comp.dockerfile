@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy
 
-COPY run.py parse_args.py definition.yml /code/
+COPY run.py cf_state_comp.py definition.yml /code/

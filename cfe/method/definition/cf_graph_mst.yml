@@ -1,6 +1,7 @@
 method:
   id: graph_mst
   name: Graph MST
+  version: 0.0.1
   source: xxx
   platform: Python
 

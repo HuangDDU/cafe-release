@@ -3,6 +3,13 @@ from .fate_waypoint_wrapper import WaypointWrapper
 from .fate_milestone_wrapper import MilestoneWrapper
 from .toy import topologies_with_same_n_milestones, generate_trajectory
 from ._simplify_networkx_network import simplify_networkx_network
+from .fate_dataset import (
+    read_bonemarrow,
+    read_erythroid_lineage,
+    read_dentategyrus,
+    read_pancrease,
+    read_pancrease_cellrank
+)  # read dataset
 
 
 __all__ = [
@@ -11,5 +18,6 @@ __all__ = [
     "MilestoneWrapper",
     "WaypointWrapper",
     "topologies_with_same_n_milestones",
-    "generate_trajectory"
+    "generate_trajectory",
+    # read dataset
 ]

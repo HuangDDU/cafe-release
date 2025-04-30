@@ -1,6 +1,7 @@
 method:
   id: projection_mst
   name: Projection MST
+  version: 0.0.1
   source: offtheshelf
   platform: Python
 

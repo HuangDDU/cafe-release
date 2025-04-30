@@ -1,6 +1,7 @@
 from typing import Optional, Literal
 import os.path
 import yaml
+import pandas as pd
 
 from .._logging import logger
 from .._settings import settings
@@ -31,6 +32,7 @@ class FateMethod():
         self.method_name = method_name
         self.choose_backend(backend)
         self.id = random_time_string(f"{method_name}-{self.backend}")
+
 
     def choose_backend(self, backend: Optional[Literal["python_function", "cfe_docker", "dynverse_docker", None]] = None) -> None:
         """choose backend according to input backend and method_name

@@ -53,7 +53,12 @@ class FunctionBackend(Backend):
 
         trajectory_dict = self.function(fadata, prior_information, parameters)
 
-        trajectory_dict["wrapper_type"] = self.definition["wrapper"]["type"]
+        # if multiple wrapper type for a method, it should be shown in trajectory_dict
+        # else, read from definition yaml file
+        if "wrapper_type" not in trajectory_dict:
+            wrapper_type = self.definition["wrapper"]["type"]
+            trajectory_dict["wrapper_type"] = wrapper_type[0] if type(wrapper_type) == list else wrapper_type
+
         fadata.add_trajectory_by_type(trajectory_dict)
 
     def _load_definition(self) -> None:

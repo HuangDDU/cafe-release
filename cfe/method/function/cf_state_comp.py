@@ -33,20 +33,20 @@ def cf_state_comp(
     end_state_probabilities = end_state_probabilities[["cell_id"] + comp_column_list]
 
     # 4. save results
-    trajectory_dict = trajectory_dict = {
-        "end_state_probabilities": end_state_probabilities,
-        "pseudotime": pseudotime,
-    }
+    wrapper_type = parameters.get("wrapper_type", "probability")
+    if wrapper_type == "lineage":
+        # for lineage wrapper
+        cluster_key = parameters.get("cluster_key", "clusters")
+        trajectory_dict = {
+            "probability": end_state_probabilities[end_state_probabilities.columns[1:]],
+            "cluster_key": cluster_key,  # TODO: 暂时指定obs[cluster_key]标签下的终端状态
+            "wrapper_type": "lineage"
+        }
+    else:
+        # for probability wrapper
+        trajectory_dict = trajectory_dict = {
+            "end_state_probabilities": end_state_probabilities,
+            "pseudotime": pseudotime,
+        }
 
     return trajectory_dict
-
-
-if __name__ == "__main__":
-    import pickle
-    from parse_args import parse_args
-
-    adata, prior_information, parameters, output_filename = parse_args()
-    trajectory_dict = cf_state_comp(adata, prior_information, parameters)
-    with open(output_filename, "wb") as f:
-        pickle.dump(trajectory_dict, f)
-    print("State Component Finish!")

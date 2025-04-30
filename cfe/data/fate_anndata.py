@@ -41,7 +41,7 @@ class FateAnnData(ad.AnnData):
         # milestone_wrapper and waypoint_wrapper for all model
         if "trajectory_history_dict" not in cfe_dict:
             cfe_dict["trajectory_history_dict"] = {}
-        self.trajectory_history_dict = cfe_dict.get("trajectory_history_dict", {})
+        self.trajectory_history_dict = cfe_dict.get("trajectory_history_dict", {})  # TODO: save in uns of anndata
 
         # NOTE: Other attributes will be added later.
         self.wrapper_type = None
@@ -279,7 +279,9 @@ class FateAnnData(ad.AnnData):
             trajectory_dict (dict): _description_
         """
         wrapper_type = trajectory_dict["wrapper_type"]
+        logger.debug(f"Add trajectory by wrapper type: {wrapper_type}")
         self.wrapper_type = wrapper_type
+        logger.debug(f"Wrapper type: {wrapper_type}")
         if wrapper_type == "directed":
             self.add_trajectory(**trajectory_dict)
         elif wrapper_type == "branch":
@@ -295,7 +297,7 @@ class FateAnnData(ad.AnnData):
         elif wrapper_type == "probability":
             self.add_trajectory_probability(
                 end_state_probabilities=trajectory_dict["end_state_probabilities"],
-                pseudotime=trajectory_dict["pseudotime"],
+                pseudotime=trajectory_dict["pseudotime"] if "pseudotime" in trajectory_dict.keys() else None,
             )
         elif wrapper_type == "cluster":
             self.add_trajectory_cluster(
@@ -321,6 +323,12 @@ class FateAnnData(ad.AnnData):
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
                 cluster_key=trajectory_dict.get("cluster_key", None)
+            )
+        elif wrapper_type == "lineage":
+            self.add_trajectory_lineage(
+                probability=trajectory_dict["probability"],
+                cluster_key=trajectory_dict.get("cluster_key", None),
+                new_cluster_list=trajectory_dict.get("new_cluster_list", None),
             )
         self.raw_wrapper_dict = trajectory_dict
 
@@ -495,10 +503,10 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_probability(
         self,
         end_state_probabilities: pd.DataFrame,
-        pseudotime: list,
+        pseudotime: list = None,
         do_scale_minmax: bool = True
     ):
-        """add probability trajectory, such as StatComp(baseline), Palantir(TODO).
+        """add probability trajectory, such as StatComp(baseline), Palantir.
 
         ref: PyDynverse/pydynverse/wrap/wrap_add_end_state_probabilities.add_end_state_probabilities
 
@@ -507,8 +515,14 @@ class FateAnnData(ad.AnnData):
             pseudotime (list): pseudotime sequence
             do_scale_minmax (bool, optional): scale pseudotime to [0, 1]. Defaults to True.
         """
+        # TODO: optimize this strategy to new wrapper: lineage.
+
+        if pseudotime is None:
+            pseudotime = np.ones(end_state_probabilities.shape[0])
+            do_scale_minmax = False
         if do_scale_minmax:
             pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
+
         if end_state_probabilities.shape[1] == 1:
             # there is only one terminal state, which is a linear trajectory
             self.add_trajectory_linear(
@@ -521,7 +535,8 @@ class FateAnnData(ad.AnnData):
             # the starting point is a completely virtual point
             start_milestone_id = "milestone_begin"
             # the terminal point is extracted from the column name, and the default first column is cell_id
-            end_milestone_ids = end_state_probabilities.columns[1:].tolist()
+            end_milestone_ids = end_state_probabilities.columns.tolist()
+            end_milestone_ids.remove("cell_id")
             milestone_ids = [start_milestone_id] + end_milestone_ids
 
             # star shaped milestone network with starting point as the center
@@ -744,7 +759,99 @@ class FateAnnData(ad.AnnData):
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,
             progressions=simplified_milestone_wrapper["progressions"]
+        )
 
+    def add_trajectory_lineage(
+        self,
+        probability: pd.DataFrame,
+        cluster_key: str = None,
+        new_cluster_list: list = None,
+    ):
+        # TODO: for palantir, cellrank
+        from ..util import project_to_segments
+
+        if cluster_key is None:
+            # use new cluster list
+            if new_cluster_list is None:
+                raise ValueError("cluster_key and new_cluster_list cannot be None at the same time.")
+            else:
+                cluster_list = pd.Series(new_cluster_list)
+        else:
+            # use cluster attribute in adata.obs
+            cluster_list = self.obs[cluster_key]
+        lineage_name_list = probability.columns.tolist()  # 终端状态聚类名称
+        main_cluster_list = [i for i in list(set(cluster_list)) if i not in lineage_name_list]  # 主干道上的聚类名称
+
+        # 概率空间的的里程碑计算
+        cluster_probability = probability.copy()
+        cluster_probability["cluster"] = cluster_list
+        cluster_probability = cluster_probability.groupby("cluster").agg("mean")
+        print("cluster_probability")
+        print(cluster_probability)
+
+        # 寻找谱系串
+        lineage_list_list = []
+        for lineage_name in lineage_name_list:
+            tmp_cluster_list = main_cluster_list+[lineage_name]
+            lineage_list = cluster_probability.loc[tmp_cluster_list, lineage_name].sort_values().index.tolist()
+            lineage_list_list.append(lineage_list)
+        print(lineage_list_list)
+
+        # 合并谱系串计算得到milestone_network与divergence_regions
+        # 最长公共前缀
+        def get_prefix_cluster_list(lineage_list_list: list):
+            prefix_cluster_list = []
+            for cluster_list in zip(*lineage_list_list):
+                if len(set(cluster_list)) == 1:
+                    prefix_cluster_list.append(cluster_list[0])
+                else:
+                    break
+            return prefix_cluster_list
+
+        prefix_cluster_list = get_prefix_cluster_list(lineage_list_list)
+        branch_cluster = prefix_cluster_list[-1]
+        # milestone_network
+        milestone_network = pd.DataFrame(
+            columns=["from", "to"],
+            data=list(zip(prefix_cluster_list[:-1], prefix_cluster_list[1:])) + [[branch_cluster, i] for i in lineage_name_list]
+        )
+        milestone_network["length"] = 1
+        milestone_network["directed"] = True
+        # divergence_regions
+        divergence_id = ''.join([branch_cluster] + lineage_name_list)
+        divergence_regions = pd.DataFrame({
+            "milestone_id": [branch_cluster] + lineage_name_list,
+            "divergence_id": divergence_id,
+            "is_start": [True] + [False] * len(lineage_name_list)
+        })
+
+        # 暂时直接投影计算
+        print("probability")
+        print(probability)
+        print(cluster_probability.loc[milestone_network["from"],])
+        print(cluster_probability.loc[milestone_network["to"],])
+        proj = project_to_segments(
+            x=probability,
+            segment_start=cluster_probability.loc[milestone_network["from"],],
+            segment_end=cluster_probability.loc[milestone_network["to"],],
+        )
+        progressions = milestone_network.iloc[proj["segment"]-1][["from", "to"]]
+        progressions["cell_id"] = self.obs.index
+        progressions["percentage"] = proj["progression"]
+        progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
+        print(progressions)
+
+        # TODO: 区分投影计算
+        # # 投影到边上
+        # probability
+        # main_progression = project_to_segement()
+        # project_to_divergence_region
+        # # 投影到面上
+
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=divergence_regions,
+            progressions=progressions,
         )
 
     # def add_trajectory_velocity(
@@ -874,6 +981,10 @@ class FateAnnData(ad.AnnData):
         # copy from: PyDynverse/pydynverse/wrap/simplify_networkx_network.py
         from ._simplify_networkx_network import simplify_networkx_network as snn
         return snn(G, force_keep=force_keep, edge_points=edge_points)
+
+    # # TODO:
+    # def copy():
+    #     pass
 
     def write_h5ad(self, save_cfe=True, *args, **kwargs):
         # if self.cfe_dict.get("milestone_wrapper", None) is not None:

@@ -15,6 +15,8 @@ site
 # build_method_docker_image*
 method_docker
 method_docker_input
+method_docker_output
+
 
 .vscode
 .env
