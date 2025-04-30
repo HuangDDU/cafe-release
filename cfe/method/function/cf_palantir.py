@@ -47,7 +47,6 @@ def cf_palantir(
     # 4. save results
     # multiple output data which adapt to multiple wrapper
     # TODO: multiple output wrapper parallelization
-    # TODO: linear
     wrapper_type = parameters.get("wrapper_type", "linear")
     linear_type = parameters.get("linear_type", "pseudotime")
     if linear_type == "pseudotime":
@@ -59,14 +58,26 @@ def cf_palantir(
 
     if wrapper_type == "linear":
         # for linear wrapper
-        trajectory_dict = {"pseudotime": pseudotime}
-        return trajectory_dict
-    else:
+        trajectory_dict = {
+            "pseudotime": pseudotime
+        }
+    elif wrapper_type == "probability":
         # for probability wrapper
         end_state_probabilities = pr_res.branch_probs
         end_state_probabilities["cell_id"] = cell_ids
-        print(end_state_probabilities.shape)
         trajectory_dict = {
             "end_state_probabilities": end_state_probabilities,
         }
-        return trajectory_dict
+    else:
+        # for lineage wrapper
+        cluster_key = parameters.get("cluster_key", "clusters")
+        probability = pr_res.branch_probs
+        probability.columns = adata.obs[cluster_key][cell_ids.get_indexer(terminal_states)]
+
+        trajectory_dict = {
+            "probability": probability,
+            "cluster_key": cluster_key,
+        }
+    trajectory_dict["wrapper_type"] = wrapper_type
+
+    return trajectory_dict
