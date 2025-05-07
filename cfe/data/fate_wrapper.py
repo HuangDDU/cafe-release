@@ -1,4 +1,10 @@
 from abc import ABC, abstractmethod
+import numpy as np
+import pandas as pd
+import h5py
+
+from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader  # global I/O registry
+from anndata._types import GroupStorageType
 
 
 class FateWrapper(ABC):
@@ -17,3 +23,25 @@ class FateWrapper(ABC):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+
+    def __write_h5ad__(self, group: h5py.Group):
+        print(f"{self.__class__.__name__} __write_h5ad__")
+        # 内部序列化写入
+        for key, value in self.__dict__.items():
+            if isinstance(value, (str, int, float, bool)):
+                group.attrs[key] = value
+            elif isinstance(value, np.ndarray):
+                group.create_dataset(key, data=value)
+            # elif isinstance(value, pd.DataFrame):
+            #     pass
+            else:
+                # TODO: Dataframe或其他类型强制转化为字符串，信息丢失
+                group.create_dataset(key, data=str(value))
+        # TODO：简化方式JSON
+
+
+@_REGISTRY.register_read(h5py.Group, IOSpec("MilestoneWrapper", "0.1.0"))
+@_REGISTRY.register_read(h5py.Group, IOSpec("WaypointWrapper", "0.1.0"))
+def __read_h5ad__(elem: GroupStorageType, *, _reader: Reader):
+    # TODO:内部序列化读取
+    print(f"__read_h5ad__")

@@ -4,6 +4,9 @@ import networkx as nx
 import anndata as ad
 import scanpy as sc
 
+import h5py
+from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
+
 from .._logging import logger
 from ..util import random_time_string
 
@@ -120,6 +123,7 @@ class FateAnnData(ad.AnnData):
         data_filename="synthetic/dyntoy/bifurcating_1.rds",
         data_dir="/usr/share/CellFateExplorer/dynbenchmark/data/"
     ):
+        # TODO: move to data fate_dataset.py
         # read dynverse simulation data and create FateAnnData object, default data dir is in /usr/share/CellFateExplorer/dynbenchmark/data/
         import rpy2.robjects as ro
         from ..util import rpy2_read  # rpy2 data structure transfer automatically
@@ -340,13 +344,25 @@ class FateAnnData(ad.AnnData):
         milestone_wrapper = milestone_wrapper if milestone_wrapper is not None else self.milestone_wrapper  # waypoint is based on milestone
         waypoint_wrapper = WaypointWrapper(milestone_wrapper)
         # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] #
-        self.waypoint_wrapper = waypoint_wrapper
-        self.cfe_dict["waypoint_wrapper"] = waypoint_wrapper
+        # self.waypoint_wrapper = waypoint_wrapper
+        # self.cfe_dict["waypoint_wrapper"] = waypoint_wrapper
         self.is_wrapped_with_waypoints = True
 
         if self.model_name not in self.trajectory_history_dict:
             self.trajectory_history_dict[self.model_name] = {}
         self.trajectory_history_dict[self.model_name]["waypoint_wrapper"] = waypoint_wrapper
+
+    @_REGISTRY.register_write(dest_type=h5py.Group,  src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
+    @_REGISTRY.register_write(dest_type=h5py.Group,  src_type=WaypointWrapper, spec=IOSpec("WaypointWrapper", "0.1.0"))
+    def _write_milestone_waypoint_wrapper(group, key, value, *args, **kwargs):
+        subgroup = group.create_group(key)
+        value.__write_h5ad__(subgroup)
+
+    def __getitem__(self, key):
+        sub_adata = super().__getitem__(key)
+        sub_fadata = self.from_anndata(sub_adata)
+        # TODO: add sub operation for all other attributes, such as prior_information, milestone_wrapper, wayppoint_wrapper, etc.
+        return sub_fadata
 
     def add_trajectory_branch(
             self,
@@ -981,38 +997,6 @@ class FateAnnData(ad.AnnData):
         # copy from: PyDynverse/pydynverse/wrap/simplify_networkx_network.py
         from ._simplify_networkx_network import simplify_networkx_network as snn
         return snn(G, force_keep=force_keep, edge_points=edge_points)
-
-    # # TODO:
-    # def copy():
-    #     pass
-
-    def write_h5ad(self, save_cfe=True, *args, **kwargs):
-        # if self.cfe_dict.get("milestone_wrapper", None) is not None:
-        #     self.cfe_dict["milestone_wrapper"] = dict(self.cfe_dict["milestone_wrapper"])
-        # if self.cfe_dict.get("waypoint_wrapper", None) is not None:
-        #     self.cfe_dict["waypoint_wrapper"] = dict(self.cfe_dict["waypoint_wrapper"])
-        #     self.cfe_dict["waypoint_wrapper"]["milestone_wrapper"] = None  # milestone_wrapper is redundent
-        #     waypoints = self.cfe_dict["waypoint_wrapper"]["waypoints"]
-        #     self.cfe_dict["waypoint_wrapper"]["waypoints"] = waypoints.fillna("")  # "" replace None
-        if save_cfe:
-            trajectory_history_dict = self.trajectory_history_dict
-            for model_name, trajectory in trajectory_history_dict.items():
-                if "milestone_wrapper" in trajectory:
-                    milestone_wrapper = dict(trajectory["milestone_wrapper"])
-                    self.trajectory_history_dict[model_name]["milestone_wrapper"] = milestone_wrapper
-                if "waypoint_wrapper" in trajectory:
-                    waypoint_wrapper = trajectory["waypoint_wrapper"]
-                    waypoint_wrapper["milestone_wrapper"] = None  # milestone_wrapper is redundent
-                    waypoint_wrapper["waypoints"] = waypoint_wrapper["waypoints"].fillna("")  # "" replace None
-                    self.trajectory_history_dict[model_name]["waypoint_wrapper"] = milestone_wrapper
-
-        return super().write_h5ad(*args, **kwargs)
-
-    def __getitem__(self, key):
-        sub_adata = super().__getitem__(key)
-        sub_fadata = self.from_anndata(sub_adata)
-        # TODO: add sub operation for all other attributes, such as prior_information, milestone_wrapper, wayppoint_wrapper, etc.
-        return sub_fadata
 
 
 def read_h5ad(*args, **kwargs):

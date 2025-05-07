@@ -4,7 +4,6 @@ from .._logging import logger
 from ..util import random_time_string
 from .fate_wrapper import FateWrapper
 
-
 class MilestoneWrapper(FateWrapper):
     """Wrapper for trajectory milestones
     """
@@ -127,8 +126,8 @@ class MilestoneWrapper(FateWrapper):
         progressions = progressions.query("`from` != `to`")
 
         # percentage for "from milestone", for start milestone， percentage = 1 - sum(other end milestone percentages). it's important to for divergence region.
-        froms = progressions.groupby(["cell_id", "from"]).apply(lambda x: 1- x["percentage"].sum()).rename().reset_index()
-        froms.columns = ["cell_id", "milestone_id","percentage"]
+        froms = progressions.groupby(["cell_id", "from"]).apply(lambda x: 1 - x["percentage"].sum()).rename().reset_index()
+        froms.columns = ["cell_id", "milestone_id", "percentage"]
 
         # percentage for "to milestone", save directly
         tos = progressions[["cell_id", "to", "percentage"]].copy().rename(columns={"to": "milestone_id"})
@@ -180,14 +179,3 @@ class MilestoneWrapper(FateWrapper):
         # gather all cells to their nearest milestone
         pass
 
-    # def to_hdf5(self, group):
-    #     # TODO : complete the write hdf5 implementation
-    #     ds = group.create_dataset("data", data=None)
-    #     # for k, v in self.items():
-    #     #     group.create_dataset(k, data=v)
-
-    # @classmethod
-    # def from_hdf5(cls, group):
-    #     # TODO : complete the read hdf5 implementation
-    #     data = group["data"][:]
-    #     return cls(data)
