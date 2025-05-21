@@ -3,6 +3,11 @@ import pandas as pd
 from .._logging import logger
 from ..util import random_time_string
 from .fate_wrapper import FateWrapper
+import h5py
+
+from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader  # global I/O registry
+from anndata._types import GroupStorageType
+
 
 class MilestoneWrapper(FateWrapper):
     """Wrapper for trajectory milestones
@@ -179,3 +184,15 @@ class MilestoneWrapper(FateWrapper):
         # gather all cells to their nearest milestone
         pass
 
+
+
+
+@_REGISTRY.register_read(h5py.Group, IOSpec("MilestoneWrapper", "0.1.0"))
+def __read_h5ad__(elem: GroupStorageType, *, _reader: Reader):
+    # 参考：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
+    print(f"MilestoneWrapper: __read_h5ad__")
+    d = {}
+    for k in ["milestone_network", "cell_id_list", "divergence_regions", "milestone_percentages", "progressions", "name"]:
+        if k in elem:
+            d[k] = _reader.read_elem(elem[k])
+    return d

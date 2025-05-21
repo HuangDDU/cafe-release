@@ -355,6 +355,8 @@ class FateAnnData(ad.AnnData):
     @_REGISTRY.register_write(dest_type=h5py.Group,  src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
     @_REGISTRY.register_write(dest_type=h5py.Group,  src_type=WaypointWrapper, spec=IOSpec("WaypointWrapper", "0.1.0"))
     def _write_milestone_waypoint_wrapper(group, key, value, *args, **kwargs):
+        # create h5 key and save for MilestoneWrapper and WaypointWrapper
+        # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py
         subgroup = group.create_group(key)
         value.__write_h5ad__(subgroup)
 
@@ -869,6 +871,9 @@ class FateAnnData(ad.AnnData):
             divergence_regions=divergence_regions,
             progressions=progressions,
         )
+
+    # TODO: WaddingtonOT, Moscot
+    # def add_transition_matrix()
 
     # def add_trajectory_velocity(
     #         self,

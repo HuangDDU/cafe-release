@@ -5,6 +5,10 @@ import pandas as pd
 import networkx as nx
 import igraph as ig
 from sklearn.metrics.pairwise import pairwise_distances
+import h5py
+
+from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader  # global I/O registry
+from anndata._types import GroupStorageType
 
 from ..util import random_time_string
 from .fate_wrapper import FateWrapper
@@ -33,8 +37,9 @@ class WaypointWrapper(FateWrapper):
             resolution (float, optional): resolution.
         """
         self.id = random_time_string(name)
-        self.milestone_wrapper = milestone_wrapper
+        self.milestone_wrapper = milestone_wrapper # need to be deleted after __init__ function
         self._select_waypoints(n_waypoints, transform, resolution)
+        del self.milestone_wrapper  # delete the attribute to save memory
 
     def _select_waypoints(
             self,
@@ -249,3 +254,9 @@ class WaypointWrapper(FateWrapper):
             pass
 
         return out.loc[waypoint_id_list, cell_id_list]
+
+
+@_REGISTRY.register_read(h5py.Group, IOSpec("WaypointWrapper", "0.1.0"))
+def __read_h5ad__(elem: GroupStorageType, *, _reader: Reader):
+    print(f"WaypointWrapper: __read_h5ad__")
+    print(f"__read_h5ad1__")
