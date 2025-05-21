@@ -5,7 +5,10 @@ from ..util import random_time_string
 from .fate_wrapper import FateWrapper
 import h5py
 
-from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader  # global I/O registry
+from types import MappingProxyType
+from typing import Any
+from collections.abc import Mapping
+from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader, Writer  # global I/O registry
 from anndata._types import GroupStorageType
 
 
@@ -58,7 +61,7 @@ class MilestoneWrapper(FateWrapper):
             # progressions -> milestone_percentages, 'add_trajectory_branch' test case
             milestone_percentages = MilestoneWrapper.convert_progressions_to_milestone_percentages(milestone_network, progressions)
         if cell_id_list is not None:
-            self.cell_id_list = cell_id_list
+            self.cell_id_list = list(cell_id_list)
         elif milestone_percentages is not None:
             self.cell_id_list = milestone_percentages["cell_id"].unique().tolist()
         else:
@@ -185,14 +188,41 @@ class MilestoneWrapper(FateWrapper):
         pass
 
 
+# attributes need to be read and written
+attribute_name_list = ["milestone_network", "cell_id_list", "divergence_regions", "milestone_percentages", "progressions", "name"]
+
+
+@_REGISTRY.register_write(dest_type=h5py.Group,  src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
+def write_milestone_wrapper(
+    f: GroupStorageType,
+    k: str,
+    milestone_wrapper: MilestoneWrapper,
+    *,
+    _writer: Writer,
+    dataset_kwargs: Mapping[str, Any] = MappingProxyType({})
+):
+    # create h5 key and save for MilestoneWrapper and WaypointWrapper
+    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py write_anndata
+    print(f"write_milestone_wrapper")
+    g = f.require_group(k)
+    for attribute_name in attribute_name_list:
+        print(attribute_name)
+        attribute = getattr(milestone_wrapper, attribute_name, None)
+        if attribute is not None:
+            _writer.write_elem(g, attribute_name, attribute, dataset_kwargs=dataset_kwargs)
 
 
 @_REGISTRY.register_read(h5py.Group, IOSpec("MilestoneWrapper", "0.1.0"))
-def __read_h5ad__(elem: GroupStorageType, *, _reader: Reader):
-    # 参考：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
-    print(f"MilestoneWrapper: __read_h5ad__")
+def read_milestone_wrapper(elem: GroupStorageType, *, _reader: Reader):
+    # read and create MilestoneWrapper object
+    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
+    print(f"read_milestone_wrapper")
     d = {}
-    for k in ["milestone_network", "cell_id_list", "divergence_regions", "milestone_percentages", "progressions", "name"]:
-        if k in elem:
-            d[k] = _reader.read_elem(elem[k])
-    return d
+    for attribute_name in attribute_name_list:
+        if attribute_name in elem:
+            d[attribute_name] = _reader.read_elem(elem[attribute_name])
+    # TODO: create object by __new__ function, add attribute mannualy
+    mw = MilestoneWrapper.__new__(MilestoneWrapper)
+    for k, v in d.items():
+        setattr(mw, k, v)
+    return mw

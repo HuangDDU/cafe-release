@@ -7,7 +7,10 @@ import igraph as ig
 from sklearn.metrics.pairwise import pairwise_distances
 import h5py
 
-from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader  # global I/O registry
+from types import MappingProxyType
+from typing import Any
+from collections.abc import Mapping
+from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader, Writer  # global I/O registry
 from anndata._types import GroupStorageType
 
 from ..util import random_time_string
@@ -37,7 +40,7 @@ class WaypointWrapper(FateWrapper):
             resolution (float, optional): resolution.
         """
         self.id = random_time_string(name)
-        self.milestone_wrapper = milestone_wrapper # need to be deleted after __init__ function
+        self.milestone_wrapper = milestone_wrapper  # need to be deleted after __init__ function
         self._select_waypoints(n_waypoints, transform, resolution)
         del self.milestone_wrapper  # delete the attribute to save memory
 
@@ -141,7 +144,7 @@ class WaypointWrapper(FateWrapper):
 
         # remae all milestone ids to MILESTONE_ID
         def milestone_trafo_fun(x):
-            #可能的补丁如下，这里我加了一个检查
+            # 可能的补丁如下，这里我加了一个检查
             x = str(x)
             if x.startswith("MILESTONE_"):
                 return x
@@ -256,7 +259,30 @@ class WaypointWrapper(FateWrapper):
         return out.loc[waypoint_id_list, cell_id_list]
 
 
+save_attribute_list = ["name"]
+
+
+@_REGISTRY.register_write(dest_type=h5py.Group,  src_type=WaypointWrapper, spec=IOSpec("WaypointWrapper", "0.1.0"))
+def write_waypoint_wrapper(
+    f: GroupStorageType,
+    k: str,
+    waypoint_wrapper: WaypointWrapper,
+    *,
+    _writer: Writer,
+    dataset_kwargs: Mapping[str, Any] = MappingProxyType({})
+):
+    # create h5 key and save for MilestoneWrapper and WaypointWrapper
+    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py write_anndata
+    print(f"write_waypoint_wrapper")
+    g = f.require_group(k)
+    _writer.write_elem(g, "waypoint_progressions", waypoint_wrapper.waypoint_progressions, dataset_kwargs=dataset_kwargs)
+
+
+
 @_REGISTRY.register_read(h5py.Group, IOSpec("WaypointWrapper", "0.1.0"))
-def __read_h5ad__(elem: GroupStorageType, *, _reader: Reader):
-    print(f"WaypointWrapper: __read_h5ad__")
-    print(f"__read_h5ad1__")
+def read_waypoint_wrapper(elem: GroupStorageType, *, _reader: Reader):
+    # read and create MilestoneWrapper object
+    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
+    print(f"write_waypoint_wrapper")
+    d = {}
+    return d
