@@ -352,14 +352,6 @@ class FateAnnData(ad.AnnData):
             self.trajectory_history_dict[self.model_name] = {}
         self.trajectory_history_dict[self.model_name]["waypoint_wrapper"] = waypoint_wrapper
 
-    # @_REGISTRY.register_write(dest_type=h5py.Group,  src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
-    # @_REGISTRY.register_write(dest_type=h5py.Group,  src_type=WaypointWrapper, spec=IOSpec("WaypointWrapper", "0.1.0"))
-    # def _write_milestone_waypoint_wrapper(group, key, value, *args, **kwargs):
-    #     # create h5 key and save for MilestoneWrapper and WaypointWrapper
-    #     # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py
-    #     subgroup = group.create_group(key)
-    #     value.__write_h5ad__(subgroup)
-
     def __getitem__(self, key):
         sub_adata = super().__getitem__(key)
         sub_fadata = self.from_anndata(sub_adata)
@@ -1003,13 +995,22 @@ class FateAnnData(ad.AnnData):
         from ._simplify_networkx_network import simplify_networkx_network as snn
         return snn(G, force_keep=force_keep, edge_points=edge_points)
 
+    def write_h5ad(self, filename):
+        # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
+        for k in self.trajectory_history_dict:
+            print(f"transfer '{k}' to dict")
+            milestone_wrapper = self.trajectory_history_dict[k]["milestone_wrapper"]
+            self.trajectory_history_dict[k]["milestone_wrapper"] = milestone_wrapper.__dict__
+            waypoint_wrapper = self.trajectory_history_dict[k]["waypoint_wrapper"]
+            if hasattr(waypoint_wrapper, "milestone_wrapper"):
+                # MilestoneWrapper object need to be remove from attribute
+                delattr(waypoint_wrapper, "milestone_wrapper")
+            # self.trajectory_history_dict[k]["waypoint_wrapper"] = waypoint_wrapper.__dict__ 
+            self.trajectory_history_dict[k]["waypoint_wrapper"] = {} 
+        super().write(filename)
 
 def read_h5ad(*args, **kwargs):
-    """_summary_
-
-    Returns:
-        _type_: _description_
-    """
+    # read and create MilestoneWrapper and WaypointWrapper object in trajectory_history_dict.
     # TODO: milestone_wrapper和waypoint_wrapper的读取添加，需要字典解析
     adata = sc.read_h5ad(*args, **kwargs)
     fadata = FateAnnData.from_anndata(adata)

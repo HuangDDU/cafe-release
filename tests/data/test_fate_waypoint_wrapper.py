@@ -79,7 +79,7 @@ class TestWaypointWrapper:
             ]
         )
         expected_waypoint_geodesic_distances = pd.DataFrame(
-            columns=ww.milestone_wrapper.cell_id_list,
+            columns=self.milestone_wrapper.cell_id_list,
             index=["MILESTONE_BEGIN_WW_X",
                    "MILESTONE_END_WW_X",
                    "MILESTONE_BEGIN_WX_Y",

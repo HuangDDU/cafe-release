@@ -188,6 +188,7 @@ class MilestoneWrapper(FateWrapper):
         pass
 
 
+# TODO: read and write h5ad automatically. However, it will be error if the h5ad file is loaded in a new environment without cef moudle loaded.
 # attributes need to be read and written
 attribute_name_list = ["milestone_network", "cell_id_list", "divergence_regions", "milestone_percentages", "progressions", "name"]
 
@@ -206,7 +207,6 @@ def write_milestone_wrapper(
     print(f"write_milestone_wrapper")
     g = f.require_group(k)
     for attribute_name in attribute_name_list:
-        print(attribute_name)
         attribute = getattr(milestone_wrapper, attribute_name, None)
         if attribute is not None:
             _writer.write_elem(g, attribute_name, attribute, dataset_kwargs=dataset_kwargs)
