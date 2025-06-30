@@ -1,4 +1,4 @@
-def test_black():
+def test_black(para1):
     print("test black 8")
 
 
