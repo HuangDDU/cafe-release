@@ -43,8 +43,10 @@ class FateAnnData(ad.AnnData):
 
         # milestone_wrapper and waypoint_wrapper for all model
         if "trajectory_history_dict" not in cfe_dict:
-            cfe_dict["trajectory_history_dict"] = {}
-        self.trajectory_history_dict = cfe_dict.get("trajectory_history_dict", {})  # TODO: save in uns of anndata
+            self.trajectory_history_dict = {}
+            cfe_dict["trajectory_history_dict"] = self.trajectory_history_dict
+        else:
+            self.trajectory_history_dict = cfe_dict["trajectory_history_dict"]
 
         # NOTE: Other attributes will be added later.
         self.wrapper_type = None
@@ -53,7 +55,7 @@ class FateAnnData(ad.AnnData):
         self.is_wrapped_with_waypoints = False
 
         self.cfe_dict = cfe_dict
-        self.uns["cfe"] = self.cfe_dict
+        self.uns["cfe"] = cfe_dict
 
     @property
     def milestone_wrapper(self):
@@ -230,7 +232,9 @@ class FateAnnData(ad.AnnData):
         if self.model_name not in self.trajectory_history_dict:
             self.trajectory_history_dict[self.model_name] = {}
         self.trajectory_history_dict[self.model_name]["milestone_wrapper"] = milestone_wrapper
+        # trajectory wrapper raw data, which is different for linear, projection, graph and etc.
         self.trajectory_history_dict[self.model_name]["raw_wrapper_dict"] = self.raw_wrapper_dict
+        self.trajectory_history_dict[self.model_name]["trajectory_embedding"] = {}
 
     def add_trajectory_mannually(
             self,
@@ -995,19 +999,42 @@ class FateAnnData(ad.AnnData):
         from ._simplify_networkx_network import simplify_networkx_network as snn
         return snn(G, force_keep=force_keep, edge_points=edge_points)
 
+    def get_trajectory_embedding(self, basis):
+        trajectory_embedding = self.trajectory_history_dict[self.model_name]["trajectory_embedding"]
+        return trajectory_embedding.get(basis, None)
+
+    def set_trajectory_embedding(self, basis, wp_segments, milestone_positions):
+        self.trajectory_history_dict[self.model_name]["trajectory_embedding"][basis] = {
+            "wp_segments": wp_segments.replace({None: ""}),
+            "milestone_positions": milestone_positions
+        }
+
     def write_h5ad(self, filename):
+        # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
+        # transfer the milestone color of milestones transfer from tuple to list
+        if ("milestone_color_dict" in self.uns) and (type(next(iter(self.uns["milestone_color_dict"].values()))) == tuple):
+            milestone_color_dict = self.uns["milestone_color_dict"]
+            for k in milestone_color_dict:
+                milestone_color_dict[k] = list(milestone_color_dict[k])
+            print("transfer milestone color from tuple to list")
         # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
         for k in self.trajectory_history_dict:
-            print(f"transfer '{k}' to dict")
-            milestone_wrapper = self.trajectory_history_dict[k]["milestone_wrapper"]
-            self.trajectory_history_dict[k]["milestone_wrapper"] = milestone_wrapper.__dict__
-            waypoint_wrapper = self.trajectory_history_dict[k]["waypoint_wrapper"]
-            if hasattr(waypoint_wrapper, "milestone_wrapper"):
-                # MilestoneWrapper object need to be remove from attribute
-                delattr(waypoint_wrapper, "milestone_wrapper")
-            # self.trajectory_history_dict[k]["waypoint_wrapper"] = waypoint_wrapper.__dict__ 
-            self.trajectory_history_dict[k]["waypoint_wrapper"] = {} 
+            if type(self.trajectory_history_dict[k]["milestone_wrapper"]) == dict:
+                # print(f"{k} milestone_wrapper is dict, skip transfer")
+                continue
+            else:
+                print(f"transfer '{k}' to dict")
+                milestone_wrapper = self.trajectory_history_dict[k]["milestone_wrapper"]
+                self.trajectory_history_dict[k]["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
+                waypoint_wrapper = self.trajectory_history_dict[k]["waypoint_wrapper"]
+                if hasattr(waypoint_wrapper, "milestone_wrapper"):
+                    # MilestoneWrapper object need to be remove from attribute
+                    delattr(waypoint_wrapper, "milestone_wrapper")
+                waypoint_wrapper.waypoints = waypoint_wrapper.waypoints.replace({None: ""})  # fill the None value with empty string in milestone_id column
+                self.trajectory_history_dict[k]["waypoint_wrapper"] = waypoint_wrapper.__dict__
+                # self.trajectory_history_dict[k]["waypoint_wrapper"] = {}
         super().write(filename)
+
 
 def read_h5ad(*args, **kwargs):
     # read and create MilestoneWrapper and WaypointWrapper object in trajectory_history_dict.
