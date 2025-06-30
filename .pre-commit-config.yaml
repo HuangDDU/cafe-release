@@ -14,7 +14,7 @@ repos:
     rev: 23.12.1
     hooks:
       - id: black
-        args: [--line-length=88]  # 可选参数
+        args: [--line-length=250]  # 可选参数
 # import 导入包排序
 -   repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -26,4 +26,5 @@ repos:
     rev: 6.1.0
     hooks:
       - id: flake8
+        args: [--line-length=250]  # 可选参数
         additional_dependencies: [flake8-bugbear]  # 可选插件
