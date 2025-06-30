@@ -1,9 +1,11 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from cfe.data import FateAnnData
 
+
 def calculate_mapping(
-    fadata_ref: FateAnnData, 
+    fadata_ref: FateAnnData,
     fadata_pred: FateAnnData,
     grouping: str = 'milestones',
     simplify: bool = False,
@@ -27,7 +29,7 @@ def calculate_mapping(
     # 参数校验
     if grouping not in ['branches', 'milestones']:
         raise ValueError("grouping must be either 'branches' or 'milestones'")
-    
+
     # 检查轨迹数据是否存在
     if not fadata_ref.uns.get("cfe", {}).get("trajectory_history_dict") or \
        not fadata_pred.uns.get("cfe", {}).get("trajectory_history_dict"):
@@ -41,7 +43,7 @@ def calculate_mapping(
 
     # 根据分组方式设置不同的分组键和调用相应的分组方法
     if grouping == 'branches':
-        # # TODO: 
+        # # TODO:
         # ref_cluster_key=f"_cfe_te_group_{ref_model}"
         # pred_cluster_key=f"_cfe_te_group_{pred_model}"
         # fadata.group_onto_trajectory_edges(ref_cluster_key)
@@ -58,8 +60,8 @@ def calculate_mapping(
     # 构建分组Series：以分组键为分组依据，每个组对应一组 cell id 的集合
     def get_group_series(fadata: FateAnnData, key: str) -> pd.Series:
         return fadata.obs.groupby(key).apply(lambda df: set(df.index))
-    
-    # # TODO: 
+
+    # # TODO:
     # groups_ref = get_group_series(fadata, ref_cluster_key)
     # groups_ref = get_group_series(fadata, pred_cluster_key)
 
@@ -102,4 +104,3 @@ def calculate_mapping_branches(
     """计算分支分组映射指标"""
     metrics = calculate_mapping(fadata_ref, fadata_pred, grouping='branches', **kwargs)
     return {f"{k}_branches": v for k, v in metrics.items()}
- 

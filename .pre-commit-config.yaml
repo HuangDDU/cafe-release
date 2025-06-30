@@ -1,10 +1,17 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.2.0
+# # pre-commit hooks
+# -   repo: https://github.com/pre-commit/pre-commit-hooks
+#     rev: v3.2.0
+#     hooks:
+#     -   id: trailing-whitespace # 删除行尾空格
+#     -   id: end-of-file-fixer
+#     -   id: check-yaml
+#     # -   id: check-added-large-files #不允许大文件保存（不推荐） # Uncomment if you want to check for large files
+# import sort (isort)
+-   repo: https://github.com/pycqa/isort
+    rev: 5.13.2
     hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
-    -   id: check-yaml
-    # -   id: check-added-large-files # Uncomment if you want to check for large files
+      - id: isort
+        args: [--profile=black]  # 兼容 black 的配置

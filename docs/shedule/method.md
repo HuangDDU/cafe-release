@@ -42,7 +42,7 @@
 - For other methods, the higher the citation count of the paper, the higher the implementation order(need statistics from google scholar).
 
 
-| Wrapper Type | Method Name | Finished | 
+| Wrapper Type | Method Name | Finished |
 | --- | --- | --- |
 | Direct | PAGA  | √ |
 | Linear | Component 1(baseline) | √ |

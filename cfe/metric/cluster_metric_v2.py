@@ -1,6 +1,8 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from cfe.data import FateAnnData
+
 
 def calculate_mapping(
     fadata: FateAnnData,
@@ -26,7 +28,7 @@ def calculate_mapping(
     # 参数校验
     if grouping not in ['branches', 'milestones']:
         raise ValueError("grouping must be either 'branches' or 'milestones'")
-    
+
     # 1. 取出所有历史轨迹字典
     hist = fadata.uns.get("cfe", {}).get("trajectory_history_dict", {})
     # 如果任一模型不存在，直接返回 0

@@ -1,18 +1,18 @@
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 from cfe.data import FateAnnData
 from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.util.expand_matrix import expand_matrix
-
 from cfe.metric.metric_featureimp import (
-    get_expression,
-    is_wrapper_with_trajectory,
-    calculate_overall_feature_importance,
     calculate_featureimp_cor,
     calculate_featureimp_enrichment,
-    fi_ranger_rf_tiny
+    calculate_overall_feature_importance,
+    fi_ranger_rf_tiny,
+    get_expression,
+    is_wrapper_with_trajectory,
 )
+from cfe.util.expand_matrix import expand_matrix
 
 # 固定随机种子
 np.random.seed(42)
@@ -35,11 +35,11 @@ def fadata_dataset():
     """
     cell_ids = [f'cell{i}' for i in range(1, 21)]
     genes = generate_gene_names(10)
-    
+
     # 生成里程碑百分比：M1取自[0.6,0.8]，M2 = 1 - M1
     m1 = np.random.uniform(0.6, 0.8, size=len(cell_ids))
     m2 = 1 - m1
-    
+
     # 构造表达矩阵：
     expr = np.zeros((len(cell_ids), len(genes)))
     # Gene1与M1强相关，加上极小噪声
@@ -50,13 +50,13 @@ def fadata_dataset():
     for j in range(2, len(genes)):
         expr[:, j] = np.random.uniform(0.45, 0.75, len(cell_ids))
     expression = pd.DataFrame(expr, index=cell_ids, columns=genes)
-    
+
     obs = pd.DataFrame(index=cell_ids)
     uns = {"cfe": {"trajectory_history_dict": {"default": {}}}}
     fadata = FateAnnData(X=np.empty((len(cell_ids), 1)), obs=obs, uns=uns)
     fadata.obsm = {"expression": expression}
     fadata.prior_information = {"features_id": ["Gene1", "Gene2"]}
-    
+
     # 里程碑网络
     milestone_network = pd.DataFrame({
         "from": ["M1"],
@@ -83,11 +83,11 @@ def fadata_prediction():
     """
     cell_ids = [f'cell{i}' for i in range(1, 21)]
     genes = generate_gene_names(10)
-    
+
     # 生成基准 m1, m2
     m1 = np.random.uniform(0.6, 0.8, size=len(cell_ids))
     m2 = 1 - m1
-    
+
     # 对于预测表达矩阵，将Gene1和Gene2加上较大偏移 0.3（而不是0.1），并加微量噪声
     expr = np.zeros((len(cell_ids), len(genes)))
     expr[:, 0] = m1 + 0.3 + np.random.normal(0, 0.005, len(cell_ids))
@@ -95,13 +95,13 @@ def fadata_prediction():
     for j in range(2, len(genes)):
         expr[:, j] = np.random.uniform(0.45, 0.75, len(cell_ids))
     expression = pd.DataFrame(expr, index=cell_ids, columns=genes)
-    
+
     obs = pd.DataFrame(index=cell_ids)
     uns = {"cfe": {"trajectory_history_dict": {"default": {}}}}
     fadata = FateAnnData(X=np.empty((len(cell_ids), 1)), obs=obs, uns=uns)
     fadata.obsm = {"expression": expression}
     fadata.prior_information = {"features_id": ["Gene1", "Gene2"]}
-    
+
     # 对于预测里的里程碑百分比，增加较大偏移 0.3
     milestone_network = pd.DataFrame({
         "from": ["M1"],
@@ -199,7 +199,7 @@ def test_featureimp_enrichment_insufficient_cells(fadata_dataset):
     })
     mw = MilestoneWrapper(milestone_network=milestone_network, milestone_percentages=milestone_percentages)
     fadata_pred.milestone_wrapper = mw
-    
+
     enrich_dict = calculate_featureimp_enrichment(
         dataset=fadata_dataset,
         prediction=fadata_pred,

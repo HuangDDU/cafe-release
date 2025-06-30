@@ -1,5 +1,5 @@
-import numpy as np
 import anndata as ad
+import numpy as np
 import scanpy as sc
 import scanpy.external as sce
 
@@ -22,5 +22,5 @@ def cf_template(
     trajectory_dict = {
         "pseudotime": pseudotime,
     }
-    
+
     return trajectory_dict

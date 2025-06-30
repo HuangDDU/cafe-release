@@ -53,4 +53,4 @@ ti_monocle_ica:
   dynverse_docker: dynverse/ti_monocle_ica:v0.9.9.01
 
 ti_monocle_ddrtree:
-  dynverse_docker: dynverse/ti_monocle_ddrtree:v0.9.9.02 
+  dynverse_docker: dynverse/ti_monocle_ddrtree:v0.9.9.02

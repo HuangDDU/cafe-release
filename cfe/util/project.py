@@ -105,7 +105,7 @@ def project_to_divergence_regions(
     distance = None
     segment = None
     progression = None
-    
+
     out = {
         "x_proj": x_proj,
         "distance": distance,

@@ -1,9 +1,11 @@
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+
 from cfe.data import FateAnnData
 from cfe.data.fate_milestone_wrapper import MilestoneWrapper
 from cfe.metric.cluster_metric import calculate_mapping_milestones
+
 
 # 构造参考数据 FateAnnData 对象
 @pytest.fixture

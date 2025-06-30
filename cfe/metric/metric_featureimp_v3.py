@@ -1,12 +1,13 @@
 import inspect
+from typing import Any, Callable, Dict, Optional
+
 import numpy as np
 import pandas as pd
 from scipy.sparse import issparse
 from scipy.stats import ks_2samp, ranksums
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from typing import Any, Callable, Dict, Optional
 
 from cfe.data import FateAnnData
 from cfe.util.expand_matrix import expand_matrix
@@ -276,7 +277,7 @@ def _calculate_featureimp_cor(df_ref: pd.DataFrame, df_pred: pd.DataFrame) -> Di
 
     # return {'featureimp_cor': corr, 'featureimp_wcor': wcor}
 #以上是一个初步断定（似乎没有考虑方差0，在出现一些极端情况的时候程序会有一些不好的问题）
-    
+
     #这里是一个新的版本
     df = pd.merge(
             df_ref.rename(columns={'importance': 'dataset_imp'}),

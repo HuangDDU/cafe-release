@@ -1,5 +1,5 @@
-import pandas as pd
 import networkx as nx
+import pandas as pd
 
 
 def simplify_networkx_network(
@@ -239,7 +239,7 @@ def simplify_get_edge_points_on_path(
 
     tofilp_tmp = tofilp.rename(columns={"from": "to", "to": "from"})
     tofilp_tmp["percentage"] = 1 - tofilp_tmp["percentage"] # 反转细胞percentage计算并额外拼接上去
-    both_sub_edge_points = pd.concat([sub_edge_points, tofilp_tmp]) 
+    both_sub_edge_points = pd.concat([sub_edge_points, tofilp_tmp])
     on_path = pd.merge(both_sub_edge_points, path, on=["from", "to"]) # 在待删除边上的细胞
 
     not_on_path = anti_join(sepaj, rev_path, on=["from", "to"]) # 不在带删除边上的细胞

@@ -1,12 +1,11 @@
 #!/usr/local/bin/python3
 import pickle
 
+import anndata as ad
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-import anndata as ad
 import scanpy as sc
-
 from sklearn.metrics.pairwise import pairwise_distances
 
 
@@ -22,7 +21,7 @@ def cf_projection_mst(
     # 2. preprocess
     sc.pp.pca(adata, n_comps=parameters["ndim"])
     X_emb = adata.obsm["X_pca"]
-   
+
     # 3. execute method
     # (1) Cluster cells, with the center point as a milestone
     if "groups_id" not in prior_information:

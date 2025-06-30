@@ -1,9 +1,12 @@
-import pandas as pd
-import numpy as np
-import networkx as nx
 from typing import Tuple
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+
 from ...data import simplify_networkx_network
 from ...util.random_time_string import random_time_string
+
 
 # 辅助函数：针对自环边插入两个新节点
 def insert_two_nodes_into_selfloop(df: pd.DataFrame) -> pd.DataFrame:
@@ -81,7 +84,7 @@ def get_matched_adjacencies(net1: pd.DataFrame, net2: pd.DataFrame, simplify: bo
     if simplify:
         directed1 = net1['directed'].any()
         directed2 = net2['directed'].any()
-        
+
         def process_network(net: pd.DataFrame, directed_flag: bool) -> pd.DataFrame:
             net_proc = net.rename(columns={'length': 'weight'})
             net_proc = net_proc[~((net_proc['from'] == net_proc['to']) & (net_proc['weight'] == 0))]
@@ -101,16 +104,16 @@ def get_matched_adjacencies(net1: pd.DataFrame, net2: pd.DataFrame, simplify: bo
 
         net1 = process_network(net1, directed1)
         net2 = process_network(net2, directed2)
-    
+
     adj1 = get_adjacency_lengths(net1)
     adj2 = get_adjacency_lengths(net2)
-    
+
     size = max(adj1.shape[0], adj2.shape[0])
     if adj1.shape[0] < size:
         adj1 = complete_matrix(adj1, size, fill=0)
     if adj2.shape[0] < size:
         adj2 = complete_matrix(adj2, size, fill=0)
-    
+
     return adj1, adj2
 
 # 计算拉普拉斯矩阵 L = D - A
@@ -144,15 +147,15 @@ def him_distance(adj1: np.ndarray, adj2: np.ndarray, gamma: float = 0.1) -> floa
 # 主函数：计算 HIM 相似性度量，返回 max(0, 1 - HIM_distance)
 def calculate_him(net1: pd.DataFrame, net2: pd.DataFrame, simplify: bool = False, gamma: float = 0.1) -> float:
     adj1, adj2 = get_matched_adjacencies(net1, net2, simplify=simplify)
-    
+
     # 若任一邻接矩阵全为0，则返回 0
     if np.max(adj1) == 0 or np.max(adj2) == 0:
         return 0
-    
+
     # 对邻接矩阵归一化，确保总和为1
     norm_adj1 = adj1 / np.sum(adj1)
     norm_adj2 = adj2 / np.sum(adj2)
-    
+
     # 计算 HIM 距离，根据定义计算相似度
     distance = him_distance(norm_adj1, norm_adj2, gamma=gamma)
     similarity = max(0, 1 - distance)

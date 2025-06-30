@@ -23,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # TODO: 
+        # TODO:
         var: ${{ fromJson(needs.check-docker-version.outputs.method_name_list)}}
-        
+
     steps:
       - uses: actions/checkout@v4
       - name: Build, Test, Push
@@ -34,4 +34,3 @@ jobs:
           bash ./build_method_docker_image.sh ${{ matrix.var }}
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           # TODO: docker push
-

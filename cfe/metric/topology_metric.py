@@ -1,7 +1,9 @@
-import pandas as pd
 import networkx as nx
+import pandas as pd
+
 from ._topology_metric.metric_flip import calculate_edge_flip
 from ._topology_metric.metric_him import calculate_him
+
 
 def calc_isomorphic(net1: pd.DataFrame, net2: pd.DataFrame):
     """Judge if two milestone network are  isomorphic
@@ -53,9 +55,9 @@ def calc_edge_flip(
     )
 
 # def calc_him(
-#         net1: pd.DataFrame, 
-#         net2: pd.DataFrame, 
-#         simplify: bool = True, 
+#         net1: pd.DataFrame,
+#         net2: pd.DataFrame,
+#         simplify: bool = True,
 #         gamma: float = 0.1
 # ):
 #     """_summary_
@@ -72,6 +74,3 @@ def calc_edge_flip(
 #         simplify=True,
 #         gamma=0.1,
 #     )
-
-
-

@@ -1,8 +1,10 @@
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 from cfe.data import FateAnnData
 from cfe.metric.metric_correlation import calc_correlation
+
 
 def get_test_fadata():
     """
@@ -13,7 +15,7 @@ def get_test_fadata():
     obs = pd.DataFrame(index=cell_ids)
     uns = {"cfe": {"trajectory_history_dict": {"default": {}}}}
     fadata = FateAnnData(X=np.empty((len(cell_ids), 1)), obs=obs, uns=uns)
-    
+
     # 构造里程碑网络
     milestone_network = pd.DataFrame({
         "from": ["W", "X", "X"],
@@ -41,7 +43,7 @@ def get_test_fadata():
     )
     # 添加 waypoint 信息（调用 add_waypoints，生成 WaypointWrapper）
     fadata.add_waypoints()
-    
+
     return fadata
 
 def test_calc_correlation():

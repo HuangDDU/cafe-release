@@ -13,7 +13,7 @@
 #         metrics=["isomorphic", "edge_flip"]
 # ):
 #     summary_dict = {}
-    
+
 #     if simplify:
 #         net1 = fadata.simplify_trajectory(ref_model)["milestone_network"]
 #         net2 = fadata.simplify_trajectory(now_model)["milestone_network"]
@@ -32,7 +32,7 @@
 #         summary_dict["edge_flip"] = calculate_edge_flip(net1, net2)
 #     if "him" in metrics:
 #         summary_dict["him"] = calculate_him(net1, net2)
-    
+
 #     #position_predict metric
 #     if any(x in metrics for x in ["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"]):
 #         pass
@@ -50,17 +50,20 @@
 #     if "F1_milestone" in metrics:
 #         summary_dict["F1_milestone"] = calculate_mapping_milestones()
 
-#     return summary_dict
-from .topology_metric import calc_isomorphic, calculate_edge_flip
-from .cluster_metric_v2 import calculate_mapping_branches, calculate_mapping_milestones
 from cfe.metric._topology_metric.metric_him import calculate_him
 from cfe.metric.metric_correlation_v2 import calculate_correlation
-from cfe.metric.metric_position_predict_v2 import calculate_position_predict
 from cfe.metric.metric_featureimp_v2 import (
-    calculate_overall_feature_importance,
     calculate_featureimp_cor,
-    calculate_featureimp_enrichment
+    calculate_featureimp_enrichment,
+    calculate_overall_feature_importance,
 )
+from cfe.metric.metric_position_predict_v2 import calculate_position_predict
+
+from .cluster_metric_v2 import calculate_mapping_branches, calculate_mapping_milestones
+
+#     return summary_dict
+from .topology_metric import calc_isomorphic, calculate_edge_flip
+
 
 def calculate_metrics(
     fadata,

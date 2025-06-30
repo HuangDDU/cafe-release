@@ -37,7 +37,7 @@
      ```
 
    - If you use VSCode, you should create `.env` in working dir for jupyter notebook python package search as following.
-     
+
      ```txt
      PYTHONPATH=/home/haung/CellFateExplorer
      ```

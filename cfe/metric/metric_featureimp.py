@@ -1,12 +1,15 @@
 import inspect
+
 import numpy as np
 import pandas as pd
 from scipy.sparse import issparse
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from scipy.stats import ks_2samp, ranksums
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from scipy.stats import ks_2samp, ranksums
+
 from cfe.util.expand_matrix import expand_matrix
+
 
 def get_expression(trajectory, expression_source="expression"):
     """
@@ -84,19 +87,19 @@ def fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs):
         "write_forest": False
     }
     params = {**default_params, **kwargs}
-    
+
     def fi_function(X, y, verbose=False):
         if not isinstance(X, pd.DataFrame):
             X = pd.DataFrame(X)
         nrow, ncol = X.shape
-        
+
         max_features = mtry(nrow=nrow, ncol=ncol) if callable(mtry) else mtry
         fraction = sample_fraction(nrow=nrow, ncol=ncol) if callable(sample_fraction) else sample_fraction
         max_samples = fraction if fraction < 1 else None
-        
+
         data = X.copy()
         data.insert(0, "PREDICT", y)
-        
+
         rf = RandomForestRegressor(
             n_estimators=num_trees,
             max_features=max_features,
@@ -111,7 +114,7 @@ def fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs):
         rf.fit(data.drop("PREDICT", axis=1), data["PREDICT"])
         importance = rf.feature_importances_
         return dict(zip(X.columns, importance))
-    
+
     return {"fun": fi_function}
 
 def fi_ranger_rf_lite(num_trees=2000, num_variables_per_split=50, num_samples_per_tree=250, min_node_size=20, **kwargs):
@@ -130,7 +133,7 @@ def fi_caret(caret_method, **kwargs):
     """
     if caret_method != "rf":
         raise ValueError("Invalid method. Only 'rf' is supported in this demo.")
-    
+
     def fi_function(X, y, verbose=False):
         from sklearn.ensemble import RandomForestClassifier
         rf = RandomForestClassifier(random_state=42, **kwargs)
@@ -140,7 +143,7 @@ def fi_caret(caret_method, **kwargs):
             return dict(zip(X.columns, importance))
         else:
             return dict(enumerate(importance))
-    
+
     return {"fun": fi_function}
 
 def fi_ranger_rf_tiny(num_trees=100, num_variables_per_split=50, num_samples_per_tree=250, min_node_size=20, **kwargs):
@@ -166,7 +169,7 @@ def calculate_feature_importances(X, Y, fi_method=fi_ranger_rf_lite(), verbose=F
         X = pd.DataFrame(X.toarray())
     elif not isinstance(X, pd.DataFrame):
         X = pd.DataFrame(X)
-    
+
     result_list = []
     for predictor in Y.columns:
         if verbose:
@@ -189,9 +192,9 @@ def calculate_feature_importances(X, Y, fi_method=fi_ranger_rf_lite(), verbose=F
     return result_df
 
 def calculate_milestone_feature_importance(trajectory,
-        expression_source="expression", 
-        milestones_oi=None, 
-        fi_method=fi_ranger_rf_lite(), 
+        expression_source="expression",
+        milestones_oi=None,
+        fi_method=fi_ranger_rf_lite(),
         verbose=False):
     """
     计算每个里程碑的特征重要性，返回 DataFrame 包含三列：milestone_id, feature_id, importance。
@@ -200,27 +203,27 @@ def calculate_milestone_feature_importance(trajectory,
         expression = get_expression(trajectory, expression_source)
         cell_ids = trajectory.obs.index.tolist()
         milestone_percentages = trajectory.milestone_wrapper.milestone_percentages
-        milestone_ids = getattr(trajectory.milestone_wrapper, "id_list", 
+        milestone_ids = getattr(trajectory.milestone_wrapper, "id_list",
                                   sorted(milestone_percentages["milestone_id"].unique()))
     else:
         expression = get_expression(trajectory, expression_source)
         cell_ids = trajectory["cell_ids"]
         milestone_percentages = trajectory["milestone_percentages"]
         milestone_ids = trajectory.get("milestone_ids", sorted(milestone_percentages["milestone_id"].unique()))
-    
+
     if not set(cell_ids).issubset(set(expression.index)):
         raise ValueError("Not all cell_ids in trajectory are present in the expression matrix.")
     if len(cell_ids) < 3:
         raise ValueError("Need 3 or more cells in a trajectory to calculate feature importance.")
-    
+
     if milestones_oi is None:
         milestones_oi = milestone_ids
-    
+
     mp_filtered = milestone_percentages[milestone_percentages["milestone_id"].isin(milestones_oi)]
-    milenet_m = mp_filtered.pivot_table(index="cell_id", columns="milestone_id", 
+    milenet_m = mp_filtered.pivot_table(index="cell_id", columns="milestone_id",
                                           values="percentage", fill_value=0)
     milenet_m = expand_matrix(milenet_m, rownames=cell_ids)
-    
+
     imp_df = calculate_feature_importances(expression, milenet_m, fi_method=fi_method, verbose=verbose)
     imp_df = imp_df.rename(columns={"predictor_id": "milestone_id"})
     return imp_df
@@ -255,7 +258,7 @@ def _calculate_featureimp_cor(dataset_imp, pred_imp):
     )
     join["dataset_imp"] = join["dataset_imp"].fillna(0)
     join["pred_imp"] = join["pred_imp"].fillna(0)
-    
+
     if join["dataset_imp"].std() == 0 or join["pred_imp"].std() == 0:
         return {"featureimp_cor": 0, "featureimp_wcor": 0}
     else:
@@ -289,7 +292,7 @@ def calculate_featureimp_cor(dataset, prediction, expression_source=None, fi_met
             pred_cell_count = len(pd.unique(prediction["milestone_percentages"]["cell_id"]))
     else:
         pred_cell_count = 0
-    
+
     if prediction is not None and pred_cell_count >= 3:
         dataset_imp = calculate_overall_feature_importance(
             trajectory=dataset,
@@ -317,7 +320,7 @@ def calculate_featureimp_enrichment(dataset, prediction, expression_source=None,
                 pred_cell_count = len(pd.unique(prediction["milestone_percentages"]["cell_id"]))
         else:
             pred_cell_count = 0
-        
+
         if prediction is not None and pred_cell_count >= 3:
             pred_imp = calculate_overall_feature_importance(
                 trajectory=prediction,
@@ -330,7 +333,7 @@ def calculate_featureimp_enrichment(dataset, prediction, expression_source=None,
                 dataset_features = dataset.get("prior_information", {}).get("features_id", [])
             sel = pred_imp.loc[pred_imp["feature_id"].isin(dataset_features), "importance"]
             notsel = pred_imp.loc[~pred_imp["feature_id"].isin(dataset_features), "importance"]
-            
+
             if len(notsel) > 2:
                 ks = ks_2samp(sel, notsel, alternative="greater")
                 wilcox = ranksums(sel, notsel, alternative="greater")
@@ -346,5 +349,3 @@ def calculate_featureimp_enrichment(dataset, prediction, expression_source=None,
     except Exception as e:
         print("featureimp_enrichment errored! check reason!", e)
         return {"featureimp_ks": 0, "featureimp_wilcox": 0}
-
-

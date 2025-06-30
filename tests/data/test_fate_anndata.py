@@ -1,12 +1,13 @@
-import pytest
-import cfe
-
 import os
-from scipy.sparse import csc_matrix
+
+import anndata as ad
 import numpy as np
 import pandas as pd
-import anndata as ad
+import pytest
 import scanpy as sc
+from scipy.sparse import csc_matrix
+
+import cfe
 
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
@@ -108,7 +109,7 @@ class TestFateAnnData:
     def test_write(self):
         self.test_add_waypoints()
         self.fadata.write(f"{os.path.dirname(__file__)}/bifurcating_fadata.h5ad")
-        
+
     def test_add_trajectory_branch(self):
         # input data
         branch_network = pd.DataFrame(
