@@ -23,6 +23,18 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore",  # 忽略所有警告
 ]
-log-level = "ERROR"  # 设置日志级别为 INFO
+# 核心配置
+addopts = [
+    "--capture=sys",  # 严格捕获所有输出
+    "-q",             # 静默模式
+    "--no-header",    # 隐藏头部信息
+    "--no-summary",   # 隐藏统计信息
+    "--tb=no",       # 隐藏错误回溯
+    "--no-showlocals" # 隐藏局部变量
+]
+# 日志控制
+log_cli = false
+log_level = "CRITICAL"  # 只显示严重错误
+
 
 # TODO: requirement.txt
