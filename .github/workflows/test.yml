@@ -32,13 +32,14 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
+        conda install python=3.10
 
     - name: Check Docker R Python version
       run: |
         docker --version
         R --version
         python --version
-        docker pull  huangzhaoyang/cf_paga:0.0.1
+        # docker pull  huangzhaoyang/cf_paga:0.0.1
 
     - name: Install Graphviz
       run: |
