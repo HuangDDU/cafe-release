@@ -23,5 +23,6 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore",  # 忽略所有警告
 ]
+log-level = "ERROR"  # 设置日志级别为 INFO
 
 # TODO: requirement.txt
