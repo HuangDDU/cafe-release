@@ -26,7 +26,11 @@ repos:
     rev: 6.1.0
     hooks:
       - id: flake8
-        additional_dependencies: [flake8-bugbear]  # 可选插件
+        entry: flake8
+        additional_dependencies: [
+          flake8-bugbear, # 潜在bug分析
+          flake8-pyproject # 读取 pyproject.toml 中的配置
+        ]  # 可选插件
 
 # push的时候需要通过所有测试用例, 这里pytest的配置会在pyproject.toml中
 -   repo: local
