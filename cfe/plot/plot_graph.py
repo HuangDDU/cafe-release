@@ -1,12 +1,14 @@
 import itertools
-import matplotlib.pyplot as plt
+
 import matplotlib.patches as patches
-import pandas as pd
+
+# import matplotlib.pyplot as plt
 import networkx as nx
+import pandas as pd
 import scanpy as sc
 
 from ..data import FateAnnData
-from .add_color import add_milestone_color, add_milestone_cell_color
+from .add_color import add_milestone_cell_color, add_milestone_color
 
 # NOTE: Direct wrapper plot , will be moved to plot_wrapper.py
 
@@ -43,7 +45,7 @@ def plot_graph(
         source="from",
         target="to",
         edge_attr=True,
-        create_using=nx.DiGraph if is_directed else nx.Graph
+        create_using=nx.DiGraph if is_directed else nx.Graph,
     )
     milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot")  # position
 
@@ -54,6 +56,7 @@ def plot_graph(
         # mix related milestone emb to get position for a cell
         mpg_emb = milestone_emb_df.loc[mpg["milestone_id"]]
         return mpg_emb.apply(lambda emb_dim: (emb_dim.array * mpg["percentage"].array)).sum()
+
     basis = "milestone_network_emb"
     cell_emb_df = milestone_percentages.groupby("cell_id").apply(lambda mpg: mix_emb(mpg))
     fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
@@ -67,33 +70,28 @@ def plot_graph(
 
     # plot
     # zorder: 1: line, 2: cell, 3: milestone
-    ax_list = sc.pl.embedding(
-        fadata,
-        basis=basis,
-        color=color,
-        show=False,
-        zorder=2,
-        **sc_pl_embedding_kwargs
-    )  # first plot embedding to get ax_list
+    ax_list = sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, **sc_pl_embedding_kwargs)  # first plot embedding to get ax_list
     ax_list = ax_list if isinstance(ax_list, list) else [ax_list]
     color = color if isinstance(color, list) else [color]
     for i in range(len(color)):
         ax = ax_list[i]
         c = color[i]
         if c == "milestone":
-            ax.legend().remove()  # remove legend for color with milestone , but it waste time for show and remove
+            # remove legend for color with milestone , but it waste time for show and remove
+            ax.legend().remove()
 
-        nx.draw(G,
-                milestone_emb_dict,
-                with_labels=True,
-                node_color=[milestone_color_dict[node] for node in G.nodes],
-                width=5,  # TODO: adjusted by cell size
-                edge_color="gray",
-                arrowstyle="simple",
-                arrowsize=30,   # TODO: adjusted by cell size
-                ax=ax,
-                **nx_draw_kwrags,
-                )
+        nx.draw(
+            G,
+            milestone_emb_dict,
+            with_labels=True,
+            node_color=[milestone_color_dict[node] for node in G.nodes],
+            width=5,  # TODO: adjusted by cell size
+            edge_color="gray",
+            arrowstyle="simple",
+            arrowsize=30,  # TODO: adjusted by cell size
+            ax=ax,
+            **nx_draw_kwrags,
+        )
         if divergence_regions.shape[0] > 0:
             plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
 
@@ -137,11 +135,13 @@ def plot_divergence_region(divergence_regions, milestone_emb_dict, ax):
             id_vars=["triangle_id"],
             value_vars=["start", "node1", "node2"],
             var_name="triangle_part",
-            value_name="milestone_id"
+            value_name="milestone_id",
         )
         divergence_polygon_positions[["comp_1", "comp_2"]] = divergence_polygon_positions["milestone_id"].apply(lambda x: milestone_positions.loc[x])
     else:
-        divergence_edge_positions = pd.DataFrame(columns=["divergence_id", "start", "from", "to", "comp_1_from", "comp_2_from", "comp_1_to", "comp_2_to"])
+        divergence_edge_positions = pd.DataFrame(
+            columns=["divergence_id", "start", "from", "to", "comp_1_from", "comp_2_from", "comp_1_to", "comp_2_to"]
+        )
         divergence_polygon_positions = pd.DataFrame(columns=["triangle_id", "triangle_part", "milestone_id", "comp_1", "comp_2"])
 
     # plot

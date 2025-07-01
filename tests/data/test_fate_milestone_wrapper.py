@@ -1,29 +1,21 @@
+import pandas as pd
 import pytest
+
 import cfe
 
-import pandas as pd
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
 
 def setup_method_data():
-    """ Create data for testing, convinient for other test file reuse """
+    """Create data for testing, convinient for other test file reuse"""
     # id_list = ["W", "X", "Y", "Z", "A"]
     milestone_network = pd.DataFrame(
         columns=["from", "to", "length", "directed"],
-        data=[
-            ["W", "X", 1.0, True],
-            ["X", "Y", 1.0, True],
-            ["X", "Z", 1.0, True],
-            ["Z", "A", 2.0, True]
-        ]
+        data=[["W", "X", 1.0, True], ["X", "Y", 1.0, True], ["X", "Z", 1.0, True], ["Z", "A", 2.0, True]],
     )
     divergence_regions = pd.DataFrame(
         columns=["divergence_id", "milestone_id", "is_start"],
-        data=[
-            ["XYZ", "X", True],
-            ["XYZ", "Y", False],
-            ["XYZ", "Z", False]
-        ]
+        data=[["XYZ", "X", True], ["XYZ", "Y", False], ["XYZ", "Z", False]],
     )
     milestone_percentages = pd.DataFrame(
         columns=["cell_id", "milestone_id", "percentage"],
@@ -39,7 +31,7 @@ def setup_method_data():
             ["e", "Z", 0.5],
             ["f", "Z", 0.8],
             ["f", "A", 0.2],
-        ]
+        ],
     )
     milestone_wrapper = cfe.data.MilestoneWrapper(
         milestone_network=milestone_network,
@@ -72,8 +64,9 @@ class TestMilestoneWrapper:
         mw = self.milestone_wrapper
         id_list = mw.id_list
         milestone_network = mw.milestone_network
-        assert (set(milestone_network["from"].unique()) | set(milestone_network["to"].unique())) == set(id_list), \
-            "every id should show in 'from' or 'to' column in  milestone_network dataframe"
+        assert (set(milestone_network["from"].unique()) | set(milestone_network["to"].unique())) == set(
+            id_list
+        ), "every id should show in 'from' or 'to' column in  milestone_network dataframe"
 
     def test_convert_milestone_percentages_to_progressions(self):
         mw = self.milestone_wrapper
@@ -90,7 +83,7 @@ class TestMilestoneWrapper:
                 ["e", "X", "Y", 0.2],
                 ["e", "X", "Z", 0.5],
                 ["f", "Z", "A", 0.2],
-            ]
+            ],
         )
         assert isinstance(progression, pd.DataFrame), "progression should be a dataframe"
         assert compare_dataframes(progression, expected_progression, on_columns=["cell_id", "from", "to"])
@@ -101,6 +94,7 @@ class TestMilestoneWrapper:
 
     def test_convert_progressions_to_milestone_percentages(self):
         from cfe.data import MilestoneWrapper
+
         milestone_network = pd.DataFrame(
             columns=["from", "to", "length", "directed"],
             data=[
@@ -128,7 +122,11 @@ class TestMilestoneWrapper:
         expected_milestone_percentages = pd.DataFrame(
             columns=["cell_id", "milestone_id", "percentage"],
             data=[
-                ["a", "milestone_begin", 0.1],  # for start milestone， percentage = 1 - sum(other end milestone percentages)
+                [
+                    "a",
+                    "milestone_begin",
+                    0.1,
+                ],  # for start milestone， percentage = 1 - sum(other end milestone percentages)
                 ["a", "A", 0.5],
                 ["a", "B", 0.2],
                 ["a", "C", 0.2],

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-import scipy.sparse as sp
+
+# import scipy.sparse as sp
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
@@ -9,10 +10,7 @@ from cfe.util.expand_matrix import expand_matrix
 
 
 def calculate_position_predict_fadata(
-    fadata,
-    prediction=None,
-    metrics=["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"],
-    model_name=None
+    fadata, prediction=None, metrics=["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"], model_name=None
 ):
     """
     Compute metrics related to the prediction of cell positions for FateAnnData.
@@ -46,34 +44,18 @@ def calculate_position_predict_fadata(
     # 3. 从 MilestoneWrapper 中获取金标准的里程碑百分比数据
     # 假设 milestone_wrapper.milestone_percentages 是个 DataFrame，包含 "cell_id", "milestone_id", "percentage"
     gold_mp = milestone_wrapper.milestone_percentages
-    gold_milenet_m = pd.pivot_table(
-        gold_mp,
-        index="cell_id",
-        columns="milestone_id",
-        values="percentage",
-        fill_value=0
-    )
+    gold_milenet_m = pd.pivot_table(gold_mp, index="cell_id", columns="milestone_id", values="percentage", fill_value=0)
     # 使用 expand_matrix 保证行顺序与 cell_ids 对齐
     gold_milenet_m = expand_matrix(gold_milenet_m, rownames=cell_ids)
 
     # 4. 计算 baseline_mse：对每个里程碑列计算各值与均值差的平方均值，再取所有列的平均
-    baseline_mse = np.mean([
-        np.mean((gold_milenet_m[col] - gold_milenet_m[col].mean())**2)
-        for col in gold_milenet_m.columns
-    ])
+    baseline_mse = np.mean([np.mean((gold_milenet_m[col] - gold_milenet_m[col].mean()) ** 2) for col in gold_milenet_m.columns])
 
     # 5. 如果 prediction 有效，则计算预测指标
-    if (prediction is not None and
-        len(pd.unique(prediction.milestone_wrapper.milestone_percentages["cell_id"])) >= 3):
+    if prediction is not None and len(pd.unique(prediction.milestone_wrapper.milestone_percentages["cell_id"])) >= 3:
         # 从 prediction 的 MilestoneWrapper 中提取预测的里程碑百分比数据
         pred_mp = prediction.milestone_wrapper.milestone_percentages
-        pred_milenet_m = pd.pivot_table(
-            pred_mp,
-            index="cell_id",
-            columns="milestone_id",
-            values="percentage",
-            fill_value=0
-        )
+        pred_milenet_m = pd.pivot_table(pred_mp, index="cell_id", columns="milestone_id", values="percentage", fill_value=0)
         pred_milenet_m = expand_matrix(pred_milenet_m, rownames=cell_ids)
         # 仅保留标准差大于 0 的列
         cols = [col for col in pred_milenet_m.columns if pred_milenet_m[col].std() > 0]
@@ -112,7 +94,7 @@ def calculate_position_predict_fadata(
                 lr = LinearRegression()
                 lr.fit(data.drop("PREDICT", axis=1), data["PREDICT"])
                 preds = lr.predict(data.drop("PREDICT", axis=1))
-                mse = np.mean((data["PREDICT"] - preds)**2)
+                mse = np.mean((data["PREDICT"] - preds) ** 2)
                 lm_mses.append(mse)
                 rsq = lr.score(data.drop("PREDICT", axis=1), data["PREDICT"])
                 lm_rsqs[col] = rsq if not np.isnan(rsq) else 1
@@ -128,7 +110,7 @@ def calculate_position_predict_fadata(
             "rf_rsq": 0,
             "lm_mse": baseline_mse,
             "lm_rsq": 0,
-            "lm_nmse": 0
+            "lm_nmse": 0,
         }
 
     return output

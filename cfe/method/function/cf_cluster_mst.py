@@ -1,17 +1,12 @@
+import anndata as ad
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-import anndata as ad
 import scanpy as sc
-
 from sklearn.metrics.pairwise import pairwise_distances
 
 
-def cf_cluster_mst(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_cluster_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
     adata.obs.reset_index(drop=True, inplace=True)
@@ -34,7 +29,7 @@ def cf_cluster_mst(
     adata.obs[cluster_key] = pd.Categorical(adata.obs[cluster_key])
     # (2) Calculate the low dimensional coordinates of the clustering centers
     centers = np.array(list(adata.obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
-    milestone_ids = [f"M{i}"for i in range(centers.shape[0])]
+    milestone_ids = [f"M{i}" for i in range(centers.shape[0])]
     cluster_milestones = [milestone_ids[i] for i in adata.obs[cluster_key].cat.codes]
     centers = pd.DataFrame(centers, index=milestone_ids)
     # (3) Calculate the distance between cluster centers

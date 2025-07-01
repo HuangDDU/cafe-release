@@ -1,11 +1,8 @@
 # ref: https://github.com/dynverse/dynclipy/blob/master/dynclipy/read.py
 import numpy as np
-import rpy2.robjects as ro
 import rpy2.rinterface as rinterface
-
+import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri
-
-
 from scipy.sparse import csc_matrix
 
 # 各种装饰器定义了R到python的数据转换策略
@@ -102,12 +99,14 @@ def convert_logical(obj):
     else:
         return [bool(x) for x in obj]
 
+
 # 对于空对象，直接返回
 
 
 @ro.conversion.rpy2py.register(rinterface.NULLType)
 def convert_null(obj):
     return None
+
 
 # recursively check inside lists and dicts for items that were not converted into python objects
 

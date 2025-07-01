@@ -1,29 +1,23 @@
+import anndata as ad
+
+# import h5py
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-import anndata as ad
 import scanpy as sc
-
-import h5py
-from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
 
 from .._logging import logger
 from ..util import random_time_string
-
 from .fate_milestone_wrapper import MilestoneWrapper
 from .fate_waypoint_wrapper import WaypointWrapper
 
+# from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
+
 
 class FateAnnData(ad.AnnData):
-    """AnnData object for CellFateExplorer, related data are stored in the object.uns["cfe"] attribute.
-    """
+    """AnnData object for CellFateExplorer, related data are stored in the object.uns["cfe"] attribute."""
 
-    def __init__(
-            self,
-            name: str = "FateAnnData",
-            *args,
-            **kwargs
-    ):
+    def __init__(self, name: str = "FateAnnData", *args, **kwargs):
         """Initialize the FateAnnData class.
 
         Args:
@@ -33,7 +27,8 @@ class FateAnnData(ad.AnnData):
         self.id = random_time_string(name)
         super().__init__(*args, **kwargs)
 
-        cfe_dict = self.uns.get("cfe", {})  # try to get the stored FateAnnData information
+        # try to get the stored FateAnnData information
+        cfe_dict = self.uns.get("cfe", {})
 
         self.prior_information = cfe_dict.get("prior_information", {})
         cfe_dict["prior_information"] = self.prior_information
@@ -114,7 +109,7 @@ class FateAnnData(ad.AnnData):
             uns=adata.uns,
             obsm=adata.obsm,
             varm=adata.varm,
-            layers=adata.layers
+            layers=adata.layers,
         )
 
         return fadata
@@ -123,12 +118,15 @@ class FateAnnData(ad.AnnData):
     def read_dynverse_simulation_data(
         cls,
         data_filename="synthetic/dyntoy/bifurcating_1.rds",
-        data_dir="/usr/share/CellFateExplorer/dynbenchmark/data/"
+        data_dir="/usr/share/CellFateExplorer/dynbenchmark/data/",
     ):
         # TODO: move to data fate_dataset.py
         # read dynverse simulation data and create FateAnnData object, default data dir is in /usr/share/CellFateExplorer/dynbenchmark/data/
         import rpy2.robjects as ro
+
         from ..util import rpy2_read  # rpy2 data structure transfer automatically
+
+        rpy2_read
 
         r_script = f"""
         dataset <- readRDS("{data_dir}/{data_filename}")
@@ -162,7 +160,7 @@ class FateAnnData(ad.AnnData):
             milestone_network = dataset["milestone_network"]
             milestone_percentages = dataset["milestone_percentages"]
             divergence_regions = dataset["divergence_regions"]
-            progressions = dataset["progressions"]
+            # progressions = dataset["progressions"]
             fadata.add_model_name("ref")
             fadata.add_trajectory(
                 milestone_network=milestone_network,
@@ -222,7 +220,7 @@ class FateAnnData(ad.AnnData):
             cell_id_list=self.obs.index,
             divergence_regions=divergence_regions,
             milestone_percentages=milestone_percentages,
-            progressions=progressions
+            progressions=progressions,
         )
 
         self.milestone_wrapper = milestone_wrapper
@@ -237,12 +235,12 @@ class FateAnnData(ad.AnnData):
         self.trajectory_history_dict[self.model_name]["trajectory_embedding"] = {}
 
     def add_trajectory_mannually(
-            self,
-            milestone_network: pd.DataFrame,
-            cluster_key: str = "clusters",
-            basis: str = "X_umap",
-            distance_metric: str = "euclidean",
-            model_name: str = "ref"
+        self,
+        milestone_network: pd.DataFrame,
+        cluster_key: str = "clusters",
+        basis: str = "X_umap",
+        distance_metric: str = "euclidean",
+        model_name: str = "ref",
     ):
         """add trajectory mannually as ref trajectory, reuse add_trajectory_projection to get progression
 
@@ -267,18 +265,17 @@ class FateAnnData(ad.AnnData):
         # self.obs = self.obs.set_index("index")
 
         # milestone network
-        dis = pd.DataFrame(pairwise_distances(milestone_emb, metric=distance_metric), index=milestone_id_list, columns=milestone_id_list)
+        dis = pd.DataFrame(
+            pairwise_distances(milestone_emb, metric=distance_metric),
+            index=milestone_id_list,
+            columns=milestone_id_list,
+        )
         milestone_network["length"] = milestone_network.apply(lambda row: dis.loc[row["from"], row["to"]], axis=1)
         milestone_network["directed"] = True
 
         # progressions
         self.wrapper_type = "directed"
-        self.add_trajectory_projection(
-            milestone_network=milestone_network,
-            milestone_emb=milestone_emb,
-            X_emb=X_emb,
-            cluster_key=cluster_key
-        )
+        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster_key)
 
     def add_trajectory_by_type(self, trajectory_dict: dict) -> None:
         """automatically add trajectory by wrapper type in trajectory_dict
@@ -296,7 +293,7 @@ class FateAnnData(ad.AnnData):
             self.add_trajectory_branch(
                 branch_network=trajectory_dict["branch_network"],
                 branches=trajectory_dict["branches"],
-                branch_progressions=trajectory_dict["branch_progressions"]
+                branch_progressions=trajectory_dict["branch_progressions"],
             )
         elif wrapper_type == "linear":
             self.add_trajectory_linear(pseudotime=trajectory_dict["pseudotime"])
@@ -308,16 +305,13 @@ class FateAnnData(ad.AnnData):
                 pseudotime=trajectory_dict["pseudotime"] if "pseudotime" in trajectory_dict.keys() else None,
             )
         elif wrapper_type == "cluster":
-            self.add_trajectory_cluster(
-                milestone_network=trajectory_dict["milestone_network"],
-                cluster=trajectory_dict["cluster"]
-            )
+            self.add_trajectory_cluster(milestone_network=trajectory_dict["milestone_network"], cluster=trajectory_dict["cluster"])
         elif wrapper_type == "projection":
             self.add_trajectory_projection(
                 milestone_network=trajectory_dict["milestone_network"],
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
-                cluster_key=trajectory_dict.get("cluster_key", None)
+                cluster_key=trajectory_dict.get("cluster_key", None),
             )
         elif wrapper_type == "graph":
             self.add_trajectory_graph(
@@ -330,7 +324,7 @@ class FateAnnData(ad.AnnData):
                 milestone_network=trajectory_dict["milestone_network"],
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
-                cluster_key=trajectory_dict.get("cluster_key", None)
+                cluster_key=trajectory_dict.get("cluster_key", None),
             )
         elif wrapper_type == "lineage":
             self.add_trajectory_lineage(
@@ -341,9 +335,7 @@ class FateAnnData(ad.AnnData):
         self.raw_wrapper_dict = trajectory_dict
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None) -> None:
-        """Create WaypointWrapper object
-
-        """
+        """Create WaypointWrapper object"""
         logger.debug("FateAnnData add_waypoints")
         milestone_wrapper = milestone_wrapper if milestone_wrapper is not None else self.milestone_wrapper  # waypoint is based on milestone
         waypoint_wrapper = WaypointWrapper(milestone_wrapper)
@@ -362,12 +354,7 @@ class FateAnnData(ad.AnnData):
         # TODO: add sub operation for all other attributes, such as prior_information, milestone_wrapper, wayppoint_wrapper, etc.
         return sub_fadata
 
-    def add_trajectory_branch(
-            self,
-            branch_network: pd.DataFrame,
-            branch_progressions: pd.DataFrame,
-            branches: pd.DataFrame
-    ) -> None:
+    def add_trajectory_branch(self, branch_network: pd.DataFrame, branch_progressions: pd.DataFrame, branches: pd.DataFrame) -> None:
         """Add branch trajectory,such as PAGA
 
         ref: PyDynverse/pydynverse/wrap/wrap_add_branch_trajectory.add_branch_trajectory
@@ -380,36 +367,46 @@ class FateAnnData(ad.AnnData):
         logger.debug("FateAnnData add_trajectory_branch")
 
         branch_id_list = branches["branch_id"]
-        milestone_network = pd.DataFrame({
-            "from": map(lambda x: f"{x}_from", branch_id_list),
-            "to": map(lambda x: f"{x}_to", branch_id_list),
-            "branch_id": branch_id_list
-        })
+        milestone_network = pd.DataFrame(
+            {
+                "from": map(lambda x: f"{x}_from", branch_id_list),
+                "to": map(lambda x: f"{x}_to", branch_id_list),
+                "branch_id": branch_id_list,
+            }
+        )
         milestone_mapper_network = pd.concat(
             [
                 # single from node
-                pd.DataFrame({
-                    "from": map(lambda x: f"{x}_from", branch_id_list),
-                    "to": map(lambda x: f"{x}_from", branch_id_list),
-                }),
+                pd.DataFrame(
+                    {
+                        "from": map(lambda x: f"{x}_from", branch_id_list),
+                        "to": map(lambda x: f"{x}_from", branch_id_list),
+                    }
+                ),
                 # connected node, if "A->B" in branch_network , then "A_to->B_from" in here,
-                pd.DataFrame({
-                    "from": map(lambda x: f"{x}_to", branch_network["from"]),
-                    "to": map(lambda x: f"{x}_from", branch_network["to"]),
-                }),
+                pd.DataFrame(
+                    {
+                        "from": map(lambda x: f"{x}_to", branch_network["from"]),
+                        "to": map(lambda x: f"{x}_from", branch_network["to"]),
+                    }
+                ),
                 # single to node
-                pd.DataFrame({
-                    "from": map(lambda x: f"{x}_to", branch_id_list),
-                    "to": map(lambda x: f"{x}_to", branch_id_list),
-                }),
-            ])
+                pd.DataFrame(
+                    {
+                        "from": map(lambda x: f"{x}_to", branch_id_list),
+                        "to": map(lambda x: f"{x}_to", branch_id_list),
+                    }
+                ),
+            ]
+        )
         # transform node name to connected component id
         mapper = {}
         graph = nx.from_pandas_edgelist(milestone_mapper_network, source="from", target="to")
         connected_components = nx.connected_components(graph)
         for component_index, component in enumerate(connected_components):
             for node in component:
-                mapper[node] = str(component_index + 1)  # milestone id starts from 1
+                # milestone id starts from 1
+                mapper[node] = str(component_index + 1)
         milestone_network["from"] = milestone_network["from"].apply(lambda x: mapper[x])
         milestone_network["to"] = milestone_network["to"].apply(lambda x: mapper[x])
         milestone_network = pd.merge(milestone_network, branches, on="branch_id")
@@ -418,10 +415,7 @@ class FateAnnData(ad.AnnData):
 
         milestone_network = milestone_network[["from", "to", "length", "directed"]]
 
-        self.add_trajectory(
-            milestone_network=milestone_network,
-            progressions=progressions
-        )
+        self.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
     def add_trajectory_linear(
         self,
@@ -445,30 +439,31 @@ class FateAnnData(ad.AnnData):
             assert (pseudotime >= 0).all() and (pseudotime <= 1).all()
         milestone_ids = ["milestone_begin", "milestone_end"]
         # milestone_network datframe construction, length=1
-        milestone_network = pd.DataFrame({
-            "from": milestone_ids[0],
-            "to": milestone_ids[1],
-            "length": 1,
-            "directed": directed,
-        }, index=[0])  # all scalar, need "index" to show sample num
+        milestone_network = pd.DataFrame(
+            {
+                "from": milestone_ids[0],
+                "to": milestone_ids[1],
+                "length": 1,
+                "directed": directed,
+            },
+            index=[0],
+        )  # all scalar, need "index" to show sample num
         # progressions datafram construction， percentage=pseudotime
-        progressions = pd.DataFrame({
-            "cell_id": self.obs.index,
-            "from": milestone_ids[0],
-            "to": milestone_ids[1],
-            "percentage": pseudotime,
-        })
-        self.add_trajectory(
-            milestone_network=milestone_network,
-            divergence_regions=None,
-            progressions=progressions
+        progressions = pd.DataFrame(
+            {
+                "cell_id": self.obs.index,
+                "from": milestone_ids[0],
+                "to": milestone_ids[1],
+                "percentage": pseudotime,
+            }
         )
+        self.add_trajectory(milestone_network=milestone_network, divergence_regions=None, progressions=progressions)
 
     def add_trajectory_cycle(
         self,
-            pseudotime: list,
-            directed: bool = False,
-            do_scale_minmax: bool = True,
+        pseudotime: list,
+        directed: bool = False,
+        do_scale_minmax: bool = True,
     ) -> None:
         """add cycle trajectory, such as Angle(baseline).
         ref: PyDynverse/pydynverse/wrap/wrap_add_cyclic_trajectory.add_cyclic_trajectory
@@ -488,19 +483,23 @@ class FateAnnData(ad.AnnData):
 
         # milestone_network: A->B, B->C, C->A
         milestone_ids = ["A", "B", "C"]
-        milestone_network = pd.DataFrame({
-            "from": milestone_ids,
-            "to": milestone_ids[1:] + [milestone_ids[0]],
-            "length": 1,
-            "directed": directed,
-            "edge_id": range(len(milestone_ids))
-        })
+        milestone_network = pd.DataFrame(
+            {
+                "from": milestone_ids,
+                "to": milestone_ids[1:] + [milestone_ids[0]],
+                "length": 1,
+                "directed": directed,
+                "edge_id": range(len(milestone_ids)),
+            }
+        )
 
         # progression: 3 segement
-        progressions = pd.DataFrame({
-            "cell_id": self.obs.index,
-            "time": [3*i for i in pseudotime],
-        })
+        progressions = pd.DataFrame(
+            {
+                "cell_id": self.obs.index,
+                "time": [3 * i for i in pseudotime],
+            }
+        )
         progressions["edge_id"] = progressions["time"].apply(lambda x: 0 if x <= 1 else 1 if x <= 2 else 2).astype("int")
         progressions = pd.merge(progressions, milestone_network[["from", "to", "edge_id"]], on="edge_id")
         progressions["percentage"] = progressions["time"] - progressions["edge_id"]
@@ -508,18 +507,9 @@ class FateAnnData(ad.AnnData):
 
         milestone_network = milestone_network[["from", "to", "length", "directed"]]
 
-        self.add_trajectory(
-            milestone_network=milestone_network,
-            divergence_regions=None,
-            progressions=progressions
-        )
+        self.add_trajectory(milestone_network=milestone_network, divergence_regions=None, progressions=progressions)
 
-    def add_trajectory_probability(
-        self,
-        end_state_probabilities: pd.DataFrame,
-        pseudotime: list = None,
-        do_scale_minmax: bool = True
-    ):
+    def add_trajectory_probability(self, end_state_probabilities: pd.DataFrame, pseudotime: list = None, do_scale_minmax: bool = True):
         """add probability trajectory, such as StatComp(baseline), Palantir.
 
         ref: PyDynverse/pydynverse/wrap/wrap_add_end_state_probabilities.add_end_state_probabilities
@@ -554,36 +544,31 @@ class FateAnnData(ad.AnnData):
             milestone_ids = [start_milestone_id] + end_milestone_ids
 
             # star shaped milestone network with starting point as the center
-            milestone_network = pd.DataFrame({
-                "from": start_milestone_id,
-                "to": end_milestone_ids,
-                "length": 1,
-                "directed": True
-            })
+            milestone_network = pd.DataFrame({"from": start_milestone_id, "to": end_milestone_ids, "length": 1, "directed": True})
 
             # add a divergence region composed of all milestone nodes together
-            divergence_regions = pd.DataFrame({
-                "milestone_id": milestone_ids,
-                "divergence_id": "D",
-                "is_start": pd.Series(milestone_ids) == start_milestone_id
-            })
+            divergence_regions = pd.DataFrame(
+                {
+                    "milestone_id": milestone_ids,
+                    "divergence_id": "D",
+                    "is_start": pd.Series(milestone_ids) == start_milestone_id,
+                }
+            )
 
             pseudotime = pd.Series(pseudotime, index=end_state_probabilities["cell_id"])
             progressions = end_state_probabilities.melt(id_vars=["cell_id"], var_name="to", value_name="percentage")
             progressions["from"] = start_milestone_id
-            progressions["percentage"] = progressions.groupby("cell_id")["percentage"].transform(lambda x: x / x.sum() * pseudotime[x.name])  # 缩放使其之和为1，暂时不理解这个
+            progressions["percentage"] = progressions.groupby("cell_id")["percentage"].transform(
+                lambda x: x / x.sum() * pseudotime[x.name]
+            )  # 缩放使其之和为1，暂时不理解这个
             progressions = progressions[["cell_id", "from", "to", "percentage"]]
 
-            self.add_trajectory(
-                milestone_network=milestone_network,
-                divergence_regions=divergence_regions,
-                progressions=progressions
-            )
+            self.add_trajectory(milestone_network=milestone_network, divergence_regions=divergence_regions, progressions=progressions)
 
     def add_trajectory_cluster(
-            self,
-            milestone_network: pd.DataFrame,
-            cluster: str | list,
+        self,
+        milestone_network: pd.DataFrame,
+        cluster: str | list,
     ):
         """add cluster trajectory, such as ClusterMST(baseline).
 
@@ -595,17 +580,16 @@ class FateAnnData(ad.AnnData):
         """
         cluster_list = cluster
         mn_ft = milestone_network[["from", "to"]]
-        both_direction = pd.concat([
-            mn_ft.assign(label=mn_ft["from"], percentage=0),
-            mn_ft.assign(label=mn_ft["to"], percentage=1)
-        ])
+        both_direction = pd.concat([mn_ft.assign(label=mn_ft["from"], percentage=0), mn_ft.assign(label=mn_ft["to"], percentage=1)])
 
-        progressions = pd.DataFrame({"cell_id": self.obs.index, "label": cluster_list})\
-            .merge(both_direction, on="label")\
-            .groupby("cell_id")\
-            .apply(lambda x: x.sort_values("percentage", ascending=False).iloc[0])\
-            .reset_index(drop=True)\
+        progressions = (
+            pd.DataFrame({"cell_id": self.obs.index, "label": cluster_list})
+            .merge(both_direction, on="label")
+            .groupby("cell_id")
+            .apply(lambda x: x.sort_values("percentage", ascending=False).iloc[0])
+            .reset_index(drop=True)
             .drop("label", axis=1)
+        )
 
         self.add_trajectory(
             milestone_network=milestone_network,
@@ -614,11 +598,11 @@ class FateAnnData(ad.AnnData):
         )
 
     def add_trajectory_projection(
-            self,
-            milestone_network: pd.DataFrame,
-            milestone_emb: pd.DataFrame | np.ndarray,
-            X_emb: pd.DataFrame | np.ndarray | str,
-            cluster_key: str = None,
+        self,
+        milestone_network: pd.DataFrame,
+        milestone_emb: pd.DataFrame | np.ndarray,
+        X_emb: pd.DataFrame | np.ndarray | str,
+        cluster_key: str = None,
     ):
         """add projection trajectory, such as CellMST(baseline).
 
@@ -632,9 +616,9 @@ class FateAnnData(ad.AnnData):
         """
         from ..util import project_to_segments
 
-        if type(X_emb) == str:
+        if isinstance(X_emb, str):
             X_emb = self.obsm[X_emb]
-        if not type(X_emb) == pd.DataFrame:
+        if not isinstance(X_emb, pd.DataFrame):
             X_emb = pd.DataFrame(X_emb, index=self.obs.index)
 
         if cluster_key is None:
@@ -644,7 +628,7 @@ class FateAnnData(ad.AnnData):
                 segment_start=milestone_emb.loc[milestone_network["from"],],
                 segment_end=milestone_emb.loc[milestone_network["to"],],
             )
-            progressions = milestone_network.iloc[proj["segment"]-1][["from", "to"]]
+            progressions = milestone_network.iloc[proj["segment"] - 1][["from", "to"]]
             progressions["cell_id"] = self.obs.index
             progressions["percentage"] = proj["progression"]
             progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
@@ -665,7 +649,7 @@ class FateAnnData(ad.AnnData):
                             segment_start=milestone_emb.loc[mns["from"],],
                             segment_end=milestone_emb.loc[mns["to"],],
                         )
-                        tmp_progressions = mns.iloc[proj["segment"]-1][["from", "to"]]
+                        tmp_progressions = mns.iloc[proj["segment"] - 1][["from", "to"]]
                         tmp_progressions["cell_id"] = cids
                         tmp_progressions["percentage"] = proj["progression"]
                         tmp_progressions = tmp_progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
@@ -689,11 +673,11 @@ class FateAnnData(ad.AnnData):
         )
 
     def add_trajectory_graph(
-            self,
-            cell_graph: pd.DataFrame,
-            to_keep: pd.Series | dict = None,
-            milestone_prefix: str = "milestone_",
-            backend: str = "networkx"
+        self,
+        cell_graph: pd.DataFrame,
+        to_keep: pd.Series | dict = None,
+        milestone_prefix: str = "milestone_",
+        backend: str = "networkx",
     ):
         """add graph trajectory, such as GraphMST(baseline).
 
@@ -705,9 +689,9 @@ class FateAnnData(ad.AnnData):
             milestone_prefix (str, optional): _description_. Defaults to "milestone_".
             backend (str, optional): _description_. Defaults to "networkx".
         """
-        if not "length" in cell_graph.columns:
+        if "length" not in cell_graph.columns:
             cell_graph["length"] = 1
-        if not "directed" in cell_graph.columns:
+        if "directed" not in cell_graph.columns:
             cell_graph["directed"] = False
 
         cell_ids = self.obs.index
@@ -716,17 +700,25 @@ class FateAnnData(ad.AnnData):
         # keep points are key cells for milestone network, where they have to appear.
         if to_keep is None:
             to_keep = pd.Series(True, index=cell_ids)
-        elif type(to_keep) == dict:
+        elif isinstance(to_keep, dict):
             to_keep = pd.Series(to_keep)
         v_keeps = to_keep[to_keep].index.to_list()
 
         if backend.lower() == "networkx":
             # construct graph object using networkX as backend, which are more convenient for dataframe.
-            G = nx.from_pandas_edgelist(cell_graph, source="from", target="to", edge_attr=["length", "directed"], create_using=nx.DiGraph if is_directed else nx.Graph)
+            G = nx.from_pandas_edgelist(
+                cell_graph,
+                source="from",
+                target="to",
+                edge_attr=["length", "directed"],
+                create_using=nx.DiGraph if is_directed else nx.Graph,
+            )
 
             # simplify graph preliminary
             # step 1: for each cell, find closest milestone
-            distance_df = pd.DataFrame(dict(nx.shortest_path_length(G.to_undirected(),  weight="length"))).loc[cell_ids, v_keeps]  # calucate distance as undirected graph, like "mode=all" in igraph
+            distance_df = pd.DataFrame(dict(nx.shortest_path_length(G.to_undirected(), weight="length"))).loc[
+                cell_ids, v_keeps
+            ]  # calucate distance as undirected graph, like "mode=all" in igraph
             closest_trajpoint = distance_df.idxmin(axis=1)  # closest keep point for each cell
 
             # step 2: simplify backbone
@@ -737,12 +729,17 @@ class FateAnnData(ad.AnnData):
             milestone_network_proto = nx.to_pandas_edgelist(G, source="from", target="to")
             milestone_network_proto["path"] = milestone_network_proto.apply(lambda x: nx.shortest_path(G, source=x["from"], target=x["to"]), axis=1)
             # calculate progressions for keep point
-            progressions_v_keeps = milestone_network_proto\
-                .explode("path")\
-                .groupby("path")\
-                .agg(lambda x: x.iloc[0]).reset_index()\
-                .rename(columns={"path": "node"})[["from", "to", "length", "node"]]  # save first edge for keep point
-            progressions_v_keeps["percentage"] = progressions_v_keeps.apply(lambda x: nx.shortest_path_length(G, source=x["from"], target=x["node"],  weight="length")/x["length"], axis=1)
+            progressions_v_keeps = (
+                milestone_network_proto.explode("path")
+                .groupby("path")
+                .agg(lambda x: x.iloc[0])
+                .reset_index()
+                .rename(columns={"path": "node"})[["from", "to", "length", "node"]]
+            )  # save first edge for keep point
+            progressions_v_keeps["percentage"] = progressions_v_keeps.apply(
+                lambda x: nx.shortest_path_length(G, source=x["from"], target=x["node"], weight="length") / x["length"],
+                axis=1,
+            )
 
             closest_trajpoint_df = pd.DataFrame()
             closest_trajpoint_df["node"] = closest_trajpoint
@@ -762,17 +759,13 @@ class FateAnnData(ad.AnnData):
             progressions = None
 
         # first add
-        self.add_trajectory(
-            milestone_network=milestone_network,
-            divergence_regions=None,
-            progressions=progressions
-        )
+        self.add_trajectory(milestone_network=milestone_network, divergence_regions=None, progressions=progressions)
         # simplify and add
         simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)  # TODO: update
         self.add_trajectory(
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,
-            progressions=simplified_milestone_wrapper["progressions"]
+            progressions=simplified_milestone_wrapper["progressions"],
         )
 
     def add_trajectory_lineage(
@@ -806,7 +799,7 @@ class FateAnnData(ad.AnnData):
         # 寻找谱系串
         lineage_list_list = []
         for lineage_name in lineage_name_list:
-            tmp_cluster_list = main_cluster_list+[lineage_name]
+            tmp_cluster_list = main_cluster_list + [lineage_name]
             lineage_list = cluster_probability.loc[tmp_cluster_list, lineage_name].sort_values().index.tolist()
             lineage_list_list.append(lineage_list)
         print(lineage_list_list)
@@ -827,17 +820,19 @@ class FateAnnData(ad.AnnData):
         # milestone_network
         milestone_network = pd.DataFrame(
             columns=["from", "to"],
-            data=list(zip(prefix_cluster_list[:-1], prefix_cluster_list[1:])) + [[branch_cluster, i] for i in lineage_name_list]
+            data=list(zip(prefix_cluster_list[:-1], prefix_cluster_list[1:])) + [[branch_cluster, i] for i in lineage_name_list],
         )
         milestone_network["length"] = 1
         milestone_network["directed"] = True
         # divergence_regions
-        divergence_id = ''.join([branch_cluster] + lineage_name_list)
-        divergence_regions = pd.DataFrame({
-            "milestone_id": [branch_cluster] + lineage_name_list,
-            "divergence_id": divergence_id,
-            "is_start": [True] + [False] * len(lineage_name_list)
-        })
+        divergence_id = "".join([branch_cluster] + lineage_name_list)
+        divergence_regions = pd.DataFrame(
+            {
+                "milestone_id": [branch_cluster] + lineage_name_list,
+                "divergence_id": divergence_id,
+                "is_start": [True] + [False] * len(lineage_name_list),
+            }
+        )
 
         # 暂时直接投影计算
         print("probability")
@@ -849,7 +844,7 @@ class FateAnnData(ad.AnnData):
             segment_start=cluster_probability.loc[milestone_network["from"],],
             segment_end=cluster_probability.loc[milestone_network["to"],],
         )
-        progressions = milestone_network.iloc[proj["segment"]-1][["from", "to"]]
+        progressions = milestone_network.iloc[proj["segment"] - 1][["from", "to"]]
         progressions["cell_id"] = self.obs.index
         progressions["percentage"] = proj["progression"]
         progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
@@ -919,14 +914,16 @@ class FateAnnData(ad.AnnData):
         Returns:
             pd.DataFrame: _description_
         """
+
         def get_trajectory_edges(x):
             x = x.loc[x["percentage"].idxmax()]
             return f"{x['from']}->{x['to']}"
+
         group_df = self.milestone_wrapper.progressions.groupby("cell_id").apply(get_trajectory_edges)
         self.obs[cluster_key] = group_df.loc[self.obs.index]
 
     def group_onto_nearest_milestones(self, cluster_key="_cfe_nm_group"):
-        """ group cells to nearest milestones
+        """group cells to nearest milestones
         ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_nearest_milestones
 
         Returns:
@@ -935,11 +932,12 @@ class FateAnnData(ad.AnnData):
 
         def get_nearest_milestone(x):
             return x.loc[x["percentage"].idxmax(), "milestone_id"]
+
         group_df = self.milestone_wrapper.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
         self.obs[cluster_key] = group_df.loc[self.obs.index]
 
     def simplify_trajectory(self, model_name="default") -> MilestoneWrapper:
-        """ simplify trajectory for metric comparison, also used in FateAnnData.add_trajectory_cell_graph
+        """simplify trajectory for metric comparison, also used in FateAnnData.add_trajectory_cell_graph
         ref: PyDynverse/pydynverse/wrap/simplify_trajectory.py
 
         Args:
@@ -958,11 +956,12 @@ class FateAnnData(ad.AnnData):
         progressions = milestone_wrapper.progressions.copy()
 
         G = nx.from_pandas_edgelist(
-            milestone_network.rename(columns={"length": "weight"}),  # need length to adjust weight
+            # need length to adjust weight
+            milestone_network.rename(columns={"length": "weight"}),
             source="from",
             target="to",
             edge_attr=True,
-            create_using=nx.DiGraph if milestone_wrapper.directed else nx.Graph
+            create_using=nx.DiGraph if milestone_wrapper.directed else nx.Graph,
         )
 
         # simplify cells
@@ -971,16 +970,12 @@ class FateAnnData(ad.AnnData):
         edge_points["id"] = edge_points["id"].apply(lambda x: f"SIMPLIFYCELL_{x}")
 
         # core: simplify networkx network
-        out = self._simplify_networkx_network(
-            G,
-            force_keep=divergence_regions["milestone_id"],
-            edge_points=edge_points
-        )
+        out = self._simplify_networkx_network(G, force_keep=divergence_regions["milestone_id"], edge_points=edge_points)
 
         # milestone data structure based on simplied network
         G = out["gr"]
         milestone_network = pd.DataFrame(G.edges(data=True), columns=["from", "to", "attributes"])
-        milestone_network = pd.concat([milestone_network.drop(columns=['attributes']), milestone_network["attributes"].apply(pd.Series)], axis=1)
+        milestone_network = pd.concat([milestone_network.drop(columns=["attributes"]), milestone_network["attributes"].apply(pd.Series)], axis=1)
         milestone_network = milestone_network[["from", "to", "weight", "directed"]].rename(columns={"weight": "length"})
 
         edge_points = out["edge_points"]
@@ -997,6 +992,7 @@ class FateAnnData(ad.AnnData):
     def _simplify_networkx_network(self, G, force_keep, edge_points):
         # copy from: PyDynverse/pydynverse/wrap/simplify_networkx_network.py
         from ._simplify_networkx_network import simplify_networkx_network as snn
+
         return snn(G, force_keep=force_keep, edge_points=edge_points)
 
     def get_trajectory_embedding(self, basis):
@@ -1006,7 +1002,7 @@ class FateAnnData(ad.AnnData):
     def set_trajectory_embedding(self, basis, wp_segments, milestone_positions):
         self.trajectory_history_dict[self.model_name]["trajectory_embedding"][basis] = {
             "wp_segments": wp_segments.replace({None: ""}),
-            "milestone_positions": milestone_positions
+            "milestone_positions": milestone_positions,
         }
 
     def write_h5ad(self, filename):
@@ -1019,7 +1015,7 @@ class FateAnnData(ad.AnnData):
             print("transfer milestone color from tuple to list")
         # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
         for k in self.trajectory_history_dict:
-            if type(self.trajectory_history_dict[k]["milestone_wrapper"]) == dict:
+            if isinstance(self.trajectory_history_dict[k]["milestone_wrapper"], dict):
                 # print(f"{k} milestone_wrapper is dict, skip transfer")
                 continue
             else:
@@ -1030,7 +1026,9 @@ class FateAnnData(ad.AnnData):
                 if hasattr(waypoint_wrapper, "milestone_wrapper"):
                     # MilestoneWrapper object need to be remove from attribute
                     delattr(waypoint_wrapper, "milestone_wrapper")
-                waypoint_wrapper.waypoints = waypoint_wrapper.waypoints.replace({None: ""})  # fill the None value with empty string in milestone_id column
+                waypoint_wrapper.waypoints = waypoint_wrapper.waypoints.replace(
+                    {None: ""}
+                )  # fill the None value with empty string in milestone_id column
                 self.trajectory_history_dict[k]["waypoint_wrapper"] = waypoint_wrapper.__dict__
                 # self.trajectory_history_dict[k]["waypoint_wrapper"] = {}
         super().write(filename)

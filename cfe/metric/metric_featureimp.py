@@ -5,10 +5,11 @@ import pandas as pd
 from scipy.sparse import issparse
 from scipy.stats import ks_2samp, ranksums
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
 
 from cfe.util.expand_matrix import expand_matrix
+
+# from sklearn.linear_model import LinearRegression
+# from sklearn.metrics import mean_squared_error
 
 
 def get_expression(trajectory, expression_source="expression"):
@@ -40,6 +41,7 @@ def get_expression(trajectory, expression_source="expression"):
             expr = pd.DataFrame(expr)
         return expr
 
+
 def is_wrapper_with_trajectory(trajectory):
     """
     判断轨迹对象是否包含轨迹信息。
@@ -55,6 +57,7 @@ def is_wrapper_with_trajectory(trajectory):
             return hasattr(trajectory, "milestone_wrapper") and trajectory.milestone_wrapper is not None
     else:
         return trajectory.get("pydynwrap:with_trajectory", False)
+
 
 def apply_function_params(params: dict, nrow, ncol):
     """
@@ -74,18 +77,14 @@ def apply_function_params(params: dict, nrow, ncol):
             new_params[key] = value
     return new_params
 
+
 def fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs):
     """
     构造一个基于 scikit-learn RandomForestRegressor 的特征重要性函数，
     用于计算连续目标（如里程碑百分比）的特征重要性。
     模拟 R 中 ranger 包的行为。
     """
-    default_params = {
-        "n_jobs": 1,
-        "min_samples_leaf": min_node_size,
-        "importance": "impurity",
-        "write_forest": False
-    }
+    default_params = {"n_jobs": 1, "min_samples_leaf": min_node_size, "importance": "impurity", "write_forest": False}
     params = {**default_params, **kwargs}
 
     def fi_function(X, y, verbose=False):
@@ -107,7 +106,7 @@ def fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs):
             n_jobs=params.get("n_jobs"),
             max_samples=max_samples,
             bootstrap=True if max_samples is not None else False,
-            random_state=42
+            random_state=42,
         )
         if verbose:
             print("Training RandomForestRegressor with parameters:", rf.get_params())
@@ -117,15 +116,20 @@ def fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs):
 
     return {"fun": fi_function}
 
+
 def fi_ranger_rf_lite(num_trees=2000, num_variables_per_split=50, num_samples_per_tree=250, min_node_size=20, **kwargs):
     """
     轻量级版本，封装了 fi_ranger_rf 的参数，并提供默认值。
     """
+
     def mtry(nrow, ncol):
         return min(num_variables_per_split, ncol)
+
     def sample_fraction(nrow, ncol):
         return min(num_samples_per_tree / nrow, 1)
+
     return fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs)
+
 
 def fi_caret(caret_method, **kwargs):
     """
@@ -135,7 +139,8 @@ def fi_caret(caret_method, **kwargs):
         raise ValueError("Invalid method. Only 'rf' is supported in this demo.")
 
     def fi_function(X, y, verbose=False):
-        from sklearn.ensemble import RandomForestClassifier
+        # from sklearn.ensemble import RandomForestClassifier
+
         rf = RandomForestClassifier(random_state=42, **kwargs)
         rf.fit(X, y)
         importance = rf.feature_importances_
@@ -146,15 +151,20 @@ def fi_caret(caret_method, **kwargs):
 
     return {"fun": fi_function}
 
+
 def fi_ranger_rf_tiny(num_trees=100, num_variables_per_split=50, num_samples_per_tree=250, min_node_size=20, **kwargs):
     """
     fi_ranger_rf 的轻量级小型版本。
     """
+
     def mtry(nrow, ncol):
         return min(num_variables_per_split, ncol)
+
     def sample_fraction(nrow, ncol):
         return min(num_samples_per_tree / nrow, 1)
+
     return fi_ranger_rf(num_trees, mtry, sample_fraction, min_node_size, **kwargs)
+
 
 def calculate_feature_importances(X, Y, fi_method=fi_ranger_rf_lite(), verbose=False):
     """
@@ -181,21 +191,22 @@ def calculate_feature_importances(X, Y, fi_method=fi_ranger_rf_lite(), verbose=F
             importance_dict = {feat: 0 for feat in X.columns}
         else:
             importance_dict = fi_method["fun"](X, y, verbose=verbose)
-        df = pd.DataFrame({
-            "predictor_id": predictor,
-            "feature_id": list(importance_dict.keys()),
-            "importance": list(importance_dict.values())
-        })
+        df = pd.DataFrame(
+            {
+                "predictor_id": predictor,
+                "feature_id": list(importance_dict.keys()),
+                "importance": list(importance_dict.values()),
+            }
+        )
         result_list.append(df)
     result_df = pd.concat(result_list, ignore_index=True)
     result_df = result_df.sort_values(by="importance", ascending=False).reset_index(drop=True)
     return result_df
 
-def calculate_milestone_feature_importance(trajectory,
-        expression_source="expression",
-        milestones_oi=None,
-        fi_method=fi_ranger_rf_lite(),
-        verbose=False):
+
+def calculate_milestone_feature_importance(
+    trajectory, expression_source="expression", milestones_oi=None, fi_method=fi_ranger_rf_lite(), verbose=False
+):
     """
     计算每个里程碑的特征重要性，返回 DataFrame 包含三列：milestone_id, feature_id, importance。
     """
@@ -203,8 +214,7 @@ def calculate_milestone_feature_importance(trajectory,
         expression = get_expression(trajectory, expression_source)
         cell_ids = trajectory.obs.index.tolist()
         milestone_percentages = trajectory.milestone_wrapper.milestone_percentages
-        milestone_ids = getattr(trajectory.milestone_wrapper, "id_list",
-                                  sorted(milestone_percentages["milestone_id"].unique()))
+        milestone_ids = getattr(trajectory.milestone_wrapper, "id_list", sorted(milestone_percentages["milestone_id"].unique()))
     else:
         expression = get_expression(trajectory, expression_source)
         cell_ids = trajectory["cell_ids"]
@@ -220,30 +230,23 @@ def calculate_milestone_feature_importance(trajectory,
         milestones_oi = milestone_ids
 
     mp_filtered = milestone_percentages[milestone_percentages["milestone_id"].isin(milestones_oi)]
-    milenet_m = mp_filtered.pivot_table(index="cell_id", columns="milestone_id",
-                                          values="percentage", fill_value=0)
+    milenet_m = mp_filtered.pivot_table(index="cell_id", columns="milestone_id", values="percentage", fill_value=0)
     milenet_m = expand_matrix(milenet_m, rownames=cell_ids)
 
     imp_df = calculate_feature_importances(expression, milenet_m, fi_method=fi_method, verbose=verbose)
     imp_df = imp_df.rename(columns={"predictor_id": "milestone_id"})
     return imp_df
 
-def calculate_overall_feature_importance(trajectory,
-        expression_source="expression",
-        fi_method=fi_ranger_rf_lite(),
-        verbose=False):
+
+def calculate_overall_feature_importance(trajectory, expression_source="expression", fi_method=fi_ranger_rf_lite(), verbose=False):
     """
     计算整体特征重要性（跨里程碑），返回 DataFrame 包含 feature_id 与 importance。
     """
-    milestone_imp = calculate_milestone_feature_importance(
-        trajectory,
-        expression_source=expression_source,
-        fi_method=fi_method,
-        verbose=verbose
-    )
+    milestone_imp = calculate_milestone_feature_importance(trajectory, expression_source=expression_source, fi_method=fi_method, verbose=verbose)
     overall = milestone_imp.groupby("feature_id", as_index=False)["importance"].mean()
     overall = overall.sort_values(by="importance", ascending=False).reset_index(drop=True)
     return overall
+
 
 def _calculate_featureimp_cor(dataset_imp, pred_imp):
     """
@@ -254,7 +257,7 @@ def _calculate_featureimp_cor(dataset_imp, pred_imp):
         dataset_imp.rename(columns={"importance": "dataset_imp"}),
         pred_imp.rename(columns={"importance": "pred_imp"}),
         on="feature_id",
-        how="outer"
+        how="outer",
     )
     join["dataset_imp"] = join["dataset_imp"].fillna(0)
     join["pred_imp"] = join["pred_imp"].fillna(0)
@@ -262,7 +265,7 @@ def _calculate_featureimp_cor(dataset_imp, pred_imp):
     if join["dataset_imp"].std() == 0 or join["pred_imp"].std() == 0:
         return {"featureimp_cor": 0, "featureimp_wcor": 0}
     else:
-        corr = np.corrcoef(join["dataset_imp"], join["pred_imp"])[0,1]
+        corr = np.corrcoef(join["dataset_imp"], join["pred_imp"])[0, 1]
         corr = max(corr, 0)
         weights = join["dataset_imp"].values
         if np.sum(weights) == 0:
@@ -272,14 +275,15 @@ def _calculate_featureimp_cor(dataset_imp, pred_imp):
             mean_x = np.average(join["dataset_imp"], weights=weights)
             mean_y = np.average(join["pred_imp"], weights=weights)
             cov = np.average((join["dataset_imp"] - mean_x) * (join["pred_imp"] - mean_y), weights=weights)
-            var_x = np.average((join["dataset_imp"] - mean_x)**2, weights=weights)
-            var_y = np.average((join["pred_imp"] - mean_y)**2, weights=weights)
+            var_x = np.average((join["dataset_imp"] - mean_x) ** 2, weights=weights)
+            var_y = np.average((join["pred_imp"] - mean_y) ** 2, weights=weights)
             if var_x * var_y > 0:
                 wcor = cov / np.sqrt(var_x * var_y)
             else:
                 wcor = 0
             wcor = max(wcor, 0)
         return {"featureimp_cor": corr, "featureimp_wcor": wcor}
+
 
 def calculate_featureimp_cor(dataset, prediction, expression_source=None, fi_method=fi_ranger_rf_lite()):
     """
@@ -294,19 +298,12 @@ def calculate_featureimp_cor(dataset, prediction, expression_source=None, fi_met
         pred_cell_count = 0
 
     if prediction is not None and pred_cell_count >= 3:
-        dataset_imp = calculate_overall_feature_importance(
-            trajectory=dataset,
-            expression_source=expression_source,
-            fi_method=fi_method
-        )
-        pred_imp = calculate_overall_feature_importance(
-            trajectory=prediction,
-            expression_source=expression_source,
-            fi_method=fi_method
-        )
+        dataset_imp = calculate_overall_feature_importance(trajectory=dataset, expression_source=expression_source, fi_method=fi_method)
+        pred_imp = calculate_overall_feature_importance(trajectory=prediction, expression_source=expression_source, fi_method=fi_method)
         return _calculate_featureimp_cor(dataset_imp, pred_imp)
     else:
         return {"featureimp_cor": 0, "featureimp_wcor": 0}
+
 
 def calculate_featureimp_enrichment(dataset, prediction, expression_source=None, fi_method=fi_ranger_rf_lite()):
     """
@@ -322,11 +319,7 @@ def calculate_featureimp_enrichment(dataset, prediction, expression_source=None,
             pred_cell_count = 0
 
         if prediction is not None and pred_cell_count >= 3:
-            pred_imp = calculate_overall_feature_importance(
-                trajectory=prediction,
-                expression_source=expression_source,
-                fi_method=fi_method
-            )
+            pred_imp = calculate_overall_feature_importance(trajectory=prediction, expression_source=expression_source, fi_method=fi_method)
             if hasattr(dataset, "prior_information"):
                 dataset_features = dataset.prior_information.get("features_id", [])
             else:
@@ -337,10 +330,7 @@ def calculate_featureimp_enrichment(dataset, prediction, expression_source=None,
             if len(notsel) > 2:
                 ks = ks_2samp(sel, notsel, alternative="greater")
                 wilcox = ranksums(sel, notsel, alternative="greater")
-                return {
-                    "featureimp_ks": ks.pvalue,
-                    "featureimp_wilcox": 1 - wilcox.pvalue
-                }
+                return {"featureimp_ks": ks.pvalue, "featureimp_wilcox": 1 - wilcox.pvalue}
             else:
                 return {"featureimp_ks": 1, "featureimp_wilcox": 1}
         else:

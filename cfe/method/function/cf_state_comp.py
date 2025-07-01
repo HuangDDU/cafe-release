@@ -1,14 +1,10 @@
-import pandas as pd
 import anndata as ad
+import pandas as pd
 import scanpy as sc
 from sklearn.preprocessing import MinMaxScaler, normalize
 
 
-def cf_state_comp(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_state_comp(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
     cell_ids = adata.obs.index
@@ -21,8 +17,8 @@ def cf_state_comp(
     # extract pca results as state transition probabilities
     X_pca = adata.obsm["X_pca"]
     X_pca_scaled = MinMaxScaler().fit_transform(X_pca)  # Normalization
-    pseudotime = X_pca_scaled[:, parameters["component"]-1]  # specified component for pseudotime
-    comp_column_list = [f"comp_{i}" for i in range(1, ndim+1)]  # the first ndim components correspond to n states
+    pseudotime = X_pca_scaled[:, parameters["component"] - 1]  # specified component for pseudotime
+    comp_column_list = [f"comp_{i}" for i in range(1, ndim + 1)]  # the first ndim components correspond to n states
     # The normalized PCA result is used as the state transition probability, range of [0,1]
     end_state_probabilities = pd.DataFrame(
         columns=comp_column_list,
@@ -40,7 +36,7 @@ def cf_state_comp(
         trajectory_dict = {
             "probability": end_state_probabilities[end_state_probabilities.columns[1:]],
             "cluster_key": cluster_key,  # TODO: 暂时指定obs[cluster_key]标签下的终端状态
-            "wrapper_type": "lineage"
+            "wrapper_type": "lineage",
         }
     else:
         # for probability wrapper

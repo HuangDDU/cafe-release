@@ -1,5 +1,5 @@
-import time
 import sys
+import time
 from typing import Dict
 
 import numpy as np
@@ -7,11 +7,8 @@ from scipy.stats import spearmanr
 
 from cfe.data import FateAnnData
 
-def calculate_correlation(
-    fadata: FateAnnData,
-    ref_model: str = "ref",
-    pred_model: str = "default"
-) -> Dict[str, float]:
+
+def calculate_correlation(fadata: FateAnnData, ref_model: str = "ref", pred_model: str = "default") -> Dict[str, float]:
     """
     计算两条已添加 waypoint 的轨迹（ref_model vs pred_model）之间的地理距离 Spearman 相关性。
     两个模型和它们对应的 waypoint_wrapper 都存储在同一个 FateAnnData.uns['cfe']['trajectory_history_dict'] 中。
@@ -40,10 +37,7 @@ def calculate_correlation(
     wp_ref = hist[ref_model].get("waypoint_wrapper")
     wp_pred = hist[pred_model].get("waypoint_wrapper")
     if wp_ref is None or wp_pred is None:
-        raise ValueError(
-            f"Both models must have waypoint_wrapper; "
-            f"did you call add_waypoints() for '{ref_model}' and '{pred_model}'?"
-        )
+        raise ValueError(f"Both models must have waypoint_wrapper; " f"did you call add_waypoints() for '{ref_model}' and '{pred_model}'?")
 
     # 2. 计算参考模型的 geodesic 距离并计时
     t0 = time.time()
@@ -66,22 +60,16 @@ def calculate_correlation(
         ref_arr = ref_dist_df.loc[common_wps, cells].to_numpy(dtype=np.float64)
         pred_arr = pred_dist_df.loc[common_wps, cells].to_numpy(dtype=np.float64)
     except KeyError as e:
-        raise RuntimeError(
-            f"细胞 ID 对齐失败："
-            f"{e}. 请确保 obs.index 与 waypoint_distances 的列标签一致。"
-        )
+        raise RuntimeError(f"细胞 ID 对齐失败：" f"{e}. 请确保 obs.index 与 waypoint_distances 的列标签一致。")
 
     # 5. 替换无穷大/NaN 为最大浮点数
     maxf = sys.float_info.max
-    ref_arr[np.isinf(ref_arr) | np.isnan(ref_arr)]   = maxf
+    ref_arr[np.isinf(ref_arr) | np.isnan(ref_arr)] = maxf
     pred_arr[np.isinf(pred_arr) | np.isnan(pred_arr)] = maxf
 
     # 6. 维度一致性检查
     if ref_arr.shape != pred_arr.shape:
-        raise RuntimeError(
-            f"距离矩阵维度不匹配："
-            f"ref {ref_arr.shape} vs pred {pred_arr.shape}"
-        )
+        raise RuntimeError(f"距离矩阵维度不匹配：" f"ref {ref_arr.shape} vs pred {pred_arr.shape}")
 
     # 7. 计算 Spearman 相关并计时
     t2 = time.time()
@@ -91,7 +79,7 @@ def calculate_correlation(
     else:
         corr, _ = spearmanr(ref_arr.flatten(), pred_arr.flatten())
         corr = max(corr, 0.0)  # 不要负值
-    metrics["correlation"]      = corr
+    metrics["correlation"] = corr
     metrics["time_correlation"] = time.time() - t2
 
     return metrics

@@ -2,11 +2,7 @@ import anndata as ad
 import scvelo as scv
 
 
-def cf_scvelo(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_scvelo(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # ref: https://scvelo.readthedocs.io/en/stable/VelocityBasics.html
 
     # 1. prepare data
@@ -23,14 +19,14 @@ def cf_scvelo(
 
     # 4. extract results
     neighbors = adata.uns["neighbors"]
-    neighbors['distances'] = adata.obsp["distances"]
-    neighbors['connectivities'] = adata.obsp["connectivities"]
+    neighbors["distances"] = adata.obsp["distances"]
+    neighbors["connectivities"] = adata.obsp["connectivities"]
 
     # 5. save results
     trajectory_dict = {
         "neighbors": neighbors,
         "velocity": adata.layers["velocity"],
-        "velocity_graph": adata.uns["velocity_graph"]
+        "velocity_graph": adata.uns["velocity_graph"],
     }
 
     return trajectory_dict

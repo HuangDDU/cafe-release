@@ -1,13 +1,14 @@
 from .._logging import logger
 from ..data import FateAnnData
-from .plot_trajectory import plot_trajectory
+
+# from .plot_trajectory import plot_trajectory
 
 
 def plot_wrapper(
     fadata: FateAnnData,
     wrapper_type: str = None,
 ) -> None:
-    """ plot original wrapper data
+    """plot original wrapper data
 
     Args:
         fadata (FateAnnData): FateAnnData object
@@ -37,6 +38,7 @@ def plot_wrapper(
 
 # plot_{wrapper_type}
 
+
 def plot_directed(
     fadata: FateAnnData,
     color: str | list = "milestone",
@@ -47,6 +49,7 @@ def plot_directed(
     #     curve=False,
     # )
     from .plot_graph import plot_graph
+
     plot_graph(fadata, color=color)
 
 

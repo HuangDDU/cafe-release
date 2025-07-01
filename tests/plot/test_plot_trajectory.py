@@ -1,14 +1,18 @@
-import pytest
-import cfe
-
 import os
+
 import matplotlib.pyplot as plt
+import pytest
+
+import cfe
 
 
 def get_plot_fadata():
     # add trajectory
-    from ..data.test_fate_milestone_wrapper import setup_method_data as get_milestone_wrapper
     from ..data.test_fate_anndata import setup_method_data as get_fadata
+    from ..data.test_fate_milestone_wrapper import (
+        setup_method_data as get_milestone_wrapper,
+    )
+
     fadata = get_fadata()
     fadata.obsm["X_umap"] = fadata.obsm["X_emb"]
     milestone_wrapper = get_milestone_wrapper()

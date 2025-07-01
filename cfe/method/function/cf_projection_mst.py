@@ -9,11 +9,7 @@ import scanpy as sc
 from sklearn.metrics.pairwise import pairwise_distances
 
 
-def cf_projection_mst(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_projection_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
     adata.obs.reset_index(drop=True, inplace=True)
@@ -35,9 +31,9 @@ def cf_projection_mst(
         adata.obs[cluster_key] = prior_information["groups_id"]
     # (2) Calculate the low dimensional coordinates of the clustering centers
     centers = np.array(list(adata.obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
-    milestone_ids = [f"M{i}"for i in range(centers.shape[0])]
+    milestone_ids = [f"M{i}" for i in range(centers.shape[0])]
     centers = pd.DataFrame(centers, index=milestone_ids)
-     # (3) Calculate the distance between cluster centers
+    # (3) Calculate the distance between cluster centers
     distance_metric = parameters["distance_metric"]
     dis = pd.DataFrame(pairwise_distances(centers, metric=distance_metric), index=milestone_ids, columns=milestone_ids)
     disdf = pd.DataFrame(data=dis.unstack().reset_index().values, columns=["from", "to", "weight"])  # 转化为长数据
@@ -50,7 +46,7 @@ def cf_projection_mst(
     milestone_network["directed"] = False
 
     # 4. extract results
-    comp_ids = [f"comp_{i+1}"for i in range(centers.shape[1])]
+    comp_ids = [f"comp_{i+1}" for i in range(centers.shape[1])]
     X_emb = pd.DataFrame(X_emb, index=adata.obs.index, columns=comp_ids)
     milestone_emb = centers
     milestone_emb.columns = comp_ids

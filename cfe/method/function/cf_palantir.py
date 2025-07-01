@@ -1,5 +1,6 @@
-import numpy as np
 import anndata as ad
+
+# import numpy as np
 import scanpy as sc
 import scanpy.external as sce
 
@@ -31,18 +32,10 @@ def cf_palantir(
         sc.pp.neighbors(adata, knn=knn)
 
     # 3. extract results
-    sce.tl.palantir(
-        adata,
-        n_components=3,
-        knn=knn
-    )  # DiffusionMap and MAGIC
+    sce.tl.palantir(adata, n_components=3, knn=knn)  # DiffusionMap and MAGIC
     early_cell = prior_information["start_id"]
     terminal_states = prior_information["terminal_states"]
-    pr_res = sce.tl.palantir_results(
-        adata,
-        early_cell=early_cell,
-        terminal_states=terminal_states
-    )
+    pr_res = sce.tl.palantir_results(adata, early_cell=early_cell, terminal_states=terminal_states)
 
     # 4. save results
     # multiple output data which adapt to multiple wrapper
@@ -58,9 +51,7 @@ def cf_palantir(
 
     if wrapper_type == "linear":
         # for linear wrapper
-        trajectory_dict = {
-            "pseudotime": pseudotime
-        }
+        trajectory_dict = {"pseudotime": pseudotime}
     elif wrapper_type == "probability":
         # for probability wrapper
         end_state_probabilities = pr_res.branch_probs

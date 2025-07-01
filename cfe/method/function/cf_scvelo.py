@@ -1,15 +1,10 @@
+import anndata as ad
 import numpy as np
 import pandas as pd
-
-import anndata as ad
 import scvelo as scv
 
 
-def cf_scvelo(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_scvelo(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # ref: https://scvelo.readthedocs.io/en/stable/VelocityBasics.html
     cluster_key = prior_information.get("cluster_key", "clusters")
 
@@ -35,10 +30,9 @@ def cf_scvelo(
     df.index = milestone_id_list
     df.columns = milestone_id_list
 
-    milestone_network = df.reset_index()\
-        .rename(columns={"index": "from"})\
-        .melt(id_vars="from", var_name="to", value_name="length")\
-        .query("`length` > 0")
+    milestone_network = (
+        df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
+    )
     milestone_network["length"] = 1  # Temporarily set uniformly to 1
     milestone_network["directed"] = True
 
@@ -61,7 +55,7 @@ def cf_scvelo(
         # "neighbors": adata.uns["neighbors"],
         # "cell_index": adata.obs.index,
         # "gene_index": adata.var.index,
-		"velocity_adata": velocity_adata,
+        "velocity_adata": velocity_adata,
     }
 
     # TODO: need update wrapper

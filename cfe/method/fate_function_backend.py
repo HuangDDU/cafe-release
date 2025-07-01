@@ -1,5 +1,6 @@
-import os
 import importlib.util
+import os
+
 import yaml
 
 from .._logging import logger
@@ -8,8 +9,7 @@ from .fate_backend import Backend, Definition
 
 
 class FunctionBackend(Backend):
-    """Specific implementation of abstract Backend class using Python functions.
-    """
+    """Specific implementation of abstract Backend class using Python functions."""
 
     def __init__(self, function_name="cf_paga"):
         """Initialize the FunctionBackend class.
@@ -23,8 +23,7 @@ class FunctionBackend(Backend):
         self.load_backend()
 
     def load_backend(self) -> None:
-        """load backend from python funct6ion
-        """
+        """load backend from python funct6ion"""
         function_file_path = f"{os.path.dirname(__file__)}/function/{self.function_name}.py"
         # Load the module
         spec = importlib.util.spec_from_file_location(self.function_name, function_file_path)
@@ -57,15 +56,14 @@ class FunctionBackend(Backend):
         # else, read from definition yaml file
         if "wrapper_type" not in trajectory_dict:
             wrapper_type = self.definition["wrapper"]["type"]
-            trajectory_dict["wrapper_type"] = wrapper_type[0] if type(wrapper_type) == list else wrapper_type
+            trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
 
         fadata.add_trajectory_by_type(trajectory_dict)
 
     def _load_definition(self) -> None:
-        """load definition from yaml file and ceate Definition object
-        """
+        """load definition from yaml file and ceate Definition object"""
         definition_file_path = f"{os.path.dirname(__file__)}/definition/{self.function_name}.yml"
-        with open(definition_file_path, 'r') as file:
+        with open(definition_file_path, "r") as file:
             definition_raw = yaml.safe_load(file)
 
         definition = Definition(definition_raw)

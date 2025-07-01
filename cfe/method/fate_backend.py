@@ -1,16 +1,16 @@
-from abc import ABC, abstractmethod
 import tempfile
-import yaml
-import tqdm
+from abc import ABC, abstractmethod
+
 import docker
 import pandas as pd
+import tqdm
+import yaml
 
 from .._logging import logger
 
 
 # Backend: abstract class, used for subsequent specific implementation such as "DockerBackend" class and "FunctionBackend" class
 class Backend(ABC):
-
     @abstractmethod
     def load_backend(self):
         pass
@@ -21,8 +21,7 @@ class Backend(ABC):
 
     @abstractmethod
     def _load_definition(self):
-        """_summary_
-        """
+        """_summary_"""
         pass
 
     def _extract_prior_information(self, fdata, inputs_df):
@@ -69,7 +68,6 @@ class Backend(ABC):
 
 
 class DockerBackend(Backend):
-
     def load_backend(self):
         """
         ref: pydynverse.wrap.method_create_ti_method_container.create_ti_method_container
@@ -122,13 +120,7 @@ class DockerBackend(Backend):
                     if layer_id and total:
                         if layer_id not in progress_bars:
                             # new propgress bar
-                            progress_bars[layer_id] = tqdm(
-                                total=total,
-                                desc=f"Layer {layer_id[:12]}",
-                                unit="B",
-                                unit_scale=True,
-                                unit_divisor=1024
-                            )
+                            progress_bars[layer_id] = tqdm(total=total, desc=f"Layer {layer_id[:12]}", unit="B", unit_scale=True, unit_divisor=1024)
                         progress_bars[layer_id].n = current
                         progress_bars[layer_id].refresh()
                     # no progression information, show status
@@ -166,7 +158,7 @@ class DockerBackend(Backend):
             container.stop()
             container.remove()
             # read and parse yml file
-            with open(f"{tmp_wd}/definition.yml", 'r') as file:
+            with open(f"{tmp_wd}/definition.yml", "r") as file:
                 definition_raw = yaml.safe_load(file)
 
         definition = Definition(definition_raw)
@@ -174,8 +166,7 @@ class DockerBackend(Backend):
         self.definition = definition
 
 
-class Definition():
-
+class Definition:
     def __init__(self, definition_raw: dict):
         self.method = definition_raw["method"]
         self.wrapper = definition_raw["wrapper"]
@@ -237,12 +228,13 @@ class Definition():
         #     param_overrider_fun.__kwdefaults__ = defaults
 
         #     return param_overrider_fun
+
     def __contains__(self, item):
         "check if have attribute"
         return hasattr(self, item)
 
     def keys(self):
-        """ return all attibute name, then the function dict() can be used"""
+        """return all attibute name, then the function dict() can be used"""
         return self.__dict__.keys()
 
     def __getitem__(self, key):

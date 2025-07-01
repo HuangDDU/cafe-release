@@ -1,26 +1,62 @@
-import pytest
-import cfe
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
+
+import cfe
 import cfe.metric
-from cfe.metric._topology_metric.metric_him import calculate_him,get_matched_adjacencies,him_distance
+from cfe.metric._topology_metric.metric_him import (
+    calculate_him,
+    get_matched_adjacencies,
+    him_distance,
+)
+
 
 def test_metric_isomorphic():
     net1 = pd.DataFrame(
         data=[
-            ["A", "B", 1, True,],
-            ["B", "C", 1, True,],
-            ["C", "D", 1, True,],
+            [
+                "A",
+                "B",
+                1,
+                True,
+            ],
+            [
+                "B",
+                "C",
+                1,
+                True,
+            ],
+            [
+                "C",
+                "D",
+                1,
+                True,
+            ],
         ],
-        columns=["from", "to", "length", "direction"]
+        columns=["from", "to", "length", "direction"],
     )
     net2 = pd.DataFrame(
         data=[
-            ["A", "B", 1, True,],
-            ["B", "C", 1, True,],
-            ["B", "D", 1, True,],
+            [
+                "A",
+                "B",
+                1,
+                True,
+            ],
+            [
+                "B",
+                "C",
+                1,
+                True,
+            ],
+            [
+                "B",
+                "D",
+                1,
+                True,
+            ],
         ],
-        columns=["from", "to", "length", "direction"]
+        columns=["from", "to", "length", "direction"],
     )
     assert cfe.metric.calc_isomorphic(net1, net1) == 1
     assert cfe.metric.calc_isomorphic(net1, net2) == 0
@@ -31,24 +67,54 @@ def test_metric_flip_linear_bifurcation():
     linear = pd.DataFrame(
         columns=["from", "to", "length", "directed"],
         data=[
-            ["A", "B", 1, True,],
-            ["B", "C", 2, True,],
-            ["C", "D", 3, True,],
+            [
+                "A",
+                "B",
+                1,
+                True,
+            ],
+            [
+                "B",
+                "C",
+                2,
+                True,
+            ],
+            [
+                "C",
+                "D",
+                3,
+                True,
+            ],
         ],
     )  # 会对线性简化
     bifurcatiion = pd.DataFrame(
         data=[
-            ["A", "B", 1, True,],
-            ["B", "C", 2, True,],
-            ["B", "D", 3, True,],
+            [
+                "A",
+                "B",
+                1,
+                True,
+            ],
+            [
+                "B",
+                "C",
+                2,
+                True,
+            ],
+            [
+                "B",
+                "D",
+                3,
+                True,
+            ],
         ],
-        columns=["from", "to", "length", "directed"]
+        columns=["from", "to", "length", "directed"],
     )
 
     unsimplified_score = cfe.metric.calc_edge_flip(linear, bifurcatiion, simplify=False)
     simplified_score = cfe.metric.calc_edge_flip(linear, bifurcatiion, simplify=True)
 
-    expected_unsimplified_score = 1 - 2/4
+    expected_unsimplified_score = 1 - 2 / 4
     expected_simplified_score = 0
 
     assert unsimplified_score == expected_unsimplified_score
@@ -75,41 +141,52 @@ def test_metric_flip_bifurcatiion_star():
             ["A", "E", 4, True],
             ["A", "F", 5, True],
         ],
-        columns=["from", "to", "length", "directed"]
+        columns=["from", "to", "length", "directed"],
     )
     unsimplified_score = cfe.metric.calc_edge_flip(bifurcatiion, star, simplify=False)
     simplified_score = cfe.metric.calc_edge_flip(bifurcatiion, star, simplify=True)
 
-    expected_unsimplified_score = 1 - 4/8
+    expected_unsimplified_score = 1 - 4 / 8
     expected_simplified_score = expected_unsimplified_score  # 这里不会发生简化，所以分数不变
 
     assert unsimplified_score == expected_unsimplified_score
     assert simplified_score == expected_simplified_score
 
+
 def test_metric_him():
     # 构造树形网络 net1
     # 树结构：根节点 "A"，下面三个分支 "B", "C", "D"；每个分支再扩展两个子节点
     net1_edges = [
-        ('A', 'B', 1.0), ('A', 'C', 1.0), ('A', 'D', 1.0),
-        ('B', 'B1', 0.8), ('B', 'B2', 0.9),
-        ('C', 'C1', 0.7), ('C', 'C2', 0.85),
-        ('D', 'D1', 0.95), ('D', 'D2', 0.8)
+        ("A", "B", 1.0),
+        ("A", "C", 1.0),
+        ("A", "D", 1.0),
+        ("B", "B1", 0.8),
+        ("B", "B2", 0.9),
+        ("C", "C1", 0.7),
+        ("C", "C2", 0.85),
+        ("D", "D1", 0.95),
+        ("D", "D2", 0.8),
     ]
-    net1 = pd.DataFrame(net1_edges, columns=['from', 'to', 'length'])
-    net1['directed'] = True
+    net1 = pd.DataFrame(net1_edges, columns=["from", "to", "length"])
+    net1["directed"] = True
 
     # 构造相似的树形网络 net2
     # 与 net1 基本相同，仅在少数边上略有差异，例如边长度稍有调整，或者增加一条额外边
     net2_edges = [
-        ('A', 'B', 1.0), ('A', 'C', 1.0), ('A', 'D', 1.0),
-        ('B', 'B1', 0.8), ('B', 'B2', 1.0),   # B2 边长度从0.9变为1.0
-        ('C', 'C1', 0.7), ('C', 'C2', 0.85),
-        ('D', 'D1', 0.95), ('D', 'D2', 0.8),
+        ("A", "B", 1.0),
+        ("A", "C", 1.0),
+        ("A", "D", 1.0),
+        ("B", "B1", 0.8),
+        ("B", "B2", 1.0),  # B2 边长度从0.9变为1.0
+        ("C", "C1", 0.7),
+        ("C", "C2", 0.85),
+        ("D", "D1", 0.95),
+        ("D", "D2", 0.8),
         # 增加一条额外的边：C->B，增加轻微的交叉关系
-        ('C', 'B', 0.5)
+        ("C", "B", 0.5),
     ]
-    net2 = pd.DataFrame(net2_edges, columns=['from', 'to', 'length'])
-    net2['directed'] = True
+    net2 = pd.DataFrame(net2_edges, columns=["from", "to", "length"])
+    net2["directed"] = True
     # 使用简化过程（如果你希望观察简化后的结果）
     sim = calculate_him(net1, net2, simplify=True, gamma=0.1)
     # 同时提取中间计算的邻接矩阵和 HIM 距离
@@ -124,25 +201,35 @@ def test_metric_him():
     # 构造树形网络 net3
     # 使用与上面类似的树状结构
     net3_edges = [
-        ('A', 'B', 1.0), ('A', 'C', 1.0), ('A', 'D', 1.0),
-        ('B', 'B1', 0.8), ('B', 'B2', 0.9),
-        ('C', 'C1', 0.7), ('C', 'C2', 0.85),
-        ('D', 'D1', 0.95), ('D', 'D2', 0.8)
+        ("A", "B", 1.0),
+        ("A", "C", 1.0),
+        ("A", "D", 1.0),
+        ("B", "B1", 0.8),
+        ("B", "B2", 0.9),
+        ("C", "C1", 0.7),
+        ("C", "C2", 0.85),
+        ("D", "D1", 0.95),
+        ("D", "D2", 0.8),
     ]
-    net3 = pd.DataFrame(net3_edges, columns=['from', 'to', 'length'])
-    net3['directed'] = True
+    net3 = pd.DataFrame(net3_edges, columns=["from", "to", "length"])
+    net3["directed"] = True
 
     # 构造差异较大的树形网络 net4
     # 这里修改网络结构：改变分支连接和边权，令 net2 与 net1 有较大差异
     net4_edges = [
-        ('A', 'B', 1.0), ('A', 'E', 1.2),  # 不再直接连接 A->C，而是 A->E
-        ('B', 'B1', 1.5),  ('B', 'B2', 1.4),
-        ('E', 'C', 0.9),   ('E', 'F', 1.1),  # E 分支出两个子节点，分别连接 C 和 F
-        ('C', 'C1', 0.7), ('C', 'C2', 0.85),
-        ('F', 'D', 1.3),  ('F', 'D1', 1.2)   # F 分支再连接 D 和 D1，而非直接从 A->D
+        ("A", "B", 1.0),
+        ("A", "E", 1.2),  # 不再直接连接 A->C，而是 A->E
+        ("B", "B1", 1.5),
+        ("B", "B2", 1.4),
+        ("E", "C", 0.9),
+        ("E", "F", 1.1),  # E 分支出两个子节点，分别连接 C 和 F
+        ("C", "C1", 0.7),
+        ("C", "C2", 0.85),
+        ("F", "D", 1.3),
+        ("F", "D1", 1.2),  # F 分支再连接 D 和 D1，而非直接从 A->D
     ]
-    net4 = pd.DataFrame(net4_edges, columns=['from', 'to', 'length'])
-    net4['directed'] = True
+    net4 = pd.DataFrame(net4_edges, columns=["from", "to", "length"])
+    net4["directed"] = True
 
     sim = calculate_him(net3, net4, simplify=False, gamma=0.1)
     adj3, adj4 = get_matched_adjacencies(net3, net4, simplify=False)
@@ -153,21 +240,25 @@ def test_metric_him():
     assert d > 0.2
     assert sim < 0.8
 
-    #相似复杂网络测试
+    # 相似复杂网络测试
     # 构造 net5（含分支、环及交叉边）
-    net5 = pd.DataFrame({
-        'from': ['A', 'A', 'B', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'],
-        'to':   ['B', 'C', 'D', 'D', 'E', 'F', 'G', 'F', 'G', 'H', 'D', 'H'],
-        'length': [1.0, 1.2, 2.0, 2.0, 1.5, 1.5, 2.5, 1.0, 1.0, 1.8, 2.0, 2.2],
-        'directed': [True]*12
-    })
+    net5 = pd.DataFrame(
+        {
+            "from": ["A", "A", "B", "C", "B", "C", "D", "E", "F", "G", "H", "I"],
+            "to": ["B", "C", "D", "D", "E", "F", "G", "F", "G", "H", "D", "H"],
+            "length": [1.0, 1.2, 2.0, 2.0, 1.5, 1.5, 2.5, 1.0, 1.0, 1.8, 2.0, 2.2],
+            "directed": [True] * 12,
+        }
+    )
     # 构造 net6，与 net5 略有不同（例如增加一条交叉边和不同边长）
-    net6 = pd.DataFrame({
-        'from': ['A', 'A', 'B', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'E'],
-        'to':   ['B', 'C', 'D', 'D', 'F', 'E', 'G', 'G', 'H', 'I', 'D', 'H', 'I'],
-        'length': [1.0, 1.2, 2.1, 2.0, 1.7, 1.4, 2.5, 1.1, 1.0, 1.9, 2.1, 2.2, 1.5],
-        'directed': [True]*13
-    })
+    net6 = pd.DataFrame(
+        {
+            "from": ["A", "A", "B", "C", "B", "C", "D", "E", "F", "G", "H", "I", "E"],
+            "to": ["B", "C", "D", "D", "F", "E", "G", "G", "H", "I", "D", "H", "I"],
+            "length": [1.0, 1.2, 2.1, 2.0, 1.7, 1.4, 2.5, 1.1, 1.0, 1.9, 2.1, 2.2, 1.5],
+            "directed": [True] * 13,
+        }
+    )
     # 此处采用简化过程
     sim = calculate_him(net5, net6, simplify=True, gamma=0.1)
     # 同时获取中间计算的邻接矩阵与 HIM 距离
@@ -179,21 +270,25 @@ def test_metric_him():
     assert d > 0.05
     assert sim < 1.0
 
-    #（simplify=False）
+    # （simplify=False）
     # 构造 net7（较复杂网络，保留所有原始细节）
-    net7 = pd.DataFrame({
-        'from': ['A', 'A', 'B', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
-        'to':   ['B', 'C', 'D', 'D', 'E', 'F', 'G', 'F', 'G', 'H', 'D', 'H', 'I'],
-        'length': [1.0, 1.2, 2.0, 2.0, 1.5, 1.5, 2.5, 1.0, 1.0, 1.8, 2.0, 2.2, 1.3],
-        'directed': [True]*13
-    })
+    net7 = pd.DataFrame(
+        {
+            "from": ["A", "A", "B", "C", "B", "C", "D", "E", "F", "G", "H", "I", "J"],
+            "to": ["B", "C", "D", "D", "E", "F", "G", "F", "G", "H", "D", "H", "I"],
+            "length": [1.0, 1.2, 2.0, 2.0, 1.5, 1.5, 2.5, 1.0, 1.0, 1.8, 2.0, 2.2, 1.3],
+            "directed": [True] * 13,
+        }
+    )
     # 构造 net8，与 net7 略有不同：增加多条额外边和权重变化
-    net8 = pd.DataFrame({
-        'from': ['A', 'A', 'B', 'C', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'E', 'C'],
-        'to':   ['B', 'C', 'D', 'D', 'F', 'E', 'G', 'G', 'H', 'I', 'D', 'H', 'I', 'J', 'F'],
-        'length': [1.0, 1.2, 2.1, 2.0, 1.7, 1.4, 2.5, 1.1, 1.0, 1.9, 2.1, 2.2, 1.3, 1.8, 1.6],
-        'directed': [True]*15
-    })
+    net8 = pd.DataFrame(
+        {
+            "from": ["A", "A", "B", "C", "B", "C", "D", "E", "F", "G", "H", "I", "J", "E", "C"],
+            "to": ["B", "C", "D", "D", "F", "E", "G", "G", "H", "I", "D", "H", "I", "J", "F"],
+            "length": [1.0, 1.2, 2.1, 2.0, 1.7, 1.4, 2.5, 1.1, 1.0, 1.9, 2.1, 2.2, 1.3, 1.8, 1.6],
+            "directed": [True] * 15,
+        }
+    )
     sim = calculate_him(net7, net8, simplify=False, gamma=0.1)
     # 同时获取中间计算的邻接矩阵与 HIM 距离
     adj7, adj8 = get_matched_adjacencies(net7, net8, simplify=False)
@@ -203,6 +298,7 @@ def test_metric_him():
     # 在不简化的情况下，两网络的差异会更明显
     assert d > 0.05
     assert sim < 1.0
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

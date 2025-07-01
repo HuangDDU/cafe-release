@@ -1,2 +1,16 @@
+[project]
+name = "CellFateExplorer"
+version = "0.1.0"
+
 [tool.black]
-line-length = 250
+line-length = 150
+
+[tool.ruff]
+select = ["E", "F", "W"]
+
+# replace "pytest.ini"
+[tool.pytest.ini_options]
+# addopts = "-v --color=yes" # single test function show
+testpaths = ["tests/data"]
+
+# TODO: requirement.txt

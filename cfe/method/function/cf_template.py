@@ -1,14 +1,11 @@
 import anndata as ad
 import numpy as np
-import scanpy as sc
-import scanpy.external as sce
+
+# import scanpy as sc
+# import scanpy.external as sce
 
 
-def cf_template(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_template(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
 

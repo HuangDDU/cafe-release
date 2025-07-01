@@ -1,12 +1,12 @@
-import pytest
-import cfe
-
 import os.path
+
+import pytest
 import scanpy as sc
 
+import cfe
 
-class TestFateMethod():
 
+class TestFateMethod:
     def setup_method(self):
         cfe.settings.backend = "python_function"
         self.fate_method = cfe.method.FateMethod(method_name="paga")
@@ -40,10 +40,7 @@ class TestFateMethod():
         cluster_key = "lineage"
         fadata.obs.index = fadata.obs["cell_id"]
         # prior_information,  parameters
-        prior_information = {
-            "start_id": "cell1",
-            "groups_id": fadata.obs[cluster_key].tolist()
-        }
+        prior_information = {"start_id": "cell1", "groups_id": fadata.obs[cluster_key].tolist()}
         parameters = {"filter_features": False}
         fadata.add_prior_information(**prior_information)  # add prior information to fadata
 

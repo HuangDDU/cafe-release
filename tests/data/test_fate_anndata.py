@@ -13,14 +13,16 @@ from ..test_util import compare_dataframes, compare_dataframes_closely
 
 
 def setup_method_data():
-    counts = np.array([
-        [0, 10],
-        [8, 10],
-        [12, 12],
-        [20, 20],
-        [15, 16],
-        [22, 20],
-    ])
+    counts = np.array(
+        [
+            [0, 10],
+            [8, 10],
+            [12, 12],
+            [20, 20],
+            [15, 16],
+            [22, 20],
+        ]
+    )
 
     counts = csc_matrix(counts)
 
@@ -67,11 +69,13 @@ class TestFateAnnData:
         # second model
         milestone_wrapper = fadata.milestone_wrapper
         from cfe.util import random_time_string
-        fadata.add_model_name(random_time_string("second model"))  # radom_time_string for parsing
+
+        # radom_time_string for parsing
+        fadata.add_model_name(random_time_string("second model"))
         fadata.add_trajectory(
             milestone_network=milestone_wrapper.milestone_network,
             divergence_regions=milestone_wrapper.divergence_regions,
-            milestone_percentages=milestone_wrapper.milestone_percentages
+            milestone_percentages=milestone_wrapper.milestone_percentages,
         )
 
         model_name_list = self.fadata.get_all_model_name()
@@ -87,6 +91,7 @@ class TestFateAnnData:
 
     def test_add_trajectory(self):
         from .test_fate_milestone_wrapper import setup_method_data
+
         milestone_wrapper = setup_method_data()
         self.fadata.add_trajectory(
             milestone_network=milestone_wrapper.milestone_network,
@@ -130,7 +135,7 @@ class TestFateAnnData:
                 # compared to "test_add_trajectory" test case, cell "e" is moved to branch "C" from divergence region
                 ["e", "C", 0.2],
                 ["f", "D", 0.2],
-            ]
+            ],
         )
         branches = pd.DataFrame(
             columns=["branch_id", "length", "directed"],
@@ -139,7 +144,7 @@ class TestFateAnnData:
                 ["B", 1.0, True],
                 ["C", 1.0, True],
                 ["D", 2.0, True],
-            ]
+            ],
         )
 
         # execute function
@@ -153,7 +158,7 @@ class TestFateAnnData:
                 ["2", "3", 1.0, True],
                 ["2", "4", 1.0, True],
                 ["3", "5", 2.0, True],
-            ]
+            ],
         )
         expected_progressions = pd.DataFrame(
             columns=["cell_id", "from", "to", "percentage"],
@@ -164,7 +169,7 @@ class TestFateAnnData:
                 ["d", "2", "3", 1.0],
                 ["e", "2", "4", 0.2],
                 ["f", "3", "5", 0.2],
-            ]
+            ],
         )
 
         # assert
@@ -202,18 +207,23 @@ class TestFateAnnData:
 
         # expected result
         expected_milestone_ids = ["milestone_begin", "milestone_end"]
-        expected_milestone_network = pd.DataFrame({
-            "from": "milestone_begin",
-            "to": "milestone_end",
-            "length": 1,
-            "directed": False,
-        }, index=[0])
-        expected_progressions = pd.DataFrame({
-            "cell_id": cell_ids,
-            "from": "milestone_begin",
-            "to": "milestone_end",
-            "percentage": pseudotime,
-        })
+        expected_milestone_network = pd.DataFrame(
+            {
+                "from": "milestone_begin",
+                "to": "milestone_end",
+                "length": 1,
+                "directed": False,
+            },
+            index=[0],
+        )
+        expected_progressions = pd.DataFrame(
+            {
+                "cell_id": cell_ids,
+                "from": "milestone_begin",
+                "to": "milestone_end",
+                "percentage": pseudotime,
+            }
+        )
 
         # assert
         assert fadata.milestone_wrapper["id_list"] == expected_milestone_ids
@@ -225,7 +235,7 @@ class TestFateAnnData:
         test_data = self.get_add_trajectory_linear_test_data()
         fadata = test_data["fadata"]
         pseudotime = test_data["pseudotime"]
-        cell_ids = test_data["cell_ids"]
+        # cell_ids = test_data["cell_ids"]
 
         # execute function
         fadata.add_trajectory_cycle(pseudotime)
@@ -233,12 +243,13 @@ class TestFateAnnData:
         # expected result
         expected_milestone_ids = ["A", "B", "C"]
         expected_milestone_network = pd.DataFrame(
-            columns=["from", "to", "length", "directed",],
-            data=[
-                ["A", "B", 1, False],
-                ["B", "C", 1, False],
-                ["C", "A", 1, False]
+            columns=[
+                "from",
+                "to",
+                "length",
+                "directed",
             ],
+            data=[["A", "B", 1, False], ["B", "C", 1, False], ["C", "A", 1, False]],
         )
         expected_progressions = pd.DataFrame(
             columns=["cell_id", "from", "to", "percentage"],
@@ -248,8 +259,8 @@ class TestFateAnnData:
                 ["c", "B", "C", 0.2],
                 ["d", "B", "C", 0.5],
                 ["e", "C", "A", 0.4],
-                ["f", 'C', "A", 1],
-            ]
+                ["f", "C", "A", 1],
+            ],
         )
 
         # assert
@@ -266,15 +277,15 @@ class TestFateAnnData:
         end_state_probabilities = pd.DataFrame(
             columns=["cell_id", "A", "B", "C"],
             data=[
-                ["a", .5, 0, 0],
+                ["a", 0.5, 0, 0],
                 ["aa", 1, 0, 0],
-                ["b", 0, .5, 0],
+                ["b", 0, 0.5, 0],
                 ["bb", 0, 1, 0],
-                ["c", 0, 0, .5],
+                ["c", 0, 0, 0.5],
                 ["cc", 0, 0, 1],
-            ]
+            ],
         )
-        pseudotime = [.5, 1, .5, 1, .5, 1]
+        pseudotime = [0.5, 1, 0.5, 1, 0.5, 1]
         pseudotime = pd.Series(pseudotime, index=cell_ids)
         test_data = {
             "id": id,
@@ -303,21 +314,20 @@ class TestFateAnnData:
         # expected result
         start_milestone_id = "milestone_begin"
         milestone_ids = [start_milestone_id] + end_state_ids
-        expected_milestone_network = pd.DataFrame({
-            "from": start_milestone_id,
-            "to": end_state_ids,
-            "length": 1,
-            "directed": True
-        })
-        expected_divergence_regions = pd.DataFrame({
-            "milestone_id": milestone_ids,
-            "divergence_id": "D",
-            "is_start": pd.Series(milestone_ids) == start_milestone_id
-        })
+        expected_milestone_network = pd.DataFrame({"from": start_milestone_id, "to": end_state_ids, "length": 1, "directed": True})
+        expected_divergence_regions = pd.DataFrame(
+            {
+                "milestone_id": milestone_ids,
+                "divergence_id": "D",
+                "is_start": pd.Series(milestone_ids) == start_milestone_id,
+            }
+        )
         scaled_pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
         expected_progressions = end_state_probabilities.melt(id_vars=["cell_id"], var_name="to", value_name="percentage")
         expected_progressions["from"] = start_milestone_id
-        expected_progressions["percentage"] = expected_progressions.groupby("cell_id")["percentage"].transform(lambda x: x / x.sum() * scaled_pseudotime[x.name])  # 缩放使其之和为1，暂时不理解这个
+        expected_progressions["percentage"] = expected_progressions.groupby("cell_id")["percentage"].transform(
+            lambda x: x / x.sum() * scaled_pseudotime[x.name]
+        )  # 缩放使其之和为1，暂时不理解这个
         expected_progressions = expected_progressions[["cell_id", "from", "to", "percentage"]]
 
         # assert
@@ -332,7 +342,8 @@ class TestFateAnnData:
         fadata = test_data["fadata"]
         end_state_probabilities = test_data["end_state_probabilities"]
         pseudotime = test_data["pseudotime"]
-        end_state_probabilities = end_state_probabilities["cell_id"].to_frame()  # no terminal state
+        # no terminal state
+        end_state_probabilities = end_state_probabilities["cell_id"].to_frame()
 
         # execute function
         fadata.add_trajectory_probability(
@@ -385,7 +396,7 @@ class TestFateAnnData:
                 ["d", 2, 0.5],
                 ["e", 1.2, 1.5],
                 ["f", 2.4, 1.5],
-            ]
+            ],
         )
         milestone_emb = pd.DataFrame(
             columns=["milestone_id", "comp_1", "comp_2"],
@@ -395,7 +406,7 @@ class TestFateAnnData:
                 ["Y", 1, 2],
                 ["Z", 2, 1],
                 ["A", 4, 1],
-            ]
+            ],
         )
         X_emb.set_index("cell_id", inplace=True)
         milestone_emb.set_index("milestone_id", inplace=True)
@@ -410,7 +421,7 @@ class TestFateAnnData:
                 ["d", "X", "Z", 1],
                 ["e", "X", "Y", 0.5],
                 ["f", "Z", "A", 0.2],
-            ]
+            ],
         )
 
         test_data = {
@@ -418,7 +429,7 @@ class TestFateAnnData:
             "X_emb": X_emb,
             "milestone_emb": milestone_emb,
             "milestone_network": milestone_network,
-            "expected_progressions": expected_progressions
+            "expected_progressions": expected_progressions,
         }
 
         return test_data
@@ -454,7 +465,14 @@ class TestFateAnnData:
 
         # execute function
         cluster_key = "clusters"
-        fadata.obs[cluster_key] = ["X", "X", "X", "Z", "Z", "Z"]  # add cluster, cluster names should be consistent with milestone names
+        fadata.obs[cluster_key] = [
+            "X",
+            "X",
+            "X",
+            "Z",
+            "Z",
+            "Z",
+        ]  # add cluster, cluster names should be consistent with milestone names
         fadata.add_trajectory_projection(
             milestone_network=milestone_network,
             milestone_emb=milestone_emb,
@@ -472,7 +490,7 @@ class TestFateAnnData:
                 ["d", "X", "Z", 1],
                 ["e", "X", "Z", 0.2],  # e -> X-Z edge
                 ["f", "Z", "A", 0.2],
-            ]
+            ],
         )
 
         # assert
@@ -503,7 +521,7 @@ class TestFateAnnData:
                 ["Z", "d", 0.5, False],
                 ["XeY", "e", 0.2, False],
                 ["ZfA", "f", 0.5, False],
-            ]
+            ],
         )
         cell_graph["directed"] = True  # easier for directed graph
 
@@ -522,7 +540,7 @@ class TestFateAnnData:
             c=False,
             d=False,
             e=False,
-            f=False
+            f=False,
         )
         to_keep = pd.Series(to_keep)
 
@@ -534,16 +552,17 @@ class TestFateAnnData:
         )
 
         # expected result
-        expected_milestone_ids = [f"ML_{i}"for i in ["W", "X", "Y", "A"]]
+        expected_milestone_ids = [f"ML_{i}" for i in ["W", "X", "Y", "A"]]
         expected_milestone_network = pd.DataFrame(
             columns=["from", "to", "length", "directed"],
             data=[
                 ["ML_W", "ML_X", 1, False],
                 ["ML_X", "ML_Y", 1, False],
                 ["ML_X", "ML_A", 2, False],
-            ]
+            ],
         )
-        expected_milestone_network["directed"] = True  # easier for directed graph
+        # easier for directed graph
+        expected_milestone_network["directed"] = True
 
         expected_progressions = pd.DataFrame(
             columns=["cell_id", "from", "to", "percentage"],
@@ -563,7 +582,7 @@ class TestFateAnnData:
                 ["d", "ML_X", "ML_A", 0.5],
                 ["e", "ML_X", "ML_Y", 0.5],
                 ["f", "ML_X", "ML_A", 0.6],
-            ]
+            ],
         )
 
         # assert
@@ -595,52 +614,49 @@ class TestFateAnnData:
                 [0.6, 0.7],
                 [0.6, 0.8],
                 [0.3, 0.9],
-            ]
+            ],
         )
 
         # execute function
-        fadata.add_trajectory_lineage(
-            probability=probability,
-            cluster_key=cluster_key
-        )
+        fadata.add_trajectory_lineage(probability=probability, cluster_key=cluster_key)
 
         # expected result
-        expected_milestone_ids = ["A", "B", "C", "D"]
+        # expected_milestone_ids = ["A", "B", "C", "D"]
         expected_milestone_network = pd.DataFrame(
             columns=["from", "to", "length", "directed"],
             data=[
                 ["A", "B", 1, True],
                 ["B", "C", 1, True],
                 ["B", "D", 1, True],
-            ]
+            ],
         )
-        expected_progressions = pd.DataFrame(
-            columns=["cell_id", "from", "to", "percentage"],
-            data=[
-                ["a1", "A", "B", 0],
-                ["a2", "A", "B", 1/3],
-                ["b1", "A", "B", 2/3],
-                ["b2", "B", "C", 0],
-                ["b2", "B", "D", 0],
-                ["c1", "B", "C", 0],
-                ["c1", "B", "D", 0],
-                ["c2", "B", "C", 0],
-                ["c2", "B", "D", 0],
-                ["c3", "B", "C", 0],
-                ["d1", "B", "C", 0],
-                ["d1", "B", "D", 0],
-                ["d2", "B", "C", 0],
-                ["d2", "B", "D", 0],
-                ["d3", "B", "D", 0],
-            ]
-        )
+        # expected_progressions = pd.DataFrame(
+        #     columns=["cell_id", "from", "to", "percentage"],
+        #     data=[
+        #         ["a1", "A", "B", 0],
+        #         ["a2", "A", "B", 1 / 3],
+        #         ["b1", "A", "B", 2 / 3],
+        #         ["b2", "B", "C", 0],
+        #         ["b2", "B", "D", 0],
+        #         ["c1", "B", "C", 0],
+        #         ["c1", "B", "D", 0],
+        #         ["c2", "B", "C", 0],
+        #         ["c2", "B", "D", 0],
+        #         ["c3", "B", "C", 0],
+        #         ["d1", "B", "C", 0],
+        #         ["d1", "B", "D", 0],
+        #         ["d2", "B", "C", 0],
+        #         ["d2", "B", "D", 0],
+        #         ["d3", "B", "D", 0],
+        #     ],
+        # )
         expected_divergence_regions = pd.DataFrame(
             columns=["milestone_id", "divergence_id", "is_start"],
             data=[
                 ["B", "BCD", True],
                 ["C", "BCD", False],
                 ["D", "BCD", False],
-            ]
+            ],
         )
 
         # TODO: assert
@@ -689,11 +705,7 @@ class TestFateAnnData:
         id = "linear_directed"
         cell_ids = ["a", "b", "c", "d", "e"]
         milestone_network = pd.DataFrame(
-            data=[
-                ["A", "B", 1, True],
-                ["B", "C", 1, True],
-                ["C", "D", 1, True]
-            ],
+            data=[["A", "B", 1, True], ["B", "C", 1, True], ["C", "D", 1, True]],
             columns=["from", "to", "length", "directed"],
         )
         progressions = pd.DataFrame(
@@ -704,13 +716,10 @@ class TestFateAnnData:
                 ["d", "B", "C", 0.8],
                 ["e", "C", "D", 0.4],
             ],
-            columns=["cell_id", "from", "to", "percentage"]
+            columns=["cell_id", "from", "to", "percentage"],
         )
         fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
-        fadata.add_trajectory(
-            milestone_network=milestone_network,
-            progressions=progressions
-        )
+        fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
         # expected result
         expected_milestone_network = pd.DataFrame(
@@ -725,7 +734,7 @@ class TestFateAnnData:
                 ["d", "A", "D", 0.6],
                 ["e", "A", "D", 0.8],
             ],
-            columns=["cell_id", "from", "to", "percentage"]
+            columns=["cell_id", "from", "to", "percentage"],
         )
 
         test_data = {
@@ -764,10 +773,7 @@ class TestFateAnnData:
         progressions = test_data["progressions"]
         fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
         milestone_network["directed"] = False  # undirected graph
-        fadata.add_trajectory(
-            milestone_network=milestone_network,
-            progressions=progressions
-        )
+        fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
         # execute function
         simplified_milestone_wrapper = fadata.simplify_trajectory()
@@ -785,7 +791,7 @@ class TestFateAnnData:
         # input data
         id = "bifurcation_directed"
         cell_ids = ["a", "b", "c", "d", "e", "f"]
-        milestone_ids = ["A", "B", "C", "D", "E", "F", "G"]
+        # milestone_ids = ["A", "B", "C", "D", "E", "F", "G"]
         milestone_network = pd.DataFrame(
             data=[
                 ["A", "B", 4, True],
@@ -806,23 +812,15 @@ class TestFateAnnData:
                 ["e", "E", "F", 0.5],
                 ["f", "E", "G", 0.5],
             ],
-            columns=["cell_id", "from", "to", "percentage"]
+            columns=["cell_id", "from", "to", "percentage"],
         )
 
         fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
-        fadata.add_trajectory(
-            milestone_network=milestone_network,
-            progressions=progressions
-        )
+        fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
         # expected result
         expected_milestone_network = pd.DataFrame(
-            data=[
-                ["A", "D", 5, True],
-                ["A", "E", 5, True],
-                ["E", "F", 1, True],
-                ["E", "G", 1, True]
-            ],
+            data=[["A", "D", 5, True], ["A", "E", 5, True], ["E", "F", 1, True], ["E", "G", 1, True]],
             columns=["from", "to", "length", "directed"],
         )
         expected_progressions = pd.DataFrame(
@@ -834,7 +832,7 @@ class TestFateAnnData:
                 ["e", "E", "F", 0.5],
                 ["f", "E", "G", 0.5],
             ],
-            columns=["cell_id", "from", "to", "percentage"]
+            columns=["cell_id", "from", "to", "percentage"],
         )
 
         test_data = {
@@ -873,10 +871,7 @@ class TestFateAnnData:
         progressions = test_data["progressions"]
         fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
         milestone_network["directed"] = False  # undirected graph
-        fadata.add_trajectory(
-            milestone_network=milestone_network,
-            progressions=progressions
-        )
+        fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
         # execute function
         simplified_milestone_wrapper = fadata.simplify_trajectory()
@@ -899,12 +894,14 @@ class TestFateAnnData:
                 ["e", "E", "F", 0.5],
                 ["f", "E", "G", 0.5],
             ],
-            columns=["cell_id", "from", "to", "percentage"]
+            columns=["cell_id", "from", "to", "percentage"],
         )
 
         # assert
         assert simplified_milestone_wrapper.milestone_network.equals(expected_milestone_network)
-        assert compare_dataframes_closely(simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id")  # TODO: 这里暂时有问题，progression里出现了milestone_network中没有的milestone
+        assert compare_dataframes_closely(
+            simplified_milestone_wrapper.progressions, expected_progressions, on_columns="cell_id"
+        )  # TODO: 这里暂时有问题，progression里出现了milestone_network中没有的milestone
 
 
 if __name__ == "__main__":

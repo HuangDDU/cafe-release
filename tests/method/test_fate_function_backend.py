@@ -1,8 +1,9 @@
-import pytest
-import cfe
-
 import os.path
+
+import pytest
 import scanpy as sc
+
+import cfe
 
 
 def get_test_run_data():
@@ -14,10 +15,7 @@ def get_test_run_data():
     cluster_key = "lineage"
     fadata.obs.index = fadata.obs["cell_id"]
     # prior_information,  parameters
-    prior_information = {
-        "start_id": "cell1",
-        "groups_id": fadata.obs[cluster_key].tolist()
-    }
+    prior_information = {"start_id": "cell1", "groups_id": fadata.obs[cluster_key].tolist()}
     parameters = {"filter_features": False}
     fadata.add_prior_information(**prior_information)  # add prior information to fadata
 
@@ -28,7 +26,6 @@ function_name = "cf_paga"
 
 
 class TestFunctionBackend:
-
     def setup_method(self):
         self.function_backend = cfe.method.FunctionBackend(function_name)
 

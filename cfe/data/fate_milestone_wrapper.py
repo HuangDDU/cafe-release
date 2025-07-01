@@ -1,20 +1,24 @@
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import Any
+
+import h5py
 import pandas as pd
+from anndata._io.specs.registry import (  # global I/O registry
+    _REGISTRY,
+    IOSpec,
+    Reader,
+    Writer,
+)
+from anndata._types import GroupStorageType
 
 from .._logging import logger
 from ..util import random_time_string
 from .fate_wrapper import FateWrapper
-import h5py
-
-from types import MappingProxyType
-from typing import Any
-from collections.abc import Mapping
-from anndata._io.specs.registry import _REGISTRY, IOSpec, Reader, Writer  # global I/O registry
-from anndata._types import GroupStorageType
 
 
 class MilestoneWrapper(FateWrapper):
-    """Wrapper for trajectory milestones
-    """
+    """Wrapper for trajectory milestones"""
 
     def __init__(
         self,
@@ -23,7 +27,7 @@ class MilestoneWrapper(FateWrapper):
         divergence_regions: pd.DataFrame = None,
         milestone_percentages: pd.DataFrame = None,
         progressions: pd.DataFrame = None,
-        name="MilestoneWrapper"
+        name="MilestoneWrapper",
     ):
         """Initialize the MilestoneWrapper class.
 
@@ -74,10 +78,7 @@ class MilestoneWrapper(FateWrapper):
         self.directed = milestone_network["directed"].any()
 
     @staticmethod
-    def convert_milestone_percentages_to_progressions(
-        milestone_network: pd.DataFrame,
-        milestone_percentages: pd.DataFrame
-    ) -> pd.DataFrame:
+    def convert_milestone_percentages_to_progressions(milestone_network: pd.DataFrame, milestone_percentages: pd.DataFrame) -> pd.DataFrame:
         """Convert: milestone_percentages -> progressions, "add_trajectory" test case use it
 
         Args:
@@ -91,7 +92,12 @@ class MilestoneWrapper(FateWrapper):
         # first merge based on "to" key result in many invalid cell_id-form relationship
         df1 = pd.merge(milestone_network, milestone_percentages, left_on="to", right_on="milestone_id")
         # second merge based on "to" key
-        df2 = pd.merge(df1, milestone_percentages[["cell_id", "milestone_id"]], left_on=["from", "cell_id"], right_on=["milestone_id", "cell_id"])
+        df2 = pd.merge(
+            df1,
+            milestone_percentages[["cell_id", "milestone_id"]],
+            left_on=["from", "cell_id"],
+            right_on=["milestone_id", "cell_id"],
+        )
         # TODO: if the two step merge can be done simutaneously?
         progr_part1 = df2[["cell_id", "from", "to", "percentage"]]
 
@@ -108,10 +114,7 @@ class MilestoneWrapper(FateWrapper):
         return progressions
 
     @staticmethod
-    def convert_progressions_to_milestone_percentages(
-        milestone_network: pd.DataFrame,
-        progressions: pd.DataFrame
-    ) -> pd.DataFrame:
+    def convert_progressions_to_milestone_percentages(milestone_network: pd.DataFrame, progressions: pd.DataFrame) -> pd.DataFrame:
         """Convert: progressions -> milestone_percentages, "add_trajectory_branch" test case use it
 
         ref: pydynverse/wrap/convert_progressions_to_milestone_percentages.convert_progressions_to_milestone_percentages
@@ -190,21 +193,28 @@ class MilestoneWrapper(FateWrapper):
 
 # TODO: read and write h5ad automatically. However, it will be error if the h5ad file is loaded in a new environment without cef moudle loaded.
 # attributes need to be read and written
-attribute_name_list = ["milestone_network", "cell_id_list", "divergence_regions", "milestone_percentages", "progressions", "name"]
+attribute_name_list = [
+    "milestone_network",
+    "cell_id_list",
+    "divergence_regions",
+    "milestone_percentages",
+    "progressions",
+    "name",
+]
 
 
-@_REGISTRY.register_write(dest_type=h5py.Group,  src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
+@_REGISTRY.register_write(dest_type=h5py.Group, src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
 def write_milestone_wrapper(
     f: GroupStorageType,
     k: str,
     milestone_wrapper: MilestoneWrapper,
     *,
     _writer: Writer,
-    dataset_kwargs: Mapping[str, Any] = MappingProxyType({})
+    dataset_kwargs: Mapping[str, Any] = MappingProxyType({}),
 ):
     # create h5 key and save for MilestoneWrapper and WaypointWrapper
     # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py write_anndata
-    print(f"write_milestone_wrapper")
+    # print(f"write_milestone_wrapper")
     g = f.require_group(k)
     for attribute_name in attribute_name_list:
         attribute = getattr(milestone_wrapper, attribute_name, None)
@@ -216,7 +226,7 @@ def write_milestone_wrapper(
 def read_milestone_wrapper(elem: GroupStorageType, *, _reader: Reader):
     # read and create MilestoneWrapper object
     # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
-    print(f"read_milestone_wrapper")
+    print("read_milestone_wrapper")
     d = {}
     for attribute_name in attribute_name_list:
         if attribute_name in elem:

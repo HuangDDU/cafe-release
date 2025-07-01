@@ -1,17 +1,14 @@
-from abc import ABC, abstractmethod
-import numpy as np
-import pandas as pd
 import h5py
+import numpy as np
 
 
-class FateWrapper(ABC):
-
+class FateWrapper:
     def __contains__(self, item):
         "check if have attribute"
         return hasattr(self, item)
 
     def keys(self):
-        """ return all attibute name, then the function dict() can be used"""
+        """return all attibute name, then the function dict() can be used"""
         return self.__dict__.keys()
 
     def __getitem__(self, key):

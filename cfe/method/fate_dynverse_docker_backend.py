@@ -1,22 +1,21 @@
-import tempfile
-import yaml
-import docker
-
-import os
 import json
+import os
 import subprocess
+import tempfile
 
+import docker
 import pandas as pd
 import rpy2.robjects as ro
 
 from .._logging import logger
 from ..data import FateAnnData
-from .fate_backend import DockerBackend, Definition
+from .fate_backend import DockerBackend
+
+# import yaml
 
 
 class DynverseDockerBackend(DockerBackend):
-    """DockerBackend: specific implementation of abstract Backend class using Dynverse Docker.
-    """
+    """DockerBackend: specific implementation of abstract Backend class using Dynverse Docker."""
 
     def __init__(self, image_id: str = "dynverse/ti_paga:v0.9.9.05"):
         """Initialize the DynverseDockerBackend class.
@@ -29,12 +28,7 @@ class DynverseDockerBackend(DockerBackend):
         self.image_id = image_id
         self.load_backend()  # implemented in DockerBackend
 
-    def preprocess(self,
-                   inputs: dict,
-                   parameters: dict,
-                   priors: dict,
-                   tmp_wd: dict,
-                   seed: int = 0) -> None:
+    def preprocess(self, inputs: dict, parameters: dict, priors: dict, tmp_wd: dict, seed: int = 0) -> None:
         """Preproces: create input.h5 for dynverse docker execute
 
         ref: pydynverse/wrap/method_create_ti_method_container._method_execution_preproc_container
@@ -165,7 +159,7 @@ class DynverseDockerBackend(DockerBackend):
 
 # ====================================================================================================
 # ref: pydynverse/util/h5.py
-class DynverseDockerInput():
+class DynverseDockerInput:
     def __init__(self, expression, expression_id, cell_ids, feature_ids, parameters, priors, seed, verbose):
         from scipy import sparse
 
@@ -191,7 +185,7 @@ class DynverseDockerInput():
             "Dim": self.expression.shape,
             # TODO: 表达矩阵行、列名称，暂时这样写，后续再把真实的拉进来
             "rownames": list(self.cell_ids),
-            "colnames": list(self.feature_ids)
+            "colnames": list(self.feature_ids),
         }
         input_json = {
             self.expression_id: expression_dict,
@@ -199,7 +193,7 @@ class DynverseDockerInput():
             "parameters": self.parameters,
             "priors": self.priors,
             "seed": self.seed,
-            "verbose": self.verbose
+            "verbose": self.verbose,
         }
         # logger.debug(input_json)
         # 对于稀疏矩阵的特殊处理
@@ -212,8 +206,13 @@ class DynverseDockerInput():
         # 调用R脚本，把生成的json文件转化为h5文件，作为dynverse docker容器需要的的输入
         Rscript_filename = f"{os.path.dirname(__file__)}/../rscript/docker_input_json2h5.R"
         logger.debug(f"h52json script: {Rscript_filename}")
-        command_list = [Rscript_filename, "--input_json_filename",
-                        self.input_json_filename, "--input_h5_filename", input_h5_filename]
+        command_list = [
+            Rscript_filename,
+            "--input_json_filename",
+            self.input_json_filename,
+            "--input_h5_filename",
+            input_h5_filename,
+        ]
         result = subprocess.run(command_list, capture_output=True, text=True)
         logger.debug(result)
         if result.returncode == 0:
@@ -225,20 +224,24 @@ class DynverseDockerInput():
         return f"{self.expression}"  # 目前查看稀疏矩阵是最直观的输入
 
 
-class DynverseDockerOutput():
+class DynverseDockerOutput:
     def __init__(self):
         self.id = None
         self.pseudotime = None
 
     def h52json(self, output_h5_filename, output_json_filename):
-
         self.output_h5_filename = output_h5_filename
         self.output_json_filename = output_json_filename
         # 调用R脚本，把dynverse docker的输出的h5文件转化JSON文件
         Rscript_filename = f"{os.path.dirname(__file__)}/../rscript/docker_output_h52json.R"
         logger.debug(f"h52json script: {Rscript_filename}")
-        command_list = [Rscript_filename, "--output_h5_filename",
-                        output_h5_filename, "--output_json_filename", output_json_filename]
+        command_list = [
+            Rscript_filename,
+            "--output_h5_filename",
+            output_h5_filename,
+            "--output_json_filename",
+            output_json_filename,
+        ]
         result = subprocess.run(command_list, capture_output=True, text=True)
         logger.debug(result)
         if result.returncode == 0:
@@ -250,8 +253,7 @@ class DynverseDockerOutput():
         # 读取json
         with open(self.output_json_filename, "r") as f:
             output_json = json.load(f)
-        logger.debug(
-            f"Save json successfully, path: {self.output_json_filename}")
+        logger.debug(f"Save json successfully, path: {self.output_json_filename}")
         # 解析JSON
         # 暂时简单设置属性, 后续需要使用数据类型, 再对应转换
         self.id = output_json["id"]
@@ -265,10 +267,8 @@ class DynverseDockerOutput():
         self.progressions = pd.DataFrame(self.progressions)
         self.divergence_regions = None if (len(self.divergence_regions) == 0) else pd.DataFrame(self.divergence_regions)
         self.dimred = pd.DataFrame(self.dimred, index=self.cell_ids)
-        self.dimred_segment_progressions = pd.DataFrame(
-            output_json["dimred_segment_progressions"])
-        self.dimred_segment_points = pd.DataFrame(
-            output_json["dimred_segment_points"])
+        self.dimred_segment_progressions = pd.DataFrame(output_json["dimred_segment_progressions"])
+        self.dimred_segment_points = pd.DataFrame(output_json["dimred_segment_points"])
 
         # json文件添加，方便查可能不同轨迹推断类型对于wrapper的输出
         self.output_json = output_json
@@ -309,7 +309,7 @@ def write_h5(x, h5_filename, via_json=True):
             parameters=x["parameters"],
             priors=x["priors"],
             seed=x["seed"],
-            verbose=x["verbose"]
+            verbose=x["verbose"],
         )
         dynverse_docker_input.save_json(input_json_filename)
         dynverse_docker_input.json2h5(input_h5_filename)
@@ -319,7 +319,8 @@ def write_h5(x, h5_filename, via_json=True):
         task[expression_id] = None
         ro.globalenv["task"] = ro.ListVector(task)  # 待添加的内容转换到R变量里
         ro.globalenv["h5_filename"] = ro.ListVector(h5_filename)  # 待添加的内容转换到R变量里
-        ro.r("dynutils::write_h5(task, file.path(paths$dir_dynwrap, h5_filename))")  # 调用R修改
+        # 调用R修改
+        ro.r("dynutils::write_h5(task, file.path(paths$dir_dynwrap, h5_filename))")
 
 
 def read_h5(h5_filename, via_json=True):

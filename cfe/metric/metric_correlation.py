@@ -7,10 +7,7 @@ from scipy.stats import spearmanr
 from cfe.data import FateAnnData
 
 
-def calc_correlation(
-    fadata_ref: FateAnnData,
-    fadata_pred: FateAnnData
-) -> dict:
+def calc_correlation(fadata_ref: FateAnnData, fadata_pred: FateAnnData) -> dict:
     """
     计算 FateAnnData 数据集与预测模型之间的地理距离相关性。
 
@@ -35,7 +32,7 @@ def calc_correlation(
         raise ValueError("Prediction model must contain waypoint cells")
     """
     if fadata_pred is None:
-        return {'correlation': 0.0}
+        return {"correlation": 0.0}
 
     # 确保预测中的细胞都在参考数据中
     ref_cell_ids = list(fadata_ref.obs.index)
@@ -60,14 +57,15 @@ def calc_correlation(
     # 计算地理距离矩阵（调用 waypoint_wrapper 内部方法 _calculate_geodesic_distances）
     start_time = time.time()
     ref_dist = wp_ref._calculate_geodesic_distances()  # DataFrame：索引为 waypoint_id，列为 cell_id
-    metrics['time_waypoint_geodesic_ref'] = time.time() - start_time
+    metrics["time_waypoint_geodesic_ref"] = time.time() - start_time
 
     start_time = time.time()
     pred_dist = wp_pred._calculate_geodesic_distances()
-    metrics['time_waypoint_geodesic_pred'] = time.time() - start_time
+    metrics["time_waypoint_geodesic_pred"] = time.time() - start_time
 
     # 将无限值替换为最大浮点数
     max_float = sys.float_info.max
+
     def replace_inf(df, max_float):
         return df.replace([np.inf, -np.inf], max_float).to_numpy(dtype=np.float64)
 
@@ -85,7 +83,7 @@ def calc_correlation(
     else:
         corr, _ = spearmanr(ref_arr.flatten(), pred_arr.flatten())
         corr = max(corr, 0.0)
-    metrics['correlation'] = corr
-    metrics['time_correlation'] = time.time() - start_time
+    metrics["correlation"] = corr
+    metrics["time_correlation"] = time.time() - start_time
 
     return metrics

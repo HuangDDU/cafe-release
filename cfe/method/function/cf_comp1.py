@@ -2,11 +2,7 @@ import anndata as ad
 import scanpy as sc
 
 
-def cf_comp1(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_comp1(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
 

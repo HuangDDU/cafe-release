@@ -1,14 +1,13 @@
-from scipy.stats import norm
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import networkx as nx
-
+import numpy as np
+import pandas as pd
 import scanpy as sc
+from scipy.stats import norm
 
 from .._logging import logger
 from ..data import FateAnnData
-from .add_color import add_milestone_color, add_milestone_cell_color
+from .add_color import add_milestone_cell_color, add_milestone_color
 
 
 def plot_trajectory_new(
@@ -21,7 +20,7 @@ def plot_trajectory_new(
     size_milestones: int = 30,
     size_transitions: int = 2,
     save: str = None,
-    ** sc_pl_embedding_kwargs
+    **sc_pl_embedding_kwargs,
 ) -> None:
     """Plot cell embedding and trajectory with different color for now model by fadata.model_name
 
@@ -99,6 +98,7 @@ def plot_trajectory_new(
 
             # plot arrow at the midpoint of edge.
             if directed:
+
                 def get_arrow_df(group):
                     group = group.sort_values(by="percentage")
                     start = group.iloc[0]
@@ -110,13 +110,9 @@ def plot_trajectory_new(
                     scale = target_norm / np.linalg.norm([dx, dy])
                     dx = scale * dx
                     dy = scale * dy
-                    s = pd.Series({
-                        "x": start["comp_1"],
-                        "y": start["comp_2"],
-                        "dx": dx,
-                        "dy": dy
-                    })
+                    s = pd.Series({"x": start["comp_1"], "y": start["comp_2"], "dx": dx, "dy": dy})
                     return s
+
                 arrow_df = wp_segments[wp_segments["arrow"]].groupby("group").apply(get_arrow_df)
                 ax.quiver(arrow_df["x"], arrow_df["y"], arrow_df["dx"], arrow_df["dy"])
             if color_trajectory is None:
@@ -130,7 +126,7 @@ def plot_trajectory_new(
                 milestone_wrapper["milestone_network"],
                 source="from",
                 target="to",
-                create_using=nx.DiGraph if directed else nx.Graph
+                create_using=nx.DiGraph if directed else nx.Graph,
             )
 
             # get milestone positions
@@ -140,6 +136,7 @@ def plot_trajectory_new(
                     return f
                 else:
                     return t
+
             milestone_positions.apply(lambda row: get_milestone, axis=1)
             milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
             milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
@@ -154,7 +151,7 @@ def plot_trajectory_new(
                 arrowsize=15,
                 linewidths=3,
                 edgecolors="black",
-                ax=ax
+                ax=ax,
             )
 
             # TODO: legend  setting
@@ -164,11 +161,7 @@ def plot_trajectory_new(
     return ax
 
 
-def project_waypoints(
-    fadata: FateAnnData,
-    cell_positions: pd.DataFrame,
-    trajectory_projection_sd: float = None
-) -> dict:
+def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, trajectory_projection_sd: float = None) -> dict:
     """projectory waypoint into embbeding space
 
     ref: pydynverse/plot/project_waypoints.project_waypoints_coloured
@@ -219,6 +212,7 @@ def project_waypoints(
         closest_index = (group["percentage"] - 0.5).abs().idxmin()
         group["arrow"] = (group.index == closest_index) | (group.index == closest_index + 1)  # arrow column
         return group
+
     segments = segments.groupby("group").apply(calculate_closest_and_arrow).reset_index(drop=True)
 
     waypoint_projection = {"segments": segments}

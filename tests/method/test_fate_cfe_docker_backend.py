@@ -1,14 +1,14 @@
-import pytest
-import cfe
-
 import docker
+import pytest
+
+import cfe
 
 from .test_fate_function_backend import get_test_run_data
 
 image_id = "huangzhaoyang/cf_paga:0.0.1"
 
 
-class TestCFEDockerBackend():
+class TestCFEDockerBackend:
     def setup_method(self):
         self.cfe_docker = cfe.method.CFEDockerBackend(image_id)
 
