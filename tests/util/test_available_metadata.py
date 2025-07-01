@@ -1,6 +1,7 @@
-import pytest
-import cfe
 import pandas as pd
+import pytest
+
+import cfe
 
 
 def test_get_available_method_df():
@@ -11,3 +12,7 @@ def test_get_available_method_df():
 def get_available_dataset_df():
     # TODO:
     pass
+
+
+if __name__ == "__main__":
+    pytest.main(["-v", __file__])

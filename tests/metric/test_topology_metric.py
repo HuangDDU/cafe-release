@@ -14,47 +14,17 @@ from cfe.metric._topology_metric.metric_him import (
 def test_metric_isomorphic():
     net1 = pd.DataFrame(
         data=[
-            [
-                "A",
-                "B",
-                1,
-                True,
-            ],
-            [
-                "B",
-                "C",
-                1,
-                True,
-            ],
-            [
-                "C",
-                "D",
-                1,
-                True,
-            ],
+            ["A", "B", 1, True],
+            ["B", "C", 1, True],
+            ["C", "D", 1, True],
         ],
         columns=["from", "to", "length", "direction"],
     )
     net2 = pd.DataFrame(
         data=[
-            [
-                "A",
-                "B",
-                1,
-                True,
-            ],
-            [
-                "B",
-                "C",
-                1,
-                True,
-            ],
-            [
-                "B",
-                "D",
-                1,
-                True,
-            ],
+            ["A", "B", 1, True],
+            ["B", "C", 1, True],
+            ["B", "D", 1, True],
         ],
         columns=["from", "to", "length", "direction"],
     )
@@ -67,46 +37,16 @@ def test_metric_flip_linear_bifurcation():
     linear = pd.DataFrame(
         columns=["from", "to", "length", "directed"],
         data=[
-            [
-                "A",
-                "B",
-                1,
-                True,
-            ],
-            [
-                "B",
-                "C",
-                2,
-                True,
-            ],
-            [
-                "C",
-                "D",
-                3,
-                True,
-            ],
+            ["A", "B", 1, True],
+            ["B", "C", 2, True],
+            ["C", "D", 3, True],
         ],
     )  # 会对线性简化
     bifurcatiion = pd.DataFrame(
         data=[
-            [
-                "A",
-                "B",
-                1,
-                True,
-            ],
-            [
-                "B",
-                "C",
-                2,
-                True,
-            ],
-            [
-                "B",
-                "D",
-                3,
-                True,
-            ],
+            ["A", "B", 1, True],
+            ["B", "C", 2, True],
+            ["B", "D", 3, True],
         ],
         columns=["from", "to", "length", "directed"],
     )

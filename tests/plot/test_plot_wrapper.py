@@ -1,8 +1,9 @@
-import pytest
-import cfe
-
 import os
+
 import matplotlib.pyplot as plt
+import pytest
+
+import cfe
 
 from .test_plot_trajectory import get_plot_fadata
 

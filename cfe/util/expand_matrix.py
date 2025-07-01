@@ -1,5 +1,6 @@
 import pandas as pd
-import scipy.sparse as sp
+
+# import scipy.sparse as sp
 
 
 def expand_matrix(mat, rownames=None, colnames=None, fill=0):
