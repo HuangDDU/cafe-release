@@ -39,7 +39,7 @@ jobs:
         docker --version
         R --version
         python --version
-        # docker pull  huangzhaoyang/cf_paga:0.0.1
+        docker pull  huangzhaoyang/cf_paga:0.0.1
 
     - name: Install Graphviz
       run: |
