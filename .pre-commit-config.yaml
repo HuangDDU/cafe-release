@@ -37,7 +37,7 @@ repos:
     hooks:
       - id: pytest
         name: Run tests (pre-push)
-        entry: bash -c "PYTHONUNBUFFERED=1 pytest -v -s --color=yes 2>&1 | tee /dev/tty"
+        entry: bash -c "PYTHONUNBUFFERED=1 pytest -s --color=yes 2>&1 | tee /dev/tty"
         language: system
         pass_filenames: false
         always_run: true
