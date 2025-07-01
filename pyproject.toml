@@ -26,9 +26,9 @@ filterwarnings = [
 # 核心配置
 addopts = [
     "--capture=sys",  # 严格捕获所有输出
+    "--no-summary",   # 隐藏统计信息
     # "-q",             # 静默模式
     # "--no-header",    # 隐藏头部信息
-    # "--no-summary",   # 隐藏统计信息
     # "--tb=no",       # 隐藏错误回溯
     # "--no-showlocals" # 隐藏局部变量
 ]
