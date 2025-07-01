@@ -26,10 +26,6 @@ repos:
     rev: 6.1.0
     hooks:
       - id: flake8
-        args: [
-          "--max-line-length=1000", # 代码格式化过，就不关注单行代码长度了, 有的注释可能过长
-          "--ignore=B008,B006,E741", # 忽略一些不必要的检查
-        ]  # 可选参数
         additional_dependencies: [flake8-bugbear]  # 可选插件
 
 # push的时候需要通过所有测试用例, 这里pytest的配置会在pyproject.toml中
@@ -41,4 +37,5 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+        verbose: true  # 强制显示实时输出
         stages: [pre-push]  # 只在 push 时运行
