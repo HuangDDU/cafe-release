@@ -42,3 +42,4 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]  # 关键：只在 push 时运行
+        
