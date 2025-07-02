@@ -1,5 +1,6 @@
 def test_black(para1):
     print("test black 8")
+
     # line-length test
     print("test black 8, test black 8, test black 8, test black 8, test black 8, test black 8, test black 8, test black 8, test black 8")
 
