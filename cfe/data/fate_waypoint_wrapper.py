@@ -46,7 +46,7 @@ class WaypointWrapper(FateWrapper):
         # need to be deleted after __init__ function
         self.milestone_wrapper = milestone_wrapper
         self._select_waypoints(n_waypoints, transform, resolution)
-        del self.milestone_wrapper  # delete the attribute to save memory
+        # del self.milestone_wrapper  # delete the attribute to save memory
 
     def _select_waypoints(
         self,
