@@ -907,6 +907,18 @@ class FateAnnData(ad.AnnData):
     #         cluster_key=cluster_key
     #     )
 
+    def add_metric(
+        self,
+        metric_dict: dict,
+        model_name: str = None,
+    ):
+        if model_name is None:
+            model_name = self.model_name
+        self.trajectory_history_dict[model_name]["metric_dict"] = metric_dict
+
+    def get_metric(self):
+        pass
+
     def group_onto_trajectory_edges(self, cluster_key="_cfe_te_group"):
         """group cells to edges
         ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_trajectory_edges
@@ -1012,14 +1024,14 @@ class FateAnnData(ad.AnnData):
             milestone_color_dict = self.uns["milestone_color_dict"]
             for k in milestone_color_dict:
                 milestone_color_dict[k] = list(milestone_color_dict[k])
-            print("transfer milestone color from tuple to list")
+            logger.debug("transfer milestone color from tuple to list")
         # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
         for k in self.trajectory_history_dict:
             if isinstance(self.trajectory_history_dict[k]["milestone_wrapper"], dict):
-                # print(f"{k} milestone_wrapper is dict, skip transfer")
+                logger.debug(f"{k} milestone_wrapper is dict, skip transfer")
                 continue
             else:
-                print(f"transfer '{k}' to dict")
+                logger.debug(f"transfer '{k}' to dict")
                 milestone_wrapper = self.trajectory_history_dict[k]["milestone_wrapper"]
                 self.trajectory_history_dict[k]["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
                 waypoint_wrapper = self.trajectory_history_dict[k]["waypoint_wrapper"]
@@ -1032,6 +1044,69 @@ class FateAnnData(ad.AnnData):
                 self.trajectory_history_dict[k]["waypoint_wrapper"] = waypoint_wrapper.__dict__
                 # self.trajectory_history_dict[k]["waypoint_wrapper"] = {}
         super().write(filename)
+
+    def launch_cellxgene(self, tmp_filename=".tmp.h5ad", trajectory=False, port=5005, conda_env="cfe"):  # if show trajectory
+        import os
+        import subprocess
+        import threading
+        import time
+        import webbrowser
+
+        def print_output(pipe, prefix):
+            """print output from a pipe"""
+            for line in iter(pipe.readline, ""):
+                if line:
+                    logger.debug(f"{prefix}{line.rstrip()}")
+            pipe.close()
+
+        # 1. save as tmp.h5ad
+        self.write_h5ad(tmp_filename)
+        logger.debug(f"write h5ad to {tmp_filename}")
+        logger.debug("-" * 50)
+
+        # 2. launch cellxgene
+        # construct command
+        if trajectory:
+            # TODO: local frontend and backend development version need be packaged
+            # TODO: cxgxf打包后要能够一键执行
+            # client_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-frontend"
+            # subprocess.Popen(client_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # frontend: react, ignore output
+            # server_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-server"
+            # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
+            # logger.info("cellxgene with trajectory must run on port: 3000")
+            # port = 3000
+            conda_env = "cfe"
+            cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+        else:
+            conda_env = "cellxgene"
+            cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+            # conda activate + conda_env (usually use but not valid here)
+            # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
+            logger.debug(f"execute command: {cmd}")
+            # execuate command (NOTE: python_function can be executed in this way by conda)
+            process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        threading.Thread(target=print_output, args=(process.stdout, "[stdout]"), daemon=True).start()
+        threading.Thread(target=print_output, args=(process.stderr, "[stderr]"), daemon=True).start()
+        # open browser (NOTE: refresh browser if not valid)
+        host = "127.0.0.1"
+        time.sleep(5)  # wait for server to start
+        if process.poll() is None:
+            url = f"http://{host}:{port}"
+            logger.info(f"🌐 Server start at: {url}")
+            webbrowser.open(url)
+            logger.debug("📝 Show cellxgene log")
+        # wait for process
+        try:
+            process.wait()
+        except KeyboardInterrupt:
+            logger.debug("-" * 50)
+            logger.info("🛑 Server top!!!")
+            process.terminate()
+            process.wait()
+
+        # 3. delete tmp.h5ad
+        logger.debug(f"remove {tmp_filename}")
+        os.remove(tmp_filename)
 
 
 def read_h5ad(*args, **kwargs):
