@@ -80,8 +80,7 @@ def plot_graph(fadata):
 def plot_velocity(fadata):
     import scvelo as scv
 
-    rwd = fadata.raw_wrapper_dict
-
+    # rwd = fadata.raw_wrapper_dict
     # use velocity matrix in high dimensional space to recompute low dimensional velocity.
     # cell_index = rwd["cell_index"]
     # gene_index = rwd["gene_index"]
@@ -89,10 +88,8 @@ def plot_velocity(fadata):
     # adata = fadata[cell_index, gene_index]
     # adata.layers["velocity"] = fadata.raw_wrapper_dict["velocity"]
     # adata.uns["neighbors"] = neighbors
-
     # scv.tl.velocity_graph(adata)
     # scv.pl.velocity_embedding_stream(adata, basis="umap", n_neighbors=min(neighbors["params"]["n_neighbors"], adata.shape[0]))
-
     # directly use velocity_adata
-    velocity_adata = rwd["velocity_adata"]
-    scv.pl.velocity_embedding_stream(velocity_adata)
+    # velocity_adata = rwd["velocity_adata"]
+    scv.pl.velocity_embedding_stream(fadata)

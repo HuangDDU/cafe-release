@@ -1,5 +1,5 @@
-from .sample import sample
+from .subsample import subsample
 
 __all__ = [
-    "sample",
+    "subsample",
 ]

@@ -276,6 +276,13 @@ class WaypointWrapper(FateWrapper):
         edgelist_df = pd.concat([milestone_network, cell_in_tent_distances]).groupby(["from", "to"]).agg({"length": "min"}).reset_index()
         # merge two graph to one graph
         gr = ig.Graph.TupleList(edgelist_df.values, edge_attrs=["length"])
+        # TODO: unconnected graph may corrupt
+        # print("=========================")
+        # print("edgelist_df:\n", edgelist_df)
+        # edgelist_df.to_csv("test.csv")
+        # # print("gr:\n", gr)
+        # print("waypoint_id_list:\n", waypoint_id_list)
+        # print("cell_id_list:\n", cell_id_list)
         shortest_paths = gr.shortest_paths(source=waypoint_id_list, target=cell_id_list, weights="length", mode=mode)
         out = pd.DataFrame(shortest_paths, index=waypoint_id_list, columns=cell_id_list)
 

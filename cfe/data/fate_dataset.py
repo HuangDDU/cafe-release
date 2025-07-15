@@ -1,6 +1,7 @@
 import pandas as pd
 import scanpy as sc
 
+from ..preprocess import subsample
 from .fate_anndata import FateAnnData
 
 # class FateDataset():
@@ -23,31 +24,19 @@ from .fate_anndata import FateAnnData
 #         pass
 
 
-# TODO: add to public directory
+# TODO: use decorator to subsample cell from dataset
+
+
 def read_bonemarrow(
     filename="/home/huang/PyCode/scRNA/data/BoneMarrow/setty_bone_marrow.h5ad",
     cluster_key="clusters",
     basis="X_tsne",
-    n_obs=-1,
-    save_cell_list=[],
+    **kwargs,  # subsample args
 ):
-    # read case study dataset of palantir and scvelo: bone marrow
+    """read case study dataset of palantir and scvelo: bone marrow"""
+
     adata = sc.read_h5ad(filename)
-
-    # TODO: abstractly extract from the function to common tools
-    # subsample and save a subset of cells such as start or terminal state cells.
-    if n_obs > 0:
-        if len(save_cell_list) > 0:
-            adata_save = adata[save_cell_list, :].copy()
-            n_obs -= len(adata_save)
-            adata = adata[~(adata.obs.index.map(lambda x: x in save_cell_list))].copy()
-        else:
-            adata_save = None
-
-        sc.pp.subsample(adata, n_obs=n_obs)  # subsample
-
-        if adata_save is not None:
-            adata = sc.concat([adata_save, adata])
+    subsample(adata, **kwargs)
 
     fadata = FateAnnData.from_anndata(adata)
     # fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
@@ -80,11 +69,11 @@ def read_erythroid_lineage(
     n_obs=-1,
     cluster_key="celltype",
     basis="X_umap",
+    **kwargs,  # subsample args
 ):
-    # read case study dataset of palantir and scvelo: bone marrow
     adata = sc.read_h5ad(filename)
-    if n_obs > 0:
-        sc.pp.subsample(adata, n_obs=n_obs)  # subsample
+    subsample(adata, **kwargs)
+
     fadata = FateAnnData.from_anndata(adata)
 
     milestone_network = pd.DataFrame(
@@ -114,13 +103,15 @@ def read_pancrease(
     filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.h5ad",
     basis="X_umap",
     cluster_key="clusters",
-    n_obs=-1,
+    **kwargs,  # subsample args
 ):
-    # read scvelo case study dataset: pancrease
+    """read scvelo case study dataset: pancrease"""
+
     adata = sc.read_h5ad(filename)
-    if n_obs > 0:
-        sc.pp.subsample(adata, n_obs=n_obs)  # subsample
+    adata = subsample(adata, **kwargs)
+
     fadata = FateAnnData.from_anndata(adata)
+
     fadata.layers["expression"] = fadata.layers["spliced"]
     fadata.layers["count"] = fadata.layers["spliced"]
     fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
@@ -151,12 +142,13 @@ def read_pancrease_cellrank(
     filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.5_velocity_kernel.h5ad",
     basis="X_umap",
     cluster_key="clusters",
-    n_obs=-1,
+    **kwargs,  # subsample args
 ):
-    # read cellrank case study dataset: pancrease
+    """read cellrank case study dataset: pancrease"""
+
     adata = sc.read_h5ad(filename)
-    if n_obs > 0:
-        sc.pp.subsample(adata, n_obs=n_obs)  # subsample
+    adata = subsample(adata, **kwargs)
+
     fadata = FateAnnData.from_anndata(adata)
     fadata.layers["expression"] = fadata.layers["spliced"]
     fadata.layers["count"] = fadata.layers["spliced"]
