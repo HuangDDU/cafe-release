@@ -1,0 +1,28 @@
+method:
+  id: velovi
+  name: veloVI
+  version: 0.0.1
+  tool_id: velovi
+  source: tool
+  platform: Python
+  url: https://github.com/yoseflab/velovi
+
+wrapper:
+  type: velocity
+  input_required:
+  - counts
+  input_optional:
+  - cluster_key # prior_information
+
+# TODO: add docker container
+container:
+  docker: cfe/cf_velovi
+
+manuscript:
+  doi: doi.org/10.1038/s41592-023-01994-w
+
+parameters:
+- id: max_epochs
+  description: Max number of epochs for velocity parameters estimation.
+  type: integer
+  default: 10

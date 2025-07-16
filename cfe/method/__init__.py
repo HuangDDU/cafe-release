@@ -13,6 +13,7 @@ from .function import (
     cf_projection_mst,
     cf_scvelo,
     cf_state_comp,
+    cf_velovi,
 )
 
 __all__ = [
@@ -30,4 +31,5 @@ __all__ = [
     "cf_projection_mst",
     "cf_graph_mst",
     "cf_scvelo",
+    "cf_velovi",
 ]

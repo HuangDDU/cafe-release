@@ -36,6 +36,10 @@ scvelo:
   python_function: cf_scvelo
   conda_env: cfe
 
+velovi:
+  python_function: cf_velovi
+  conda_env: scvi-env
+
 palantir:
   python_function: cf_palantir
 
