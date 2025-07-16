@@ -1,20 +1,19 @@
 import logging
 
+from rich.console import Console
+from rich.logging import RichHandler
+
 __all__ = ["logger"]
 
 
 def _setup_logger() -> "logging.Logger":
-    from rich.console import Console
-    from rich.logging import RichHandler
-
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    console = Console(force_terminal=True)
+    console = Console(width=200, force_terminal=True)
     if console.is_jupyter is True:
         console.is_jupyter = False
-    ch = RichHandler(show_path=False, console=console)
-    # ch.setFormatter(logging.Formatter("%(name)s -%(filename)s:%(lineno)d - %(message)s")) # reset format
-    logger.addHandler(ch)
+    handler = RichHandler(log_time_format="[%m/%d/%Y %I:%M:%S]", show_path=False, console=console)
+    logger.addHandler(handler)
 
     # this prevents double outputs
     logger.propagate = False

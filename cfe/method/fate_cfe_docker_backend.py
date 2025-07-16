@@ -52,7 +52,6 @@ class CFEDockerBackend(DockerBackend):
         Returns:
             dict: trajectory dict
         """
-        tmp_wd
         trajectory_dict = {}
 
         client = docker.from_env()

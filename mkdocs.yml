@@ -4,26 +4,27 @@ repo_name: HuangDDU/CellFateExplorer
 
 nav:
   - Home: index.md
+
   - Tutorial:
       - Tutorial Summary: tutorial.md
       - Quick Start: tutorial/quickstart.ipynb
       - Benchmark: tutorial/benchmark.ipynb
+
   - API:
       - API Summary: api.md
       - Data:
           - FateAnnData: api/data/fate_anndata.md
           - MilestoneWrapper: api/data/fate_milestone_wrapper.md
           - WaypointWrapper: api/data/fate_waypoint_wrapper.md
-
       - Method:
           - FateMethod: api/method/fate_method.md
-
       - Metric:
           - TopologyMetric: api/metric/topology_metric.md
           - ClusterMetric: api/metric/cluster_metric.md
-
       - Plot:
           - plot_trajectory: api/plot/plot_trajectory.md
+  - Development:
+    - Method: development/method.md
   - Shedule:
       - Shedule Summary: shedule.md
       - Data: shedule/data.md
@@ -31,9 +32,11 @@ nav:
       - Plot: shedule/plot.md
       - Benchmark: shedule/benchmark.md
       - Downstream Analysis: shedule/downstream_analysis.md
-
   - Change Log: change_log.md
 
+extra_css:
+  - stylesheets/style.css
+  
 theme:
   name: material
   language: en
@@ -41,6 +44,7 @@ theme:
   features:
     # - navigation.expand
     - navigation.tracking
+    - content.code.annotate  # 优化代码块显示
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default

@@ -1,32 +1,40 @@
 paga:
   python_function: cf_paga
   cfe_docker: huangzhaoyang/cf_paga:0.0.1
+  conda_env: cfe
 
 comp1:
   python_function: cf_comp1
   cfe_docker: huangzhaoyang/cf_comp1:0.0.1
+  conda_env: cfe
 
 angle:
   python_function: cf_angle
   cfe_docker: huangzhaoyang/cf_angle:0.0.1
+  conda_env: cfe
 
 cluster_mst:
   python_function: cf_cluster_mst
   cfe_docker: huangzhaoyang/cf_cluster_mst:0.0.1
+  conda_env: cfe
 
 state_comp:
   python_function: cf_state_comp
   cfe_docker: huangzhaoyang/cf_state_comp:0.0.1
+  conda_env: cfe
 
 projection_mst:
   python_function: cf_projection_mst
   dynverse_docker: dynverse/ti_mst:v0.9.9.01
+  conda_env: cfe
 
 graph_mst:
   python_function: cf_graph_mst
+  conda_env: cfe
 
 scvelo:
   python_function: cf_scvelo
+  conda_env: cfe
 
 palantir:
   python_function: cf_palantir

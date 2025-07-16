@@ -1034,31 +1034,33 @@ class FateAnnData(ad.AnnData):
         }
 
     def write_h5ad(self, filename):
+        # TODO: write minmal h5ad file for conda or docker run.
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
         # transfer the milestone color of milestones transfer from tuple to list
         if ("milestone_color_dict" in self.uns) and (type(next(iter(self.uns["milestone_color_dict"].values()))) == tuple):
             milestone_color_dict = self.uns["milestone_color_dict"]
             for k in milestone_color_dict:
                 milestone_color_dict[k] = list(milestone_color_dict[k])
-            print("transfer milestone color from tuple to list")
+            logger.debug("transfer milestone color from tuple to list")
         # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
         for k in self.trajectory_history_dict:
-            if isinstance(self.trajectory_history_dict[k]["milestone_wrapper"], dict):
-                # print(f"{k} milestone_wrapper is dict, skip transfer")
-                continue
-            else:
-                print(f"transfer '{k}' to dict")
-                milestone_wrapper = self.trajectory_history_dict[k]["milestone_wrapper"]
-                self.trajectory_history_dict[k]["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
-                waypoint_wrapper = self.trajectory_history_dict[k]["waypoint_wrapper"]
+            logger.debug(f"transfer trajectory history: '{k}' to dict")
+            trajectory_history = self.trajectory_history_dict[k]
+            # transfer milestone object to dict
+            milestone_wrapper = trajectory_history.get("milestone_wrapper", None)
+            if (milestone_wrapper is not None) and (not isinstance(milestone_wrapper, dict)):
+                trajectory_history["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
+            # transfer waypoint object to dict
+            waypoint_wrapper = trajectory_history.get("waypoint_wrapper", None)
+            if (waypoint_wrapper is not None) and (not isinstance(waypoint_wrapper, dict)):
                 if hasattr(waypoint_wrapper, "milestone_wrapper"):
                     # MilestoneWrapper object need to be remove from attribute
                     delattr(waypoint_wrapper, "milestone_wrapper")
                 waypoint_wrapper.waypoints = waypoint_wrapper.waypoints.replace(
                     {None: ""}
                 )  # fill the None value with empty string in milestone_id column
-                self.trajectory_history_dict[k]["waypoint_wrapper"] = waypoint_wrapper.__dict__
-                # self.trajectory_history_dict[k]["waypoint_wrapper"] = {}
+                trajectory_history["waypoint_wrapper"] = waypoint_wrapper.__dict__
+            self.trajectory_history_dict[k] = trajectory_history
         super().write(filename)
 
 
