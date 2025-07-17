@@ -23,6 +23,7 @@ class MilestoneWrapper(FateWrapper):
     def __init__(
         self,
         milestone_network: pd.DataFrame,
+        milestone_id_list: list = None,
         cell_id_list: list = None,
         divergence_regions: pd.DataFrame = None,
         milestone_percentages: pd.DataFrame = None,
@@ -33,6 +34,7 @@ class MilestoneWrapper(FateWrapper):
 
         Args:
             milestone_network (pd.DataFrame): milestone network with column list: ["from", "to", "length", "directed"]
+            id_list(list): milstone id list, should be specified if there is a discrete milestone
             divergence_regions (pd.DataFrame, optional): divergence regions with column list: ["divergence_id", "milestone_id", "is_start"].
             milestone_percentages (pd.DataFrame, optional): milestone percentage with column list: ["cell_id", "milestone_id", "percentage"].
             progressions (pd.DataFrame, optional): progressions with  column list: ["cell_id", "from", "to", "percentage"].
@@ -43,7 +45,11 @@ class MilestoneWrapper(FateWrapper):
         """
         self.id = random_time_string(name)
         self.milestone_network = milestone_network
-        self.id_list = milestone_network[["from", "to"]].stack().unique().tolist()
+        # if there is a discrete milestone, milestone id should be specified
+        if milestone_id_list is None:
+            self.id_list = milestone_network[["from", "to"]].stack().unique().tolist()
+        else:
+            self.id_list = milestone_id_list
 
         if divergence_regions is None:
             self.divergence_regions = pd.DataFrame(columns=["divergence_id", "milestone_id", "is_start"])

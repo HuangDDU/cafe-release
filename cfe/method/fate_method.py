@@ -9,6 +9,7 @@ from .._settings import settings
 from ..data.fate_anndata import FateAnnData
 from ..util import random_time_string
 from .fate_cfe_docker_backend import CFEDockerBackend
+from .fate_conda_backend import CondaBackend
 from .fate_dynverse_docker_backend import DynverseDockerBackend
 from .fate_function_backend import FunctionBackend
 
@@ -67,13 +68,19 @@ class FateMethod:
         if backend == "python_function":
             function_name = method_backend_dict[self.method_name]["python_function"]
             self.method_backend = FunctionBackend(function_name)
+        elif backend == "conda":
+            function_name = method_backend_dict[self.method_name]["python_function"]
+            conda_name = method_backend_dict[self.method_name]["conda_env"]
+            self.method_backend = CondaBackend(function_name, conda_name)
         elif backend == "cfe_docker":
             image_id = method_backend_dict[self.method_name]["cfe_docker"]
             self.method_backend = CFEDockerBackend(image_id)
-        else:
+        elif backend == "dynverse_docker":
             # backend == "dynverse_docker"
             image_id = method_backend_dict[self.method_name]["dynverse_docker"]
-            self.method_backend = DynverseDockerBackend(image_id=image_id)
+            self.method_backend = DynverseDockerBackend(image_id)
+        else:
+            raise ValueError(f"backend {backend} not supported")
         logger.info(f"method_backend: {self.method_backend}")
 
         self.backend = backend

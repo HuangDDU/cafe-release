@@ -9,7 +9,7 @@ from .fate_backend import Backend, Definition
 
 
 class FunctionBackend(Backend):
-    """Specific implementation of abstract Backend class using Python functions."""
+    """Specific implementation of abstract Backend class using Python functions in now conda environment."""
 
     def __init__(self, function_name="cf_paga"):
         """Initialize the FunctionBackend class.
@@ -23,7 +23,7 @@ class FunctionBackend(Backend):
         self.load_backend()
 
     def load_backend(self) -> None:
-        """load backend from python funct6ion"""
+        """load backend from python function"""
         function_file_path = f"{os.path.dirname(__file__)}/function/{self.function_name}.py"
         # Load the module
         spec = importlib.util.spec_from_file_location(self.function_name, function_file_path)

@@ -5,6 +5,7 @@
 |Backend|Description|Advantage|Disadvantage|
 | ---- | ---- | ---- | ---- |
 |**Python Function**|The function developed by this project incorporates the latest trajectory inference methods in recent years, making it particularly well-suited to the project's framework.|1. New Methods in recenty years. <br>| 1. Different trajectory inference package versions in the same Python environment may conflict. |
+|**Conda(recommended)**|The function run in specific conda environment, related packages don't conflict with other method, which is more flexible.| |
 |**Dynverse Docker**|Docker image for trajectory inference refers to dynverse [@dynverse].|1. The ease of use of Docker |1.Methods on R language not be compatible. <br> 2.Methods are old relatively. <br/> 3. Docker environment is need.
 |**CFE Docker**|Docker image for trajectory inference are developed by this project.|1. New Methods in recenty years. <br>2. The ease of use of Docker. |1. Docker environment is need. |
 
@@ -20,27 +21,27 @@
 > Here, baseline methods are easy way to get the specified aimed wrapper input data structure, where MST(Minimum Spanning Tree) are widely used.
 
 - [x] Dynverse represtive methods for 7 basic wrapper:
-    - [x] `Direct`: PAGA
-    - [x] `Linear`: Component 1(baseline)
-    - [x] `Cycle`: Angle(baseline)
-    - [x] `Probability`: State Component(baseline)
-    - [x] `Cluster`: Cluster MST(baseline)
-    - [x] `Projection`: Projection MST(baseline)
-    - [x]  `Graph`: Graph MST(baseline)
+  - [x] `Direct`: PAGA
+  - [x] `Linear`: Component 1(baseline)
+  - [x] `Cycle`: Angle(baseline)
+  - [x] `Probability`: State Component(baseline)
+  - [x] `Cluster`: Cluster MST(baseline)
+  - [x] `Projection`: Projection MST(baseline)
+  - [x]  `Graph`: Graph MST(baseline)
 - [x] `Velocity` wrapper:
-    - [x] Strategy from `Velocity` wrapper to `Direct` wrapper.
-    - [x] represtive method scVelo.
-- [ ] CFE Docker:
-    - [x] Use Docker to manage environments and version of specific methods.
-    - [ ] Use Github Action to build and push docker images automatically, (now, the action script is triggerd manually).
+  - [x] Strategy from `Velocity` wrapper to `Direct` wrapper.
+  - [x] represtive method scVelo.
+- [x] CFE Docker:
+  - [x] Use Docker to manage environments and version of specific methods.
+  - [x] Use Github Action to build and push docker images automatically, (now, the action script is triggerd manually).
 
 ### 2.2 More published methods (Working)
-> ref: https://github.com/agitter/single-cell-pseudotime
+>
+> ref: <https://github.com/agitter/single-cell-pseudotime>
 
 > TODO: add paper citation.
 
 - For other methods, the higher the citation count of the paper, the higher the implementation order(need statistics from google scholar).
-
 
 | Wrapper Type | Method Name | Finished |
 | --- | --- | --- |
@@ -55,9 +56,12 @@
 | Projection | Projection MST(baseline)| √ |
 | Graph | Graph MST(baseline) | √ |
 | Velocity | scVelo| √ |
-|  | Dynamo | |
+|  | veloVI | √ |
 |  | VeloAE | |
+|  | Dynamo | |
 
 > Methods to be categorized: WaddingtonOT, TrajectoryNet, pyVIA
+>
 ### TODO
+>
 > The work integrate trajectory methods from the issue area continuously.

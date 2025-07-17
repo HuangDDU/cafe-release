@@ -9,7 +9,7 @@ line-length = 150
 max-line-length = 150
 ignore = [
     "E203",  # 空格问题（black 会处理）
-    # "E501",  # 行长度（由 max-line-length 控制）
+    "E501",  # 行长度（由 max-line-length 控制）
     "W503",  # 运算符换行风格（black 兼容）
     "B008",  # 函数默认参数的可变对象（如 `def foo(a=[])`）
     "B006",  # 可变默认参数（如 `def foo(a=[])`）
@@ -35,6 +35,9 @@ addopts = [
 # 日志控制
 log_cli = false
 log_level = "CRITICAL"  # 只显示严重错误
+markers = [
+    # "run_method", # marker for run method in specific environment
+]
 
 
 # TODO: requirement.txt

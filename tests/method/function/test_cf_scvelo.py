@@ -12,7 +12,6 @@ class TestCFscVelo:
         self.fadata = cfe.data.FateAnnData.from_anndata(adata)
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
-    @pytest.mark.skip(reason="TODO: fix")
     def test_scvelo(self):
         # add priority and parameeters
         prior_information = {
@@ -20,7 +19,7 @@ class TestCFscVelo:
         }
         parameters = {}
         trajectory_dict = cfe.method.cf_scvelo(self.fadata, prior_information, parameters)
-        assert trajectory_dict.keys() == {"milestone_network", "X_emb", "milestone_emb", "velocity_adata"}
+        assert trajectory_dict.keys() == {"velocity", "velocity_graph", "velocity_graph_neg", "neighbors", "obs_index", "var_index"}
 
 
 if __name__ == "__main__":

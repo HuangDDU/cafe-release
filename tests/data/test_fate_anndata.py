@@ -664,9 +664,146 @@ class TestFateAnnData:
         assert expected_milestone_network.equals(milestone_wrapper["milestone_network"])
         assert expected_divergence_regions.equals(milestone_wrapper["divergence_regions"])
 
-    # def test_add_trajectory_velocity(self):
-    #     # TODO: paga reference
-    #     pass
+    def test_add_trajectory_velocity(self):
+        # TODO: paga reference
+        name = "test_add_trajectory_velocity"
+        # cell_ids = ["a1", "b1", "b2", "c1", "d1"]
+        cluster_key = "clusters"
+        cluster_list = ["a", "b", "b", "c", "d"]
+        X_emb = np.array(
+            [
+                [0, 1],
+                [1, 2],
+                [1, 0],
+                [2, 2],
+                [2, 0],
+            ]
+        )
+        fadata = cfe.data.FateAnnData(X=X_emb, name=name)
+        fadata.obs[cluster_key] = cluster_list
+        fadata.obsm["X_umap"] = X_emb
+        fadata.layers["spliced"] = X_emb
+        fadata.layers["unspliced"] = X_emb
+        velocity = np.array(
+            [
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+            ]
+        )
+        # # mannual neighbors
+        # from scipy.sparse import csr_matrix
+        # distances = np.array([
+        #         [0, 1.414, 1.414, 0, 0],
+        #         [1.414, 0, 0, 1, 0],
+        #         [1.414, 0, 0, 0, 1],
+        #         [0,1,0,0,0],
+        #         [0,0,1,0,0],
+        #         ])
+        # distances = csr_matrix(distances)
+        # connectivities = np.array([
+        #         [0,1,1,0,0],
+        #         [1,0,0,1,0],
+        #         [1,0,0,0,1],
+        #         [0,1,0,0,0],
+        #         [0,0,1,0,0]
+        #         ])
+        # connectivities = csr_matrix(connectivities)
+        # neighbors = {
+        #     "distances": distances,
+        #     "connectivities": connectivities,
+        # }
+        # automatic neighbors, don't meet the demand
+        sc.pp.neighbors(fadata, n_neighbors=3)
+        neighbors = {"distances": fadata.obsp["distances"], "connectivities": fadata.obsp["connectivities"]}
+
+        # expected_milestone_network = pd.DataFrame(
+        #     columns=["from", "to", "length", "directed"],
+        #     data=[
+        #         ["a", "b", 1, True],
+        #         ["b", "c", 1, True],
+        #         ["b", "d", 1, True],
+        #     ],
+        # )
+
+        fadata.add_trajectory_velocity(
+            velocity=velocity,
+            neighbors=neighbors,
+            cluster_key=cluster_key,
+        )
+
+        # milestone_wrapper = fadata.milestone_wrapper
+        # PAGA result can't be expected.
+        # assert expected_milestone_network.equals(milestone_wrapper["milestone_network"])
+
+    def test_add_trajectory_velocity2(self):
+        name = "test_add_trajectory_velocity2"
+        # cell_ids = ["a1", "b1", "b2", "c1", "d1"]
+        cluster_key = "clusters"
+        cluster_list = ["a", "b", "b", "c", "d"]
+        X_emb = np.array(
+            [
+                [0, 1],
+                [1, 2],
+                [1, 0],
+                [2, 2],
+                [2, 0],
+            ]
+        )
+        fadata = cfe.data.FateAnnData(X=X_emb, name=name)
+        fadata.obs[cluster_key] = cluster_list
+        fadata.obsm["X_umap"] = X_emb
+        fadata.layers["spliced"] = X_emb
+        fadata.layers["unspliced"] = X_emb
+        velocity = np.array(
+            [
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+            ]
+        )
+
+        # 上下左右抖动0.5
+        fadata_list = [fadata]
+        for move in [[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]]:
+            tmp_fadata = fadata.copy()
+            tmp_X_emb = X_emb + move
+            tmp_fadata.X = tmp_X_emb
+            tmp_fadata.obsm["X_umap"] = tmp_X_emb
+            tmp_fadata.layers["spliced"] = tmp_X_emb
+            tmp_fadata.layers["unspliced"] = tmp_X_emb
+            fadata_list.append(tmp_fadata)
+        velocity = np.repeat([[1, 0]], 25, axis=0).reshape(25, 2)
+        fadata = cfe.data.FateAnnData.from_anndata(sc.concat(fadata_list))
+        fadata.obs.index = range(fadata.shape[0])
+        print(fadata)
+
+        # automatic neighbors, don't meet the demand
+        sc.pp.neighbors(fadata, n_neighbors=3)
+        neighbors = {"distances": fadata.obsp["distances"], "connectivities": fadata.obsp["connectivities"]}
+
+        # expected_milestone_network = pd.DataFrame(
+        #     columns=["from", "to", "length", "directed"],
+        #     data=[
+        #         ["a", "b", 1, True],
+        #         ["b", "c", 1, True],
+        #         ["b", "d", 1, True],
+        #     ],
+        # )
+
+        fadata.add_trajectory_velocity(
+            velocity=velocity,
+            neighbors=neighbors,
+            cluster_key=cluster_key,
+        )
+
+        # milestone_wrapper = fadata.milestone_wrapper
+        # PAGA result can't be expected.
+        # assert expected_milestone_network.equals(milestone_wrapper["milestone_network"])
 
     def test_group_onto_trajectory_edges(self):
         # input data

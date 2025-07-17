@@ -47,8 +47,10 @@ def plot_graph(
         edge_attr=True,
         create_using=nx.DiGraph if is_directed else nx.Graph,
     )
+    for descrete_node in set(milestone_id_list) - set(G.nodes):
+        # descrete node need external addition
+        G.add_node(descrete_node)
     milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot")  # position
-
     # position fo cell
     milestone_emb_df = pd.DataFrame(milestone_emb_dict).T
 

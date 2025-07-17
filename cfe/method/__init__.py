@@ -1,5 +1,6 @@
 from .fate_backend import Definition
 from .fate_cfe_docker_backend import CFEDockerBackend
+from .fate_conda_backend import CondaBackend
 from .fate_dynverse_docker_backend import DynverseDockerBackend
 from .fate_function_backend import FunctionBackend
 from .fate_method import FateMethod
@@ -12,6 +13,7 @@ from .function import (
     cf_projection_mst,
     cf_scvelo,
     cf_state_comp,
+    cf_velovi,
 )
 
 __all__ = [
@@ -20,6 +22,7 @@ __all__ = [
     "DynverseDockerBackend",
     "CFEDockerBackend",
     "FunctionBackend",
+    "CondaBackend",
     "cf_paga",
     "cf_comp1",
     "cf_angle",
@@ -28,4 +31,5 @@ __all__ = [
     "cf_projection_mst",
     "cf_graph_mst",
     "cf_scvelo",
+    "cf_velovi",
 ]
