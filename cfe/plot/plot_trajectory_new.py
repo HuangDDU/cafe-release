@@ -1,3 +1,4 @@
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -43,6 +44,7 @@ def plot_trajectory_new(
         milestone_percentages = milestone_wrapper["milestone_percentages"]
         milestone_color_list = add_milestone_color(len(milestone_id_list))
         milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
+        milestone_wrapper.color_list = [mcolors.to_hex(mc) for mc in milestone_color_list]  # add color for CXG visualization
         fadata.uns["milestone_color_dict"] = milestone_color_dict
         cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
         fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
