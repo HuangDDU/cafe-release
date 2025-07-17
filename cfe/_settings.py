@@ -7,15 +7,18 @@ from ._logging import logger
 
 class CellFateExplorerConfig:
     def __init__(self):
+        # backend settings
+        # ["python_function", "cfe_docker", "dynverse_docker", "conda"]
+        self.backend = "conda"
+
         # warning
         self.filter_warning = True
 
         # plot settings
         self.plot_format = "pdf"
+        self.sns_palette = "Set3"
 
-        # backend settings
-        # ["python_function", "cfe_docker", "dynverse_docker"]
-        self.backend = "python_function"
+        # TODO: parallel number of cpu kernel for some methods: scvelo, ...
 
         # check if rpy2 is available
         try:
@@ -28,8 +31,6 @@ class CellFateExplorerConfig:
             logger.warning("R not available. You cannot use dynverse backend.")
         # manually settings r_available=False for testing
         self.r_available = False
-
-        self.sns_palette = "Set3"
 
     def __getitem__(self, key):
         if hasattr(self, key):

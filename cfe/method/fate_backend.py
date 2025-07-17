@@ -203,7 +203,7 @@ class Definition:
         return self.wrapper["inputs"]
 
     def get_parameters(self):
-        return dict(self.parameters["default"])
+        return self.parameters["default"].to_dict()
 
     def add_function_wrapper(self, return_function):
         if not return_function:

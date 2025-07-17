@@ -35,6 +35,9 @@ addopts = [
 # 日志控制
 log_cli = false
 log_level = "CRITICAL"  # 只显示严重错误
+markers = [
+    # "run_method", # marker for run method in specific environment
+]
 
 
 # TODO: requirement.txt
