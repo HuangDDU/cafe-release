@@ -9,7 +9,7 @@ class CellFateExplorerConfig:
     def __init__(self):
         # backend settings
         # ["python_function", "cfe_docker", "dynverse_docker", "conda"]
-        # self.backend = "python_function"
+        self.backend = "conda"
 
         # warning
         self.filter_warning = True
@@ -18,7 +18,7 @@ class CellFateExplorerConfig:
         self.plot_format = "pdf"
         self.sns_palette = "Set3"
 
-        # TODO: parallel cpu kernel
+        # TODO: parallel number of cpu kernel for some methods: scvelo, ...
 
         # check if rpy2 is available
         try:
