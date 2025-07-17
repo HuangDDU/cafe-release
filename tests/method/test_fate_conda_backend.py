@@ -25,6 +25,7 @@ def get_test_run_data():
 function_name = "cf_paga"
 
 
+@pytest.mark.skip(reason="Conda backend is not available for github action")
 class TestCondaBackend:
     def setup_method(self):
         self.conda_backend = cfe.method.CondaBackend(function_name)
