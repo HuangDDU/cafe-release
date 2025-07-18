@@ -18,16 +18,16 @@ ignore = [
 
 # replace "pytest.ini"
 [tool.pytest.ini_options]
-# addopts = "-v --color=yes" # single test function show
-testpaths = ["tests/data", "tests/test_settings.py"]
+testpaths = ["tests"]
 filterwarnings = [
     "ignore", # 忽略所有警告
 ]
 # 核心配置
 addopts = [
-    "-v", # 详细模式
-    "-n=auto", # 自动选择线程数
-    "--tb=auto",       # 隐藏错误回溯
+    "-v", # 详细模式， 为了查看具体跳过的测试用例，开启该模式
+    "-n=auto",        # 自动选择线程数，会丢弃掉整洁输出
+    "--tb=auto",      # 显示错误回溯
+    "-p no:warnings", # 忽略警告
     # "--capture=sys",  # 严格捕获所有输出
     # "--no-showlocals", # 隐藏局部变量
     # "-q",             # 静默模式

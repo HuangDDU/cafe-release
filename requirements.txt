@@ -14,3 +14,5 @@ plotly==6.0.1
 # jupyter
 # dev tools
 pre-commit
+pytest
+pytest-xdist
