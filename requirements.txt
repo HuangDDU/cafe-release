@@ -10,6 +10,7 @@ scikit-learn==1.6.0
 scanpy==1.10.4
 scvelo==0.3.3
 plotly==6.0.1
+scipy==1.11.1 # Note: for sample
 # # notebook
 # jupyter
 # dev tools
