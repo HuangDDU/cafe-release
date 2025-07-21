@@ -4,18 +4,20 @@ import scvelo as scv
 
 def cf_scvelo(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # ref: https://scvelo.readthedocs.io/en/stable/VelocityBasics.html
-    # cluster_key = prior_information.get("cluster_key", "clusters")
-
     # 1. prepare data
     adata = adata.copy()
+    filter_and_normalize_kwargs = parameters["filter_and_normalize_kwargs"]
+    moments_kwargs = parameters["moments_kwargs"]
+    velocity_kwargs = parameters["velocity_kwargs"]
+    velocity_graph_kwargs = parameters["velocity_graph_kwargs"]
 
     # 2. preprocess
-    scv.pp.filter_and_normalize(adata, min_shared_counts=20, n_top_genes=2000)
-    scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
+    scv.pp.filter_and_normalize(adata, **filter_and_normalize_kwargs)
+    scv.pp.moments(adata, **moments_kwargs)
 
     # 3. execute method
-    scv.tl.velocity(adata)  # compute high dimensional velocity
-    scv.tl.velocity_graph(adata)  # compute transition probability
+    scv.tl.velocity(adata, **velocity_kwargs)  # compute high dimensional velocity
+    scv.tl.velocity_graph(adata, **velocity_graph_kwargs)  # compute transition probability
     # scv.pl.velocity_embedding_stream(adata, basis="umap", show=False)  # don't plot here
 
     # 4. extract results

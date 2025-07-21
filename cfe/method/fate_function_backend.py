@@ -45,10 +45,8 @@ class FunctionBackend(Backend):
         """
 
         prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
-        default_parameters = self.definition.get_parameters()
-        if parameters is not None:
-            default_parameters.update(parameters)
-        parameters = default_parameters
+        # TODO: parameters update function should move to Definition
+        parameters = self.definition.get_parameters(parameters)
 
         trajectory_dict = self.function(fadata, prior_information, parameters)
 

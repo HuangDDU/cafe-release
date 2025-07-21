@@ -109,11 +109,9 @@ class DynverseDockerBackend(DockerBackend):
             parameters (dict): parameter dict
         """
         inputs = self._extract_inputs(fadata, self.definition.get_inputs_df())  # extract main input
+        # TODO: parameters update function should move to Definition
         priors = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # extract prior information
-        default_parameters = self.definition.get_parameters()
-        if parameters is not None:
-            default_parameters.update(parameters)
-        parameters = default_parameters
+        parameters = self.definition.get_parameters(parameters)
 
         with tempfile.TemporaryDirectory() as tmp_wd:
             # /tmp/*** temp dir for docker

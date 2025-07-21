@@ -99,11 +99,9 @@ class CondaBackend(Backend):
         parameters: dict,
     ):
         """run"""
+        # TODO: parameters update function should move to Definition
         prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
-        default_parameters = self.definition.get_parameters()
-        if parameters is not None:
-            default_parameters.update(parameters)
-        parameters = default_parameters
+        parameters = self.definition.get_parameters(parameters)
 
         with tempfile.TemporaryDirectory() as tmp_wd:
             logger.debug(f"Temp wd: {tmp_wd}")

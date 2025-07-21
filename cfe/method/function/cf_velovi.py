@@ -3,9 +3,10 @@ import scvelo as scv
 
 
 def cf_velovi(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
+    # the package is not available in cfe envirionment, so we import it here
     import scvi
 
-    # import torch
+    # TODO: optimize parameter for better result.
     # cluster_key = prior_information.get("cluster_key", "clusters")  # do nothing, only prior information demo
     max_epochs = parameters.get("max_epochs", 50)
 

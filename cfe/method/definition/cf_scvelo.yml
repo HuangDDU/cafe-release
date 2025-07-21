@@ -24,6 +24,7 @@ wrapper:
   input_required:
   - counts
   input_optional:
+  # TODO: if prior information is needed?
   - groups_id
 
 container:
@@ -37,56 +38,27 @@ container:
 #   publication_date: '2019-03-19'
 
 parameters:
-- id: filter_features
-  description: Whether to do feature filtering
-  type: logical
-  default: yes
-- id: n_neighbors
-  description: Number of neighbours for knn
-  type: integer
-  default: 15
-  distribution:
-    type: uniform
-    lower: 1
-    upper: 100
-- id: n_comps
-  description: Number of principal components
-  type: integer
-  default: 50
-  distribution:
-    type: uniform
-    lower: 0
-    upper: 100
-- id: n_dcs
-  description: Number of diffusion components for denoising graph, 0 means no denoising.
-  type: integer
-  default: 15
-  distribution:
-    type: uniform
-    lower: 0
-    upper: 40
-- id: resolution
-  description: Resolution of louvain clustering, which determines the granularity
-    of the clustering. Higher values will result in more clusters.
-  type: numeric
-  default: 1
-  distribution:
-    type: uniform
-    lower: 0.1
-    upper: 10
-- id: embedding_type
-  description: Either 'umap' (scales very well, recommended for very large datasets)
-    or 'fa' (ForceAtlas2, often a bit more intuitive for small datasets).
-  type: character
-  default: fa
-  values:
-  - umap
-  - fa
-- id: connectivity_cutoff
-  description: Cutoff for the connectivity matrix
-  type: numeric
-  default: 0.05
-  distribution:
-    type: uniform
-    lower: 0
-    upper: 1
+- id: filter_and_normalize_kwargs
+  description:  refer to https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html
+  type: dict
+  update: True
+  default:
+    min_shared_counts: 20
+    n_top_genes : 2000
+- id: moments_kwargs
+  description: refer to https://scvelo.readthedocs.io/en/stable/scvelo.pp.moments.html
+  type: dict
+  update: True
+  default:
+    n_pcs: 20
+    n_neighbors : 30
+- id: velocity_kwargs
+  description: refer to https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity.html
+  update: True
+  type: dict
+  default: {}
+- id: velocity_graph_kwargs
+  description: refer to https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity_embedding.html
+  update: True
+  type: dict
+  default: {}

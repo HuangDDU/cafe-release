@@ -16,7 +16,7 @@ class TestBackend:
 class TestDefinition:
     def setup_method(self):
         # definition in python function backend
-        definition_yaml_filename = f"{os.path.dirname(__file__)}/../../cfe/method/definition/cf_paga.yml"
+        definition_yaml_filename = f"{os.path.dirname(__file__)}/../../cfe/method/definition/cf_scvelo.yml"
         with open(definition_yaml_filename, "r") as file:
             definition_raw = yaml.safe_load(file)
         self.definition = cfe.method.Definition(definition_raw)
@@ -46,8 +46,15 @@ class TestDefinition:
         assert inputs_df["type"].isin(["expression", "parameter", "prior_information"]).all()
 
     def test_get_parameters(self):
+        # get default parameters
         parameters = self.definition.get_parameters()
         assert isinstance(parameters, dict)
+
+        # merge default parameters and new parameters
+        new_parameters = {"filter_and_normalize_kwargs": {"n_top_genes": 5000}}
+        parameters = self.definition.get_parameters(new_parameters)
+        assert isinstance(parameters, dict)
+        assert parameters["filter_and_normalize_kwargs"] == {"min_shared_counts": 20, "n_top_genes": 5000}  # check merge parameters
 
 
 if __name__ == "__main__":

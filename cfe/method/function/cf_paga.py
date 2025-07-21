@@ -8,22 +8,24 @@ import scvelo as scv
 def cf_paga(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
-    # extract prior information and parameters
+    # extract prior information
     start_id = prior_information["start_id"]
-    connectivity_cutoff = parameters.get("connectivity_cutoff", 0.5)
-    cluster_key = "cf_paga_clusters"
-    adata.obs[cluster_key] = prior_information["groups_id"]
+    # extract parameters
+    n_neighbors = parameters["n_neighbors"]
+    cluster_key = parameters["cluster_key"]
+    n_dcs = parameters["n_dcs"]
+    connectivity_cutoff = parameters["connectivity_cutoff"]
 
     # 2. preprocess
     scv.pp.filter_and_normalize(adata)
-    sc.pp.neighbors(adata, n_neighbors=10)
+    sc.pp.neighbors(adata, n_neighbors=n_neighbors)
     sc.tl.diffmap(adata)
 
     # 3. execute method
     sc.tl.paga(adata, groups=cluster_key)
     # set start porint for dpt
     adata.uns["iroot"] = np.where(adata.obs.index == start_id)[0][0]
-    sc.tl.dpt(adata, n_dcs=2)
+    sc.tl.dpt(adata, n_dcs=n_dcs)
 
     # 4. extract results
     # (1) parameters for results extracting

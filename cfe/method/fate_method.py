@@ -101,3 +101,14 @@ class FateMethod:
         # logger.debug("FateMethod infer_trajectory")
         fadata.add_model_name(self.id)
         self.method_backend.run(fadata, parameters)
+
+    def get_parameter_df(self):
+        # show parameters from backend's definition object
+        definition = self.method_backend.definition
+        return definition.parameters
+
+    # TODO: if prior information is needed?
+    # def get_prior_information(self):
+    #     # show prior information from backend's definition object
+    #     definition = self.method_backend.definition
+    #     return definition.wrapper["prior_information"]

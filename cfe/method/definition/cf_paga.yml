@@ -35,6 +35,7 @@ wrapper:
   - counts
   - start_id
   input_optional:
+  # TODO: if prior information is needed?
   - groups_id
 
 container:
@@ -48,25 +49,17 @@ manuscript:
   publication_date: '2019-03-19'
 
 parameters:
-- id: filter_features
-  description: Whether to do feature filtering
-  type: logical
-  default: yes
+- id: cluster_key
+  description: Key in the data frame that contains the cluster assignments.
+  type: character
+  default: clusters
 - id: n_neighbors
   description: Number of neighbours for knn
   type: integer
-  default: 15
+  default: 10
   distribution:
     type: uniform
     lower: 1
-    upper: 100
-- id: n_comps
-  description: Number of principal components
-  type: integer
-  default: 50
-  distribution:
-    type: uniform
-    lower: 0
     upper: 100
 - id: n_dcs
   description: Number of diffusion components for denoising graph, 0 means no denoising.
@@ -76,27 +69,10 @@ parameters:
     type: uniform
     lower: 0
     upper: 40
-- id: resolution
-  description: Resolution of louvain clustering, which determines the granularity
-    of the clustering. Higher values will result in more clusters.
-  type: numeric
-  default: 1
-  distribution:
-    type: uniform
-    lower: 0.1
-    upper: 10
-- id: embedding_type
-  description: Either 'umap' (scales very well, recommended for very large datasets)
-    or 'fa' (ForceAtlas2, often a bit more intuitive for small datasets).
-  type: character
-  default: fa
-  values:
-  - umap
-  - fa
 - id: connectivity_cutoff
   description: Cutoff for the connectivity matrix
   type: numeric
-  default: 0.05
+  default: 0.5
   distribution:
     type: uniform
     lower: 0
