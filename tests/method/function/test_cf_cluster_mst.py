@@ -15,7 +15,14 @@ class TestCFClusterMST:
     def test_cluster_mst(self):
         # add priority and parameeters
         prior_information = {"groups_id": self.fadata.obs["lineage"].tolist()}
-        parameters = {"ndim": 2, "distance_metric": "euclidean"}
+        parameters = {
+            "repreprocess": True,
+            "pca_ndim": 10,
+            "basis": "X_pca",
+            "recluster": True,
+            "cluster_key": "clusters",
+            "distance_metric": "euclidean",
+        }
         trajectory_dict = cfe.method.cf_cluster_mst(self.fadata, prior_information, parameters)  # add parameters when inferring trajectory
         assert trajectory_dict.keys() == {"milestone_network", "cluster"}
 

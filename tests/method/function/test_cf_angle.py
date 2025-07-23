@@ -13,9 +13,13 @@ class TestCFAngle:
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
     def test_angle(self):
-        # add priority and parameeters
+        # add priority and parameters
         prior_information = {}
-        parameters = {"ndim": 2}
+        parameters = {
+            "repreprocess": True,
+            "pca_ndim": 10,
+            "basis": "X_pca",
+        }
         trajectory_dict = cfe.method.cf_angle(self.fadata, prior_information, parameters)
         assert trajectory_dict.keys() == {"pseudotime"}
 

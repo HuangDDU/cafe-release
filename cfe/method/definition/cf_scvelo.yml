@@ -23,9 +23,9 @@ wrapper:
   # - disconnected_graph
   input_required:
   - counts
-  input_optional:
-  # TODO: if prior information is needed?
-  - groups_id
+  # input_optional:
+  # # TODO: if prior information is needed?
+  # - groups_id
 
 container:
   docker: dynverse/ti_paga
@@ -38,20 +38,24 @@ container:
 #   publication_date: '2019-03-19'
 
 parameters:
+- id: repreprocess
+  description: whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation.
+  type: boolean
+  default: True
 - id: filter_and_normalize_kwargs
-  description:  refer to https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html
+  description: Parameters for preprocess in scvelo style, refer to "scvelo.pp.filter_and_normalize"(https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html)
   type: dict
   update: True
   default:
     min_shared_counts: 20
-    n_top_genes : 2000
+    n_top_genes: 2000
 - id: moments_kwargs
-  description: refer to https://scvelo.readthedocs.io/en/stable/scvelo.pp.moments.html
+  description: Parameters for neighbor moment in scvelo style, refer to "scvelo.pp.moments"(https://scvelo.readthedocs.io/en/stable/scvelo.pp.moments.html)
   type: dict
   update: True
   default:
     n_pcs: 20
-    n_neighbors : 30
+    n_neighbors: 30
 - id: velocity_kwargs
   description: refer to https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity.html
   update: True

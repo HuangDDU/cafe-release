@@ -4,6 +4,7 @@ import pickle
 import tempfile
 
 import docker
+from anndata import AnnData
 
 from .._logging import logger
 from ..data import FateAnnData
@@ -26,16 +27,16 @@ class CFEDockerBackend(DockerBackend):
         self.image_id = image_id
         self.load_backend()  # implemented in DockerBackend
 
-    def preprocess(self, fadata: FateAnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
+    def preprocess(self, adata: AnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad , prior information and parameters json file in tmp_wd dir
 
         Args:
-            fadata (FateAnnData): _description_
+            fadata (AnnData): _description_
             prior_information (dict): parameter dict
             parameters (dict): prior information dict
             tmp_wd (str): tmp working dir for docker mount and saving h5ad.h5, json file
         """
-        fadata.write_h5ad(filename=f"{tmp_wd}/adata.h5ad")
+        adata.write(filename=f"{tmp_wd}/adata.h5ad")
 
         with open(f"{tmp_wd}/prior_information.json", "w") as f:
             json.dump(prior_information, f)
@@ -100,10 +101,11 @@ class CFEDockerBackend(DockerBackend):
         # TODO: parameters update function should move to Definition
         prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
         parameters = self.definition.get_parameters(parameters)
+        adata = fadata.to_anndata(delete_trajectory=True)
 
         with tempfile.TemporaryDirectory() as tmp_wd:
             logger.debug(f"Temp wd: {tmp_wd}")
-            self.preprocess(fadata, prior_information, parameters, tmp_wd)
+            self.preprocess(adata, prior_information, parameters, tmp_wd)
 
             trajectory_dict = self.execute(tmp_wd)
 

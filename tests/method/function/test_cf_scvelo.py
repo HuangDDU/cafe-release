@@ -16,13 +16,14 @@ class TestCFscVelo:
         # add priority and parameeters
         prior_information = {}
         parameters = {
+            "repreprocess": True,
             "filter_and_normalize_kwargs": {
                 "min_shared_counts": 20,
                 "n_top_genes": 2000,
             },
             "moments_kwargs": {
                 "n_pcs": 20,
-                "n_neighbors": 30,
+                "n_neighbors": 10,
             },
             "velocity_kwargs": {},
             "velocity_graph_kwargs": {},

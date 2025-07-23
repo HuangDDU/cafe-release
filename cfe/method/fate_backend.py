@@ -213,11 +213,14 @@ class Definition:
             # parameters.update(new_parameters)
             #
             for k, v in new_parameters.items():
-                if isinstance(v, dict) and self.parameters.loc[k, "update"]:
-                    #  for dict parameters, it should be updated by merge but not to replace.
-                    parameters[k].update(v)
+                if k in parameters:
+                    if isinstance(v, dict) and self.parameters.loc[k, "update"]:
+                        #  for dict parameters, it should be updated by merge but not to replace.
+                        parameters[k].update(v)
+                    else:
+                        parameters[k] = v
                 else:
-                    parameters[k] = v
+                    logger.warning(f"{k} is not a valid parameter")
             return parameters
 
     def add_function_wrapper(self, return_function):

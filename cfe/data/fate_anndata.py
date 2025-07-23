@@ -30,6 +30,7 @@ class FateAnnData(ad.AnnData):
         # try to get the stored FateAnnData information
         cfe_dict = self.uns.get("cfe", {})
 
+        # prior inforation means that there are default values for these keys, such is start cell id
         self.prior_information = cfe_dict.get("prior_information", {})
         cfe_dict["prior_information"] = self.prior_information
 
@@ -87,32 +88,6 @@ class FateAnnData(ad.AnnData):
             model_dict["waypoint_wrapper"] = value
         else:
             self.cfe_dict["trajectory_history_dict"][self.model_name] = {"waypoint_wrapper": value}
-
-    @classmethod
-    def from_anndata(cls, adata: ad.AnnData) -> "FateAnnData":
-        """Create a FateAnnData object from an existing AnnData object.
-
-        Args:
-            adata (ad.AnnData): existing AnnData object
-
-        Returns:
-            fadata (cfe.data.FateAnnData): generated FateAnnData object
-        """
-
-        logger.debug("Create a FateAnnData object from an existing AnnData object.")
-
-        fadata = cls(
-            name=adata.name if hasattr(adata, "name") else "FateAnnData",
-            X=adata.X,
-            obs=adata.obs,
-            var=adata.var,
-            uns=adata.uns,
-            obsm=adata.obsm,
-            varm=adata.varm,
-            layers=adata.layers,
-        )
-
-        return fadata
 
     @classmethod
     def read_dynverse_simulation_data(
@@ -174,11 +149,55 @@ class FateAnnData(ad.AnnData):
         # TODO: waypoint add
         return fadata
 
+    @classmethod
+    def from_anndata(cls, adata: ad.AnnData) -> "FateAnnData":
+        """Create a FateAnnData object from an existing AnnData object.
+
+        Args:
+            adata (ad.AnnData): existing AnnData object
+
+        Returns:
+            fadata (cfe.data.FateAnnData): generated FateAnnData object
+        """
+
+        logger.debug("Create a FateAnnData object from an existing AnnData object.")
+
+        fadata = cls(
+            name=adata.name if hasattr(adata, "name") else "FateAnnData",
+            X=adata.X,
+            obs=adata.obs,
+            var=adata.var,
+            uns=adata.uns,
+            obsm=adata.obsm,
+            varm=adata.varm,
+            obsp=adata.obsp,
+            layers=adata.layers,
+        )
+
+        return fadata
+
+    def to_anndata(self, delete_trajectory=False):
+        uns = self.uns.copy()
+        if delete_trajectory and ("cfe" in uns):
+            del uns["cfe"]
+        adata = ad.AnnData(
+            X=self.X,
+            obs=self.obs,
+            var=self.var,
+            uns=uns,
+            obsm=self.obsm,
+            varm=self.varm,
+            obsp=self.obsp,
+            layers=self.layers,
+        )
+        return adata
+
     def add_prior_information(self, **kwargs) -> None:
         """Add prior information to the FateAnnData object.
 
         ref: pydynverse/wrap/wrap_add_prior_information add_prior_information
         """
+        # TODO: if prior information is needed?
         self.prior_information.update(kwargs)
 
     def add_model_name(self, model_name: str):

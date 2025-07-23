@@ -6,20 +6,20 @@ import scanpy as sc
 
 
 def cf_graph_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
-    # 1. prepare data
-    adata = adata.copy()
-    cell_ids = adata.obs.index
+    # 1. extract prior information and parameters
+    repreprocess = parameters["repreprocess"]
+    pca_ndim = parameters["pca_ndim"]
+    neighbors_kwargs = parameters["neighbors_kwargs"]
 
     # 2. preprocess
-    sc.pp.pca(adata, n_comps=parameters["ndim"])
+    if repreprocess:
+        sc.pp.pca(adata, n_comps=pca_ndim)
 
     # 3.execute method
-    # construct the minimum spanning tree between cells directly
-    distance_metric = parameters["distance_metric"]
-    sc.pp.neighbors(adata, metric=distance_metric)
-    # construct graph from a sparse matrix
-    G = nx.from_scipy_sparse_array(adata.obsp["distances"])
-    cell_mst = nx.minimum_spanning_tree(G, weight="weight")
+    sc.pp.neighbors(adata, **neighbors_kwargs)  # recompute neighbors
+    cell_ids = adata.obs.index
+    G = nx.from_scipy_sparse_array(adata.obsp["distances"])  # construct graph from a sparse matrix
+    cell_mst = nx.minimum_spanning_tree(G, weight="weight")  # construct the minimum spanning
 
     # 4. extract results
     cell_graph = nx.to_pandas_edgelist(cell_mst, source="from", target="to").rename(columns={"weight": "length"})

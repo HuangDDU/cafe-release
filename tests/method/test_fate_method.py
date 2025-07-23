@@ -53,7 +53,7 @@ class TestFateMethod:
         parameter_df = self.fate_method.get_parameter_df()
 
         assert isinstance(parameter_df, pd.DataFrame)
-        assert list(parameter_df.columns) == ["description", "type", "default", "distribution"]
+        assert list(parameter_df.columns) == ["description", "type", "default", "update", "distribution"]
 
     # def test_get_prior_information_df(self):
     #     prior_information_df = self.fate_method.get_prior_information_df()

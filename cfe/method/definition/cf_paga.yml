@@ -34,9 +34,9 @@ wrapper:
   input_required:
   - counts
   - start_id
-  input_optional:
-  # TODO: if prior information is needed?
-  - groups_id
+  # input_optional:
+  # # TODO: if prior information is needed?
+  # - groups_id
 
 container:
   docker: dynverse/ti_paga
@@ -53,14 +53,24 @@ parameters:
   description: Key in the data frame that contains the cluster assignments.
   type: character
   default: clusters
-- id: n_neighbors
-  description: Number of neighbours for knn
-  type: integer
-  default: 10
-  distribution:
-    type: uniform
-    lower: 1
-    upper: 100
+- id: repreprocess
+  description: whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation.
+  type: boolean
+  default: True
+- id: filter_and_normalize_kwargs
+  description: Parameters for preprocess in scvelo style, refer to "scvelo.pp.filter_and_normalize"(https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html)
+  type: dict
+  update: True
+  default:
+    min_shared_counts: 20
+    n_top_genes: 2000
+- id: neighbors_kwargs
+  description: Parameters for neighbor construction in scanpy style, refer to https://scanpy.readthedocs.io/en/latest/api/generated/scanpy.pp.neighbors.html
+  type: dict
+  update: True
+  default:
+    n_pcs: 20
+    n_neighbors: 30
 - id: n_dcs
   description: Number of diffusion components for denoising graph, 0 means no denoising.
   type: integer

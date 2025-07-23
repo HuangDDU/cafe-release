@@ -15,7 +15,7 @@ class TestCFGraphMST:
     def test_graph_mst(self):
         # add priority and parameeters
         prior_information = {}
-        parameters = {"ndim": 2, "distance_metric": "euclidean"}
+        parameters = {"repreprocess": True, "pca_ndim": 2, "neighbors_kwargs": {}}
         trajectory_dict = cfe.method.cf_graph_mst(self.fadata, prior_information, parameters)
         assert trajectory_dict.keys() == {"cell_graph", "to_keep"}
 

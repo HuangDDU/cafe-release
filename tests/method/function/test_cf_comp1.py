@@ -15,7 +15,7 @@ class TestCFComp1:
     def test_comp1(self):
         # add priority and parameeters
         prior_information = {}
-        parameters = {"ndim": 2, "component": 1}
+        parameters = {"repreprocess": True, "pca_ndim": 10, "basis": "X_pca", "component": 1}
         trajectory_dict = cfe.method.cf_comp1(self.fadata, prior_information, parameters)
         assert trajectory_dict.keys() == {"pseudotime"}
 

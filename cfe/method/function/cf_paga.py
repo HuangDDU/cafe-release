@@ -6,19 +6,19 @@ import scvelo as scv
 
 
 def cf_paga(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
-    # 1. prepare data
-    adata = adata.copy()
-    # extract prior information
+    # 1. extract prior information and parameters
     start_id = prior_information["start_id"]
-    # extract parameters
-    n_neighbors = parameters["n_neighbors"]
+    repreprocess = parameters["repreprocess"]
+    filter_and_normalize_kwargs = parameters["filter_and_normalize_kwargs"]
+    neighbors_kwargs = parameters["neighbors_kwargs"]
     cluster_key = parameters["cluster_key"]
     n_dcs = parameters["n_dcs"]
     connectivity_cutoff = parameters["connectivity_cutoff"]
 
     # 2. preprocess
-    scv.pp.filter_and_normalize(adata)
-    sc.pp.neighbors(adata, n_neighbors=n_neighbors)
+    if repreprocess:
+        scv.pp.filter_and_normalize(adata, **filter_and_normalize_kwargs)
+        sc.pp.neighbors(adata, **neighbors_kwargs)
     sc.tl.diffmap(adata)
 
     # 3. execute method

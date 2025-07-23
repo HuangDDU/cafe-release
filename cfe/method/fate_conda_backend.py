@@ -6,6 +6,7 @@ import tempfile
 import threading
 
 import yaml
+from anndata import AnnData
 
 from .._logging import logger
 from ..data import FateAnnData
@@ -41,9 +42,9 @@ class CondaBackend(Backend):
         self._load_definition()
         # TODO: test if conda environment is available, if not, raise error
 
-    def preprocess(self, fadata: FateAnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
+    def preprocess(self, fadata: AnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad, prior information and parameters json file in tmp_wd dir"""
-        fadata.write_h5ad(filename=f"{tmp_wd}/adata.h5ad")
+        fadata.write(filename=f"{tmp_wd}/adata.h5ad")
 
         with open(f"{tmp_wd}/prior_information.json", "w") as f:
             json.dump(prior_information, f)
@@ -99,13 +100,13 @@ class CondaBackend(Backend):
         parameters: dict,
     ):
         """run"""
-        # TODO: parameters update function should move to Definition
         prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
         parameters = self.definition.get_parameters(parameters)
+        adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
 
         with tempfile.TemporaryDirectory() as tmp_wd:
             logger.debug(f"Temp wd: {tmp_wd}")
-            self.preprocess(fadata, prior_information, parameters, tmp_wd)
+            self.preprocess(adata, prior_information, parameters, tmp_wd)
 
             trajectory_dict = self.execute(tmp_wd)
 

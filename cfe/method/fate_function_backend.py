@@ -47,8 +47,9 @@ class FunctionBackend(Backend):
         prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
         # TODO: parameters update function should move to Definition
         parameters = self.definition.get_parameters(parameters)
+        adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
 
-        trajectory_dict = self.function(fadata, prior_information, parameters)
+        trajectory_dict = self.function(adata, prior_information, parameters)
 
         # if multiple wrapper type for a method, it should be shown in trajectory_dict
         # else, read from definition yaml file

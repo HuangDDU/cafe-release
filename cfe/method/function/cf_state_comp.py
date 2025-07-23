@@ -5,24 +5,27 @@ from sklearn.preprocessing import MinMaxScaler, normalize
 
 
 def cf_state_comp(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
-    # 1. prepare data
-    adata = adata.copy()
-    cell_ids = adata.obs.index
+    # 1. extract prior information and parameters
+    repreprocess = parameters["repreprocess"]
+    n_comps = parameters["n_comps"]
+    basis = parameters["basis"]
+    pseudotime_index = parameters["pseudotime_index"]
 
     # 2. preprocess
-    ndim = parameters["ndim"]
-    sc.pp.pca(adata, n_comps=ndim)
+    if repreprocess:
+        sc.pp.pca(adata, n_comps=n_comps)
+    cell_ids = adata.obs.index
 
     # 3. execute method
-    # extract pca results as state transition probabilities
-    X_pca = adata.obsm["X_pca"]
-    X_pca_scaled = MinMaxScaler().fit_transform(X_pca)  # Normalization
-    pseudotime = X_pca_scaled[:, parameters["component"] - 1]  # specified component for pseudotime
-    comp_column_list = [f"comp_{i}" for i in range(1, ndim + 1)]  # the first ndim components correspond to n states
+    # extract embedding results as state transition probabilities
+    X_emb = adata.obsm[basis][:, :n_comps]
+    X_emb_scaled = MinMaxScaler().fit_transform(X_emb)  # Normalization
+    pseudotime = X_emb_scaled[:, pseudotime_index]  # specified component for pseudotime
+    comp_column_list = [f"comp_{i}" for i in range(1, n_comps + 1)]  # the first ndim components correspond to n states
     # The normalized PCA result is used as the state transition probability, range of [0,1]
     end_state_probabilities = pd.DataFrame(
         columns=comp_column_list,
-        data=normalize(X_pca_scaled, norm="l1"),  # 归一化后的PCA结果作为状态转移概率, 从from的概率为0
+        data=normalize(X_emb_scaled, norm="l1"),  # 归一化后的PCA结果作为状态转移概率, 从from的概率为0
         index=cell_ids,
     )
     end_state_probabilities["cell_id"] = cell_ids
