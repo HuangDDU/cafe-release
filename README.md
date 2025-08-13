@@ -1,10 +1,11 @@
-# CellFateExplorer: An integrated platform for exploring cell fate
+![CellFateExplorer Framework](./docs/img/logo_legend.png)
 
 [![test](https://github.com/HuangDDU/CellFateExplorer/actions/workflows/test.yml/badge.svg)](https://github.com/HuangDDU/CellFateExplorer/actions/workflows/test.yml)
 [![document](https://readthedocs.org/projects/cellfateexplorer/badge/?version=latest)](https://cellfateexplorer.readthedocs.io/en/latest/)
 
-**Cell Fate Explorer(cfe)** is a integration platform for *inferring*, *visualizing* and *benchmarking* cell fate trajectory for single-cell RNA-seq data.😁
-> 🥰cfe🥰 is pronounced as safe(/seɪf).
+# Cafe: An integrated platform for exploring cell fate
+
+**Cellular Fate Explorer(CFE or Cafe)** is a integration platform for *inferring*, *visualizing* and *benchmarking* cell fate trajectory for single-cell RNA-seq data.😁
 
 ## Framework
 
@@ -12,44 +13,7 @@
 
 ## Installation
 
-> The installation will be simplified when Pypi package is released in the near future.
-
-1. Clone the repository and enter the directory.
-2. Create a conda environment and install the dependencies by running the following commands.
-
-    ```bash
-    conda create -n cfe python=3.10.15
-    conda activate cfe
-    pip install -r requirements.txt
-    ```
-
-3. Add the now working dir into python package path.
-   - For Linux (such as working dir: /home/huang/CellFateExplorer)
-
-     ```bash
-     export PYTHONPATH="$PYTHONPATH:/home/haung/CellFateExplorer"
-     ```
-
-   - For Windows (such as working dir: D:\CellFateExplorer)
-
-     ```cmd
-     setx PYTHONPATH "%PYTHONPATH%;D:\CellFateExplorer"
-     ```
-
-   - If you use VSCode, you should create `.env` in working dir for jupyter notebook python package search as following.
-
-     ```txt
-     PYTHONPATH=/home/haung/CellFateExplorer
-     ```
-
-4. Other installation requirements:
-   - R and rpy2 are required.
-   - If you want to use docker container as backend, you need to install docker beforehand.
-   - install conda package
-
-        ```bash
-        conda install pygraphviz
-        ```
+See [here](./docs/installation.md)
 
 ## Quick Start
 
@@ -58,13 +22,12 @@ You can run the [quickstart.ipynb](https://cellfateexplorer.readthedocs.io/en/la
 ## Project shedule
 
 - [x] Main framework code
-- [x] Document construction: intruction, tutorial, API
-- [ ] [🔗](./docs/shedule/data.md)Data module: FateAnnData data structure, data collection.
-- [ ] [🔗](./docs/shedule/method.md)Methods module: 3 backend, trajectory methods for 8 wrapper.
-- [ ] [🔗](./docs/shedule/benchmark.md)Benchmark: comprehensive metric and benchmark.
-- [ ] [🔗](./docs/shedule/plot.md)Plot: beautiful plot.
-- [ ] [🔗](./docs/shedule/downstream_analysis.md)Downstream analysis module: driver gene, GRN.
-- [ ] [🔗](./docs/shedule/website.md)Website module: trajectory method selection and result visualization based cellxgene.
+- [x] Document construction: intsruction, tutorial, API
+- [x] [🔗](./docs/development_document/shedule/data.md)Data module: FateAnnData data structure, data collection.
+- [ ] [🔗](./docs/development_document/shedule/method.md)Methods module: 4 backend, trajectory methods for 8 wrapper.
+- [ ] [🔗](./docs/development_document/shedule/benchmark.md)Benchmark: comprehensive metric and benchmark.
+- [ ] [🔗](./docs/development_document/shedule/plot.md)Plot: beautiful plot.
+- [ ] [🔗](./docs/development_document/shedule/downstream_analysis.md)Downstream analysis module: Interactive web platform, driver gene and GRN.
 
 ## Document
 
