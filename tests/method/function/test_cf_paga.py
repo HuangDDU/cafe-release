@@ -12,7 +12,7 @@ class TestCFPAGA:
         self.fadata = cfe.data.FateAnnData.from_anndata(adata)
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
-    def test_paga(self):
+    def test_paga_old(self):
         # add priority and parameeters
         prior_information = {"start_id": "cell1"}
         parameters = {
@@ -24,6 +24,16 @@ class TestCFPAGA:
             "connectivity_cutoff": 0.5,
         }
         trajectory_dict = cfe.method.cf_paga(self.fadata, prior_information, parameters)
+        assert trajectory_dict.keys() == {"branch_network", "branches", "branch_progressions"}
+
+    def test_paga_new(self):
+        # add priority and parameeters
+        parameters = {
+            "start_id": "cell1",
+            "cluster_key": "lineage",
+            "connectivity_cutoff": 0.5,
+        }
+        trajectory_dict = cfe.method.cf_paga(self.fadata, **parameters)
         assert trajectory_dict.keys() == {"branch_network", "branches", "branch_progressions"}
 
 

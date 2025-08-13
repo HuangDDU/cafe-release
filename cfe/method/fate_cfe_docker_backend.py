@@ -27,6 +27,14 @@ class CFEDockerBackend(DockerBackend):
         self.image_id = image_id
         self.load_backend()  # implemented in DockerBackend
 
+    def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
+        """simplified version for self.run"""
+        with tempfile.TemporaryDirectory() as tmp_wd:
+            logger.debug(f"Temp wd: {tmp_wd}")
+            self.preprocess(adata, {}, parameters, tmp_wd)
+            trajectory_dict = self.execute(tmp_wd)
+            return trajectory_dict
+
     def preprocess(self, adata: AnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad , prior information and parameters json file in tmp_wd dir
 

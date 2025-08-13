@@ -12,7 +12,7 @@ class TestCFAngle:
         self.fadata = cfe.data.FateAnnData.from_anndata(adata)
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
-    def test_angle(self):
+    def test_angle_old(self):
         # add priority and parameters
         prior_information = {}
         parameters = {
@@ -21,6 +21,11 @@ class TestCFAngle:
             "basis": "X_pca",
         }
         trajectory_dict = cfe.method.cf_angle(self.fadata, prior_information, parameters)
+        assert trajectory_dict.keys() == {"pseudotime"}
+
+    def test_angle_new(self):
+        parameters = {}
+        trajectory_dict = cfe.method.cf_angle(self.fadata, **parameters)
         assert trajectory_dict.keys() == {"pseudotime"}
 
 

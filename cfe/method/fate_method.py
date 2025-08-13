@@ -20,7 +20,7 @@ class FateMethod:
     def __init__(
         self,
         method_name: str = "paga",
-        backend: Optional[Literal["python_function", "cfe_docker", "dynverse_docker", None]] = None,
+        backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
     ):
         """Initialize the FateMethod class.
 
@@ -30,10 +30,14 @@ class FateMethod:
         """
         # logger.debug("FateMethod __init__")
         self.method_name = method_name
-        self.choose_backend(backend)
-        self.id = random_time_string(f"{method_name}-{self.backend}")
+        # TODO: backend lazy load: choose backend when the backend is firstly called.
+        self.backend_name = backend_name
+        self.backend = None
 
-    def choose_backend(self, backend: Optional[Literal["python_function", "cfe_docker", "dynverse_docker", None]] = None) -> None:
+    def choose_backend(
+        self,
+        backend: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
+    ) -> None:
         """choose backend according to input backend and method_name
         Args:
             backend (_type_, optional): python_function, cfe_docker, dynverse_docker.
@@ -89,6 +93,8 @@ class FateMethod:
         self,
         fadata: FateAnnData = None,
         parameters: dict = None,
+        rewrite: bool = True,
+        backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
     ) -> None:
         """call the run function of method backend,
 
@@ -98,9 +104,47 @@ class FateMethod:
             fadata (FateAnnData, optional): _description_. Defaults to None.
             parameters (dict, optional): _description_. Defaults to None.
         """
-        # logger.debug("FateMethod infer_trajectory")
-        fadata.add_model_name(self.id)
+        if (self.backend is None) or ((backend_name is not None) and (backend_name == self.backend_name)):
+            backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
+            self.choose_backend(self.backend_name)
+            self.id = random_time_string(f"{self.method_name}-{self.backend}")
+        if rewrite:
+            fadata.add_model_name(self.id)
         self.method_backend.run(fadata, parameters)
+
+    def __call__(
+        self,
+        fadata: FateAnnData = None,
+        rewrite: bool = True,
+        id: str = None,
+        backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
+        **parameters,
+    ):
+        """simplified version for self.infer_trajectory"""
+        if (self.backend is None) or ((backend_name is not None) and (backend_name != self.backend_name)):
+            # choose backend firstly or rechoose new backend
+            backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
+            self.choose_backend(backend_name)
+        if id is None:
+            self.id = random_time_string(f"{self.method_name}-{self.backend}")
+        else:
+            self.id = id
+        if rewrite:
+            # use new model name
+            fadata.add_model_name(self.id)
+        adata = fadata.to_anndata(delete_trajectory=True)
+
+        trajectory_dict = self.method_backend(adata, **parameters)
+
+        if "wrapper_type" not in trajectory_dict:
+            #  if the method have only one wrapper , read from definition yaml file
+            wrapper_type = self.method_backend.definition["wrapper"]["type"]
+            trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
+
+        fadata.add_trajectory_by_type(trajectory_dict)
+
+    def __str__(self):
+        return f"FateMethod: method_backend-{self.method_backend}, backend-{self.backend}"
 
     def get_parameter_df(self):
         # show parameters from backend's definition object

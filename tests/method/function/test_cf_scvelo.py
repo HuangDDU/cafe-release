@@ -12,7 +12,7 @@ class TestCFscVelo:
         self.fadata = cfe.data.FateAnnData.from_anndata(adata)
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
-    def test_scvelo(self):
+    def test_scvelo_old(self):
         # add priority and parameeters
         prior_information = {}
         parameters = {
@@ -29,6 +29,11 @@ class TestCFscVelo:
             "velocity_graph_kwargs": {},
         }
         trajectory_dict = cfe.method.cf_scvelo(self.fadata, prior_information, parameters)
+        assert trajectory_dict.keys() == {"velocity", "velocity_graph", "velocity_graph_neg", "neighbors", "obs_index", "var_index"}
+
+    def test_scvelo_new(self):
+        parameters = {}
+        trajectory_dict = cfe.method.cf_scvelo(self.fadata, **parameters)
         assert trajectory_dict.keys() == {"velocity", "velocity_graph", "velocity_graph_neg", "neighbors", "obs_index", "var_index"}
 
 

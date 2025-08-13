@@ -12,11 +12,17 @@ class TestCFComp1:
         self.fadata = cfe.data.FateAnnData.from_anndata(adata)
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
-    def test_comp1(self):
-        # add priority and parameeters
+    def test_comp1_old(self):
+        # old version call: you need to provide priority and parameters besides adata
+        # add priority and parameters
         prior_information = {}
         parameters = {"repreprocess": True, "pca_ndim": 10, "basis": "X_pca", "component": 1}
         trajectory_dict = cfe.method.cf_comp1(self.fadata, prior_information, parameters)
+        assert trajectory_dict.keys() == {"pseudotime"}
+
+    def test_comp1_new(self):
+        # new version: you need to provide nothing beside adata, where default parameter are available.
+        trajectory_dict = cfe.method.cf_comp1(self.fadata)
         assert trajectory_dict.keys() == {"pseudotime"}
 
 

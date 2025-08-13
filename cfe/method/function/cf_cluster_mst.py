@@ -1,3 +1,5 @@
+from typing import Literal, Optional
+
 import anndata as ad
 import networkx as nx
 import numpy as np
@@ -6,22 +8,23 @@ import scanpy as sc
 from sklearn.metrics.pairwise import pairwise_distances
 
 
-def cf_cluster_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
-    # 1. extract prior information and parameters
-    repreprocess = parameters["repreprocess"]
-    pca_ndim = parameters["pca_ndim"]
-    basis = parameters["basis"]
-    recluster = parameters["recluster"]
-    cluster_key = parameters["cluster_key"]
-    distance_metric = parameters["distance_metric"]
-
-    # 2. preprocess
+def cluster_mst(
+    adata: ad.AnnData,
+    repreprocess: bool = True,
+    pca_ndim: int = 5,
+    basis: str = "X_pca",
+    recluster: bool = True,
+    cluster_key: str = "clusters",
+    distance_metric: Optional[Literal["euclidean", "cosine", "manhattan", "cityblock", "l1", "l2"]] = "euclidean",
+    **kwargs,
+):
+    # 1. preprocess
     adata.obs.reset_index(drop=True, inplace=True)
     if repreprocess and (basis == "X_pca"):
         sc.pp.pca(adata, n_comps=pca_ndim)
     X_emb = adata.obsm[basis]
 
-    # 3. execute method
+    # 2. execute method
     # (1) Cluster cells, with the center point as a milestone
     if recluster:
         # new cluster
@@ -41,15 +44,30 @@ def cf_cluster_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: 
     G = nx.from_pandas_edgelist(disdf, source="from", target="to", edge_attr="weight")
     mst = nx.minimum_spanning_tree(G, weight="weight")
 
-    # 4. extract results
+    # 3. extract results
     milestone_network = nx.to_pandas_edgelist(mst)
     milestone_network.rename(columns={"source": "from", "target": "to", "weight": "length"}, inplace=True)
     milestone_network["directed"] = False
 
-    # 5. save results
+    # 4. save results
     trajectory_dict = {
         "milestone_network": milestone_network,
         "cluster": cluster_milestones,
     }
 
     return trajectory_dict
+
+
+def cf_cluster_mst(
+    adata: ad.AnnData,
+    prior_information: dict = None,
+    parameters: dict = None,
+    **kwargs,
+):
+    if (prior_information is None) and (parameters is None):
+        # for new backend call, function(**kwargs)
+        return cluster_mst(adata, **kwargs)
+    else:
+        # for old backend call, function(prior_information, parameters)
+        parameters.update(prior_information)
+        return cluster_mst(adata, **parameters)

@@ -24,6 +24,7 @@ class Backend(ABC):
         """_summary_"""
         pass
 
+    # Note: Only used for dynverse docker backend"
     def _extract_prior_information(self, fdata, inputs_df):
         """
         ref: PyDynverse/pydynverse/wrap/method_extract_args.py _method_extract_priors

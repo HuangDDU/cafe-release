@@ -5,29 +5,45 @@ import scanpy as sc
 import scvelo as scv
 
 
-def cf_paga(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
-    # 1. extract prior information and parameters
-    start_id = prior_information["start_id"]
-    repreprocess = parameters["repreprocess"]
-    filter_and_normalize_kwargs = parameters["filter_and_normalize_kwargs"]
-    neighbors_kwargs = parameters["neighbors_kwargs"]
-    cluster_key = parameters["cluster_key"]
-    n_dcs = parameters["n_dcs"]
-    connectivity_cutoff = parameters["connectivity_cutoff"]
+def paga(
+    adata: ad.AnnData,
+    start_id: str,
+    repreprocess: bool = True,
+    filter_and_normalize_kwargs: dict = {},
+    neighbors_kwargs: dict = {},
+    cluster_key: str = "clusters",
+    n_dcs: int = 15,
+    connectivity_cutoff=0.5,
+    **kwargs,
+):
+    """PAGA trajectory inference method.
 
-    # 2. preprocess
+    Args:
+        adata (ad.AnnData): AnnData object
+        start_id (str): Starting cell ID for pseudotime calculation.
+        repreprocess (bool, optional): whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation. Defaults to True.
+        filter_and_normalize_kwargs (dict, optional): Parameters for preprocess in scvelo style, refer to "scvelo.pp.filter_and_normalize"(https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html). Defaults to {}.
+        neighbors_kwargs (dict, optional):  Parameters for neighbor construction in scanpy style, refer to "scanpy.pp.neighbors"(https://scanpy.readthedocs.io/en/latest/api/generated/scanpy.pp.neighbors.html). Defaults to {}.
+        cluster_key (str, optional): Cluster column name in adata.obs. Defaults to "clusters".
+        n_dcs (int, optional): Number of diffusion components. Defaults to 15.
+        connectivity_cutoff (float, optional): Cutoff for the connectivity matrix. Defaults to 0.5.
+
+    Returns:
+        dict: Trajectory results including branch network, branches, and progressions.
+    """
+    # 1. preprocess
     if repreprocess:
         scv.pp.filter_and_normalize(adata, **filter_and_normalize_kwargs)
         sc.pp.neighbors(adata, **neighbors_kwargs)
     sc.tl.diffmap(adata)
 
-    # 3. execute method
+    # 2. execute method
     sc.tl.paga(adata, groups=cluster_key)
     # set start porint for dpt
     adata.uns["iroot"] = np.where(adata.obs.index == start_id)[0][0]
     sc.tl.dpt(adata, n_dcs=n_dcs)
 
-    # 4. extract results
+    # 3. extract results
     # (1) parameters for results extracting
     epsilon = 1e-3  # a very small scaling values
     branch_ids = adata.obs[cluster_key].unique().to_list()
@@ -79,10 +95,25 @@ def cf_paga(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = 
     )
     branch_progressions
 
-    # 5. save results
+    # 4. save results
     trajectory_dict = {
         "branch_network": branch_network,
         "branches": branches,
         "branch_progressions": branch_progressions,
     }
     return trajectory_dict
+
+
+def cf_paga(
+    adata: ad.AnnData,
+    prior_information: dict = None,
+    parameters: dict = None,
+    **kwargs,
+):
+    if (prior_information is None) and (parameters is None):
+        # for new backend call, function(**kwargs)
+        return paga(adata, **kwargs)
+    else:
+        # for old backend call, function(prior_information, parameters)
+        parameters.update(prior_information)
+        return paga(adata, **parameters)

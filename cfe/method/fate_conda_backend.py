@@ -117,6 +117,17 @@ class CondaBackend(Backend):
                 trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
             fadata.add_trajectory_by_type(trajectory_dict)
 
+    def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
+        """simplified version for self.run"""
+        with tempfile.TemporaryDirectory() as tmp_wd:
+            logger.debug(f"Temp wd: {tmp_wd}")
+            self.preprocess(adata, {}, parameters, tmp_wd)
+            trajectory_dict = self.execute(tmp_wd)
+            return trajectory_dict
+
+    def __str__(self):
+        return f"CondaBackend: function_name-{self.function_name}, load_backend-{self.conda_name}"
+
     def _load_definition(self) -> None:
         """load definition from yaml file and ceate Definition object"""
         definition_file_path = f"{os.path.dirname(__file__)}/definition/{self.function_name}.yml"

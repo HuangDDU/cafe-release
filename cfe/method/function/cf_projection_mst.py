@@ -1,4 +1,6 @@
 #!/usr/local/bin/python3
+from typing import Literal, Optional
+
 import anndata as ad
 import networkx as nx
 import numpy as np
@@ -7,22 +9,22 @@ import scanpy as sc
 from sklearn.metrics.pairwise import pairwise_distances
 
 
-def cf_projection_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
-    # 1. extract prior information and parameters
-    repreprocess = parameters["repreprocess"]
-    pca_ndim = parameters["pca_ndim"]
-    basis = parameters["basis"]
-    recluster = parameters["recluster"]
-    cluster_key = parameters["cluster_key"]
-    distance_metric = parameters["distance_metric"]
-
-    # 2. preprocess
+def projection_mst(
+    adata: ad.AnnData,
+    repreprocess: bool = True,
+    pca_ndim: int = 5,
+    basis: str = "X_pca",
+    recluster: bool = True,
+    cluster_key: str = "clusters",
+    distance_metric: Optional[Literal["euclidean", "cosine", "manhattan", "cityblock", "l1", "l2"]] = "euclidean",
+):
+    # 1. preprocess
     adata.obs.reset_index(drop=True, inplace=True)
     if repreprocess and (basis == "X_pca"):
-        sc.pp.pca(adata, n_comps=parameters[pca_ndim])
+        sc.pp.pca(adata, n_comps=pca_ndim)
     X_emb = adata.obsm[basis]
 
-    # 3. execute method
+    # 2. execute method
     # (1) if recluster cells, with the center point as a milestone
     if recluster:
         # new cluster
@@ -43,16 +45,31 @@ def cf_projection_mst(adata: ad.AnnData, prior_information: dict = {}, parameter
     milestone_network.rename(columns={"source": "from", "target": "to", "weight": "length"}, inplace=True)
     milestone_network["directed"] = False
 
-    # 4. extract results
+    # 3. extract results
     comp_ids = [f"comp_{i+1}" for i in range(centers.shape[1])]
     X_emb = pd.DataFrame(X_emb, index=adata.obs.index, columns=comp_ids)
     milestone_emb = centers
     milestone_emb.columns = comp_ids
 
-    # 5. save results
+    # 4. save results
     trajectory_dict = {
         "milestone_network": milestone_network,
         "X_emb": X_emb,
         "milestone_emb": milestone_emb,
     }
     return trajectory_dict
+
+
+def cf_projection_mst(
+    adata: ad.AnnData,
+    prior_information: dict = None,
+    parameters: dict = None,
+    **kwargs,
+):
+    if (prior_information is None) and (parameters is None):
+        # for new backend call, function(**kwargs)
+        return projection_mst(adata, **kwargs)
+    else:
+        # for old backend call, function(prior_information, parameters)
+        parameters.update(prior_information)
+        return projection_mst(adata, **parameters)

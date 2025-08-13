@@ -15,7 +15,8 @@ class TestFateMethod:
     def test_init(self):
         fate_method = self.fate_method
         assert fate_method.method_name == "paga"
-        assert fate_method.backend == "python_function"
+        assert fate_method.backend_name is None
+        assert fate_method.backend is None
 
     def test_choose_backend(self):
         fate_method = self.fate_method
@@ -49,7 +50,22 @@ class TestFateMethod:
 
         assert fadata.is_wrapped_with_trajectory
 
+    def test_call(self):
+        adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
+        fadata = cfe.data.FateAnnData.from_anndata(adata)
+        fadata.obs.index = fadata.obs["cell_id"]
+
+        parameters = {
+            "start_id": "cell1",
+            "cluster_key": "lineage",
+            "connectivity_cutoff": 0.5,
+        }
+        self.fate_method(fadata, **parameters)  # call __call__
+
+        assert fadata.is_wrapped_with_trajectory
+
     def test_get_parameter_df(self):
+        self.fate_method.choose_backend(backend="python_function")
         parameter_df = self.fate_method.get_parameter_df()
 
         assert isinstance(parameter_df, pd.DataFrame)

@@ -2,26 +2,25 @@ import anndata as ad
 import scvelo as scv
 
 
-def cf_velovi(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
+def velovi(
+    adata: ad.AnnData,
+    repreprocess: bool = True,
+    filter_and_normalize_kwargs: dict = {},
+    moments_kwargs: dict = {},
+    velovi_model_kwargs: dict = {},
+    velovi_train_kwargs: dict = {},
+    n_sample: int = 25,
+):
     # ref: https://docs.scvi-tools.org/en/stable/tutorials/notebooks/scrna/velovi.html
     # the package is not available in cfe envirionment, so we import it here
     import scvi
 
-    # 1. extract prior information and parameters
-    # cluster_key = prior_information.get("cluster_key", "clusters")  # do nothing, only prior information demo
-    repreprocess = parameters["repreprocess"]
-    filter_and_normalize_kwargs = parameters["filter_and_normalize_kwargs"]
-    moments_kwargs = parameters["moments_kwargs"]
-    velovi_model_kwargs = parameters["velovi_model_kwargs"]
-    velovi_train_kwargs = parameters["velovi_train_kwargs"]
-    n_sample = parameters["n_sample"]
-
-    # 2. preprocess
+    # 1. preprocess
     if repreprocess:
         scv.pp.filter_and_normalize(adata, **filter_and_normalize_kwargs)
         scv.pp.moments(adata, **moments_kwargs)
 
-    # 3. execute method
+    # 2. execute method
     VELOVI = scvi.external.VELOVI  # extract the VELOVI class
     VELOVI.setup_anndata(adata, spliced_layer="Ms", unspliced_layer="Mu")
     vae = VELOVI(adata, **velovi_model_kwargs)
@@ -34,7 +33,7 @@ def cf_velovi(adata: ad.AnnData, prior_information: dict = {}, parameters: dict 
     adata.layers["velocity"] = velocities / scaling
     scv.tl.velocity_graph(adata)
 
-    # 4,5. extract and save results
+    # 3,4. extract and save results
     trajectory_dict = {
         "velocity": adata.layers["velocity"],
         "velocity_graph": adata.uns["velocity_graph"],
@@ -45,3 +44,18 @@ def cf_velovi(adata: ad.AnnData, prior_information: dict = {}, parameters: dict 
     }
 
     return trajectory_dict
+
+
+def cf_velovi(
+    adata: ad.AnnData,
+    prior_information: dict = None,
+    parameters: dict = None,
+    **kwargs,
+):
+    if (prior_information is None) and (parameters is None):
+        # for new backend call, function(**kwargs)
+        return velovi(adata, **kwargs)
+    else:
+        # for old backend call, function(prior_information, parameters)
+        parameters.update(prior_information)
+        return velovi(adata, **parameters)
