@@ -51,7 +51,7 @@ class FateAnnData(ad.AnnData):
         self.is_wrapped_with_waypoints = False
 
         self.cfe_dict = cfe_dict
-        self.uns["cfe"] = cfe_dict
+        self.uns["cfe"] = cfe_dict  # TODO: Continuous synchronization with self.uns["cfe"] is required in the future
 
     @property
     def milestone_wrapper(self):
@@ -215,6 +215,29 @@ class FateAnnData(ad.AnnData):
             # parse model_name from random_time_string
             model_name_list = [parse_random_time_string(i) for i in model_name_list]
         return model_name_list
+
+    def add_resource_usage(self, resource_usage: dict) -> None:
+        """Add resource usage to the FateAnnData object.
+
+        Args:
+            resource_usage (dict): resource usage dict, such as {"time": 26.1, "memory": 845320, "cpu": 0.99,}
+        """
+        if self.model_name not in self.trajectory_history_dict:
+            self.trajectory_history_dict[self.model_name] = {}
+        self.trajectory_history_dict[self.model_name]["resource_usage"] = resource_usage
+
+    def get_resource_usage(self, model_name: str = None) -> dict:
+        """Get resource usage for a specific model."""
+        if model_name is None:
+            model_name = self.model_name
+        return self.cfe_dict["trajectory_history_dict"][model_name].get("resource_usage", {})
+
+    def get_all_resource_usage(self):
+        """Get resource usage for all models."""
+        resource_usage_dict = {}
+        for model_name in self.trajectory_history_dict:
+            resource_usage_dict[model_name] = self.get_resource_usage(model_name)
+        return resource_usage_dict
 
     def add_trajectory(
         self,
@@ -1067,12 +1090,6 @@ class FateAnnData(ad.AnnData):
     def write_h5ad(self, filename):
         # TODO: write minmal h5ad file for conda or docker run.
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
-        # transfer the milestone color of milestones transfer from tuple to list
-        if ("milestone_color_dict" in self.uns) and (type(next(iter(self.uns["milestone_color_dict"].values()))) == tuple):
-            milestone_color_dict = self.uns["milestone_color_dict"]
-            for k in milestone_color_dict:
-                milestone_color_dict[k] = list(milestone_color_dict[k])
-            logger.debug("transfer milestone color from tuple to list")
         # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
         for k in self.trajectory_history_dict:
             logger.debug(f"transfer trajectory history: '{k}' to dict")
