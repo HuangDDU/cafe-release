@@ -1087,6 +1087,10 @@ class FateAnnData(ad.AnnData):
             "milestone_positions": milestone_positions,
         }
 
+    def update_uns_cfe(self):
+        # update .uns["cfe"]
+        self.uns["cfe"] = self.cfe_dict
+
     def write_h5ad(self, filename):
         # TODO: write minmal h5ad file for conda or docker run.
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
@@ -1109,6 +1113,7 @@ class FateAnnData(ad.AnnData):
                 )  # fill the None value with empty string in milestone_id column
                 trajectory_history["waypoint_wrapper"] = waypoint_wrapper.__dict__
             self.trajectory_history_dict[k] = trajectory_history
+        self.update_uns_cfe()
         super().write(filename)
 
     def launch_cellxgene(self, tmp_filename=".tmp.h5ad", trajectory=False, port=5005, conda_env="cfe"):  # if show trajectory
