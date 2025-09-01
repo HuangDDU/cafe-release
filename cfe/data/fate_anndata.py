@@ -30,6 +30,7 @@ class FateAnnData(ad.AnnData):
         # try to get the stored FateAnnData information
         cfe_dict = self.uns.get("cfe", {})
 
+        # prior inforation means that there are default values for these keys, such is start cell id
         self.prior_information = cfe_dict.get("prior_information", {})
         cfe_dict["prior_information"] = self.prior_information
 
@@ -50,7 +51,7 @@ class FateAnnData(ad.AnnData):
         self.is_wrapped_with_waypoints = False
 
         self.cfe_dict = cfe_dict
-        self.uns["cfe"] = cfe_dict
+        self.uns["cfe"] = cfe_dict  # TODO: Continuous synchronization with self.uns["cfe"] is required in the future
 
     @property
     def milestone_wrapper(self):
@@ -87,32 +88,6 @@ class FateAnnData(ad.AnnData):
             model_dict["waypoint_wrapper"] = value
         else:
             self.cfe_dict["trajectory_history_dict"][self.model_name] = {"waypoint_wrapper": value}
-
-    @classmethod
-    def from_anndata(cls, adata: ad.AnnData) -> "FateAnnData":
-        """Create a FateAnnData object from an existing AnnData object.
-
-        Args:
-            adata (ad.AnnData): existing AnnData object
-
-        Returns:
-            fadata (cfe.data.FateAnnData): generated FateAnnData object
-        """
-
-        logger.debug("Create a FateAnnData object from an existing AnnData object.")
-
-        fadata = cls(
-            name=adata.name if hasattr(adata, "name") else "FateAnnData",
-            X=adata.X,
-            obs=adata.obs,
-            var=adata.var,
-            uns=adata.uns,
-            obsm=adata.obsm,
-            varm=adata.varm,
-            layers=adata.layers,
-        )
-
-        return fadata
 
     @classmethod
     def read_dynverse_simulation_data(
@@ -174,11 +149,55 @@ class FateAnnData(ad.AnnData):
         # TODO: waypoint add
         return fadata
 
+    @classmethod
+    def from_anndata(cls, adata: ad.AnnData) -> "FateAnnData":
+        """Create a FateAnnData object from an existing AnnData object.
+
+        Args:
+            adata (ad.AnnData): existing AnnData object
+
+        Returns:
+            fadata (cfe.data.FateAnnData): generated FateAnnData object
+        """
+
+        logger.debug("Create a FateAnnData object from an existing AnnData object.")
+
+        fadata = cls(
+            name=adata.name if hasattr(adata, "name") else "FateAnnData",
+            X=adata.X,
+            obs=adata.obs,
+            var=adata.var,
+            uns=adata.uns,
+            obsm=adata.obsm,
+            varm=adata.varm,
+            obsp=adata.obsp,
+            layers=adata.layers,
+        )
+
+        return fadata
+
+    def to_anndata(self, delete_trajectory=False):
+        uns = self.uns.copy()
+        if delete_trajectory and ("cfe" in uns):
+            del uns["cfe"]
+        adata = ad.AnnData(
+            X=self.X,
+            obs=self.obs,
+            var=self.var,
+            uns=uns,
+            obsm=self.obsm,
+            varm=self.varm,
+            obsp=self.obsp,
+            layers=self.layers,
+        )
+        return adata
+
     def add_prior_information(self, **kwargs) -> None:
         """Add prior information to the FateAnnData object.
 
         ref: pydynverse/wrap/wrap_add_prior_information add_prior_information
         """
+        # TODO: if prior information is needed?
         self.prior_information.update(kwargs)
 
     def add_model_name(self, model_name: str):
@@ -196,6 +215,29 @@ class FateAnnData(ad.AnnData):
             # parse model_name from random_time_string
             model_name_list = [parse_random_time_string(i) for i in model_name_list]
         return model_name_list
+
+    def add_resource_usage(self, resource_usage: dict) -> None:
+        """Add resource usage to the FateAnnData object.
+
+        Args:
+            resource_usage (dict): resource usage dict, such as {"time": 26.1, "memory": 845320, "cpu": 0.99,}
+        """
+        if self.model_name not in self.trajectory_history_dict:
+            self.trajectory_history_dict[self.model_name] = {}
+        self.trajectory_history_dict[self.model_name]["resource_usage"] = resource_usage
+
+    def get_resource_usage(self, model_name: str = None) -> dict:
+        """Get resource usage for a specific model."""
+        if model_name is None:
+            model_name = self.model_name
+        return self.cfe_dict["trajectory_history_dict"][model_name].get("resource_usage", {})
+
+    def get_all_resource_usage(self):
+        """Get resource usage for all models."""
+        resource_usage_dict = {}
+        for model_name in self.trajectory_history_dict:
+            resource_usage_dict[model_name] = self.get_resource_usage(model_name)
+        return resource_usage_dict
 
     def add_trajectory(
         self,
@@ -1045,15 +1087,13 @@ class FateAnnData(ad.AnnData):
             "milestone_positions": milestone_positions,
         }
 
+    def update_uns_cfe(self):
+        # update .uns["cfe"]
+        self.uns["cfe"] = self.cfe_dict
+
     def write_h5ad(self, filename):
         # TODO: write minmal h5ad file for conda or docker run.
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
-        # transfer the milestone color of milestones transfer from tuple to list
-        if ("milestone_color_dict" in self.uns) and (type(next(iter(self.uns["milestone_color_dict"].values()))) == tuple):
-            milestone_color_dict = self.uns["milestone_color_dict"]
-            for k in milestone_color_dict:
-                milestone_color_dict[k] = list(milestone_color_dict[k])
-            logger.debug("transfer milestone color from tuple to list")
         # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
         for k in self.trajectory_history_dict:
             logger.debug(f"transfer trajectory history: '{k}' to dict")
@@ -1073,6 +1113,7 @@ class FateAnnData(ad.AnnData):
                 )  # fill the None value with empty string in milestone_id column
                 trajectory_history["waypoint_wrapper"] = waypoint_wrapper.__dict__
             self.trajectory_history_dict[k] = trajectory_history
+        self.update_uns_cfe()
         super().write(filename)
 
     def launch_cellxgene(self, tmp_filename=".tmp.h5ad", trajectory=False, port=5005, conda_env="cfe"):  # if show trajectory

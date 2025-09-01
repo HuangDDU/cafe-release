@@ -6,7 +6,7 @@
 
 ## Register fate method and create environment
 
-1. Ensure you have local conda environment `scvi-env`, istructed by [scvi-tools installation document](https://docs.scvi-tools.org/en/stable/installation.html).
+1. Ensure you have local conda environment `scvi-env`, instructed by [scvi-tools installation document](https://docs.scvi-tools.org/en/stable/installation.html).
 2. Register the method in backend config file: `cfe/method/method_backend.yml`, including method name, python function and conda environment.
 
     ``` yaml

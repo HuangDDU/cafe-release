@@ -12,11 +12,10 @@ def get_test_run_data():
     fadata = cfe.data.FateAnnData.from_anndata(adata)
     fadata.layers["counts"] = fadata.X.copy()
     fadata.layers["expression"] = fadata.X.copy()
-    cluster_key = "lineage"
     fadata.obs.index = fadata.obs["cell_id"]
     # prior_information,  parameters
-    prior_information = {"start_id": "cell1", "groups_id": fadata.obs[cluster_key].tolist()}
-    parameters = {"filter_features": False}
+    prior_information = {"start_id": "cell1"}
+    parameters = {"cluster_key": "lineage"}
     fadata.add_prior_information(**prior_information)  # add prior information to fadata
 
     return fadata, parameters
@@ -36,6 +35,18 @@ class TestFunctionBackend:
         fadata, parameters = get_test_run_data()
         self.function_backend.run(fadata, parameters)
         assert fadata.is_wrapped_with_trajectory
+
+    def test_call(self):
+        adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
+        adata.obs.index = adata.obs["cell_id"]
+
+        parameters = {
+            "start_id": "cell1",
+            "cluster_key": "lineage",
+            "connectivity_cutoff": 0.5,
+        }
+
+        self.function_backend(adata, **parameters)
 
     def test_load_definition(self):
         # _load_definition is called in test_load_backend, which is called in __init__

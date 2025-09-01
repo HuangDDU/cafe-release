@@ -17,7 +17,7 @@ def add_milestone_color(n, palette_name: str = None):
             f"The number of colors({n}) is greater than the number of colors in the '{palette_name}' palette({len(palette)}), and the 'husl' palette selection is used."
         )
         palette = sns.color_palette("husl", n_colors=n)
-    milestone_color_list = palette
+    milestone_color_list = [list(i) for i in palette]  # transfer from tuple to list
     return milestone_color_list  # rgb
 
 

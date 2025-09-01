@@ -13,44 +13,30 @@ wrapper:
   type: graph
   topology_inference: free
   trajectory_types:
-    - linear
-    - bifurcation
-    - convergence
-    - multifurcation
-    - tree
+  - linear
+  - bifurcation
+  - convergence
+  - multifurcation
+  - tree
   input_required: counts
 
 parameters:
-  - id: dimred
-    type: character
-    default: pca
-    values:
-      - pca
-      - mds
-      - tsne
-      - ica
-      - lle
-      - landmark_mds
-      - mds_sammon
-      - mds_isomds
-      - mds_smacof
-      - umap
-      - dm_diffusionMap
-    description: Which dimensionality reduction method to use.
-  - id: ndim
-    type: integer
-    default: 5
-    distribution:
-      type: uniform
-      lower: 2
-      upper: 30
-  - id: distance_metric
-    type: character
-    default: euclidean
-    values:
-      - euclidean
-      - cosine
-      - manhattan
-      - cityblock
-      - l1
-      - l2
+- id: repreprocess
+  description: whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation.
+  type: boolean
+  default: True
+- id: pca_ndim
+  description: Number of principal components to keep in the preprocess pca step.
+  type: integer
+  default: 5
+  distribution:
+    type: uniform
+    lower: 2
+    upper: 30
+- id: neighbors_kwargs
+  description: refer to https://scanpy.readthedocs.io/en/latest/api/generated/scanpy.pp.neighbors.html
+  type: dict
+  update: True
+  default:
+    n_neighbors: 15
+    n_pcs: 15

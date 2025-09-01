@@ -1,5 +1,6 @@
 import os.path
 
+import pandas as pd
 import pytest
 import scanpy as sc
 
@@ -14,7 +15,8 @@ class TestFateMethod:
     def test_init(self):
         fate_method = self.fate_method
         assert fate_method.method_name == "paga"
-        assert fate_method.backend == "python_function"
+        assert fate_method.backend_name is None
+        assert fate_method.backend is None
 
     def test_choose_backend(self):
         fate_method = self.fate_method
@@ -37,16 +39,40 @@ class TestFateMethod:
         fadata = cfe.data.FateAnnData.from_anndata(adata)
         fadata.layers["counts"] = fadata.X.copy()
         fadata.layers["expression"] = fadata.X.copy()
-        cluster_key = "lineage"
         fadata.obs.index = fadata.obs["cell_id"]
         # prior_information,  parameters
-        prior_information = {"start_id": "cell1", "groups_id": fadata.obs[cluster_key].tolist()}
-        parameters = {"filter_features": False}
-        fadata.add_prior_information(**prior_information)  # add prior information to fadata
+        prior_information = {"start_id": "cell1"}
+        parameters = {"cluster_key": "lineage"}
+        # add prior information to fadata
+        fadata.add_prior_information(**prior_information)
 
         self.fate_method.infer_trajectory(fadata, parameters)
 
         assert fadata.is_wrapped_with_trajectory
+
+    def test_call(self):
+        adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
+        fadata = cfe.data.FateAnnData.from_anndata(adata)
+        fadata.obs.index = fadata.obs["cell_id"]
+
+        parameters = {
+            "start_id": "cell1",
+            "cluster_key": "lineage",
+            "connectivity_cutoff": 0.5,
+        }
+        self.fate_method(fadata, **parameters)  # call __call__
+
+        assert fadata.is_wrapped_with_trajectory
+
+    def test_get_parameter_df(self):
+        self.fate_method.choose_backend(backend="python_function")
+        parameter_df = self.fate_method.get_parameter_df()
+
+        assert isinstance(parameter_df, pd.DataFrame)
+        assert list(parameter_df.columns) == ["description", "type", "default", "update", "distribution"]
+
+    # def test_get_prior_information_df(self):
+    #     prior_information_df = self.fate_method.get_prior_information_df()
 
 
 if __name__ == "__main__":

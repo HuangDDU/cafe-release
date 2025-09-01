@@ -52,6 +52,11 @@ class TestFateAnnData:
         fadata = cfe.data.FateAnnData.from_anndata(adata)
         assert fadata.id is not None
 
+    def test_to_anndata(self):
+        fadata = self.fadata
+        adata = fadata.to_anndata(delete_trajectory=True)
+        assert isinstance(adata, ad.AnnData)
+
     @pytest.mark.skipif(not cfe.settings.r_available, reason="R is not available")
     def test_read_dynverse_simulation_data(self):
         fadata = cfe.data.FateAnnData.read_dynverse_simulation_data()
@@ -82,6 +87,7 @@ class TestFateAnnData:
         assert sorted(model_name_list) == sorted(["first model", "second model"])
 
     def test_get_item(self):
+        # test obs index
         pass
 
     def test_add_prior_information(self):

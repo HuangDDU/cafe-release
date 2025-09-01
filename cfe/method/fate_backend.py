@@ -24,6 +24,7 @@ class Backend(ABC):
         """_summary_"""
         pass
 
+    # Note: Only used for dynverse docker backend"
     def _extract_prior_information(self, fdata, inputs_df):
         """
         ref: PyDynverse/pydynverse/wrap/method_extract_args.py _method_extract_priors
@@ -202,8 +203,26 @@ class Definition:
     def get_inputs_df(self):
         return self.wrapper["inputs"]
 
-    def get_parameters(self):
-        return self.parameters["default"].to_dict()
+    def get_parameters(self, new_parameters=None):
+        default_parameters = self.parameters["default"].to_dict()
+        if new_parameters is None:
+            # return default parameters
+            return default_parameters
+        else:
+            # merge new parameters and default parameters to get parameters
+            parameters = default_parameters
+            # parameters.update(new_parameters)
+            #
+            for k, v in new_parameters.items():
+                if k in parameters:
+                    if isinstance(v, dict) and self.parameters.loc[k, "update"]:
+                        #  for dict parameters, it should be updated by merge but not to replace.
+                        parameters[k].update(v)
+                    else:
+                        parameters[k] = v
+                else:
+                    logger.warning(f"{k} is not a valid parameter")
+            return parameters
 
     def add_function_wrapper(self, return_function):
         if not return_function:

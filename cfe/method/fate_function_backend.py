@@ -2,6 +2,7 @@ import importlib.util
 import os
 
 import yaml
+from anndata import AnnData
 
 from .._logging import logger
 from ..data import FateAnnData
@@ -45,12 +46,10 @@ class FunctionBackend(Backend):
         """
 
         prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
-        default_parameters = self.definition.get_parameters()
-        if parameters is not None:
-            default_parameters.update(parameters)
-        parameters = default_parameters
+        parameters = self.definition.get_parameters(parameters)
+        adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
 
-        trajectory_dict = self.function(fadata, prior_information, parameters)
+        trajectory_dict = self.function(adata, prior_information, parameters)
 
         # if multiple wrapper type for a method, it should be shown in trajectory_dict
         # else, read from definition yaml file
@@ -59,6 +58,15 @@ class FunctionBackend(Backend):
             trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
 
         fadata.add_trajectory_by_type(trajectory_dict)
+
+    def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
+        """simplified version for self.run"""
+        # transfer FateAnndata to AnnData to avoid other trajectory IO
+        trajectory_dict = self.function(adata, **parameters)
+        return trajectory_dict
+
+    def __str__(self):
+        return f"FunctionBackend: function_name-{self.function_name}"
 
     def _load_definition(self) -> None:
         """load definition from yaml file and ceate Definition object"""

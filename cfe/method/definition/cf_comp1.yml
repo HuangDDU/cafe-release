@@ -16,33 +16,23 @@ wrapper:
   input_required: expression
 
 parameters:
-  - id: dimred
-    description: Which dimensionality reduction method to use.
-    type: character
-    default: pca
-    values:
-    - pca
-    - mds
-    - tsne
-    - ica
-    - lle
-    - landmark_mds
-    - mds_sammon
-    - mds_isomds
-    - mds_smacof
-    - umap
-    - dm_diffusionMap
-  - id: ndim
-    type: integer
-    default: 2
-    distribution:
-      type: uniform
-      lower: 2
-      upper: 30
-  - id: component
-    type: integer
-    default: 1
-    distribution:
-      type: uniform
-      lower: 1
-      upper: 10
+- id: repreprocess
+  description: whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation.
+  type: boolean
+  default: True
+- id: pca_ndim
+  description: Number of principal components to keep in the preprocess pca step.
+  type: integer
+  default: 5
+  distribution:
+    type: uniform
+    lower: 2
+    upper: 30
+- id: basis
+  description: Projection or embedding space name.
+  type: character
+  default: X_pca
+- id: component
+  description: Component index, start from 1.
+  type: integer
+  default: 1

@@ -2,14 +2,34 @@
 
 ## 1. Backend
 
+### 1.1 Available backend table
+
 |Backend|Description|Advantage|Disadvantage|
 | ---- | ---- | ---- | ---- |
 |**Python Function**|The function developed by this project incorporates the latest trajectory inference methods in recent years, making it particularly well-suited to the project's framework.|1. New Methods in recenty years. <br>| 1. Different trajectory inference package versions in the same Python environment may conflict. |
 |**Conda(recommended)**|The function run in specific conda environment, related packages don't conflict with other method, which is more flexible.| |
-|**Dynverse Docker**|Docker image for trajectory inference refers to dynverse [@dynverse].|1. The ease of use of Docker |1.Methods on R language not be compatible. <br> 2.Methods are old relatively. <br/> 3. Docker environment is need.
 |**CFE Docker**|Docker image for trajectory inference are developed by this project.|1. New Methods in recenty years. <br>2. The ease of use of Docker. |1. Docker environment is need. |
+|**Dynverse Docker**|Docker image for trajectory inference refers to dynverse [@dynverse].|1. The ease of use of Docker |1.Methods on R language not be compatible. <br> 2.Methods are old relatively. <br/> 3. Docker environment is need.
 
-## Reference source
+
+### 1.2 Method Usage
+
+1. **(Recommended)** Call the method directly.
+
+```python
+cfe.method.paga(fadata, parameters={"cluster_key": "lineage",  "connectivity_cutoff": 0.5})
+```
+
+2. Create method object with method name, then call it.
+
+###
+
+```python
+method = cfe.method.FateMethod(method_name="paga")
+method(fadata, parameters={"cluster_key": "lineage",  "connectivity_cutoff": 0.5})
+```
+
+### 1.3Reference source
 
 - **Dynverse**[@dynverse]: 45 methods filtered from 70 methods before 2019 years. Output results of them can be classfied to 7 wrapper. Paper, github reository, document are available.
 - **Github Reporsitory**[@sc_pseudotime_github]: A repository keeps track of the latest trajectory inference methods in real-time. Related topics such as upstream opertion(data imputation, dimsional reduction), donstream analysis(GRN inference, trajectory alignment) and reviews are also included.
