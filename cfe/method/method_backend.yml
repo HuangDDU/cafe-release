@@ -40,8 +40,17 @@ velovi:
   python_function: cf_velovi
   conda_env: scvi-env
 
+cytotrace2:
+  python_function: cf_cytotrace2
+  conda_env: cytotrace2
+
 palantir:
   python_function: cf_palantir
+  conda_env: cfe
+
+sctc:
+  python_function: cf_sctc
+  conda_env: cfe
 
 cellrank:
   python_function: cf_cellrank

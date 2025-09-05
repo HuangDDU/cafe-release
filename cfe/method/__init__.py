@@ -40,6 +40,8 @@ function_name_list = [
     "cf_graph_mst",
     "cf_scvelo",
     "cf_velovi",
+    "cf_palantir",
+    "cf_cytotrace2",
 ]
 for function_name in function_name_list:
     function_file_path = f"{os.path.dirname(__file__)}/function/{function_name}.py"

@@ -15,38 +15,43 @@ wrapper:
   trajectory_types: linear
   input_required:
   - counts
-  - start_id
-  input_optional:
-  - terminal_states
+  # - start_id
+  # input_optional:
+  # - terminal_states
 
 parameters:
-  - id: dimred
-    description: Which dimensionality reduction method to use.
-    type: character
-    default: pca
-    values:
-    - pca
-    - mds
-    - tsne
-    - ica
-    - lle
-    - landmark_mds
-    - mds_sammon
-    - mds_isomds
-    - mds_smacof
-    - umap
-    - dm_diffusionMap
-  - id: ndim
-    type: integer
-    default: 2
-    distribution:
-      type: uniform
-      lower: 2
-      upper: 30
-  - id: knn
-    type: integer
-    default: 30
-    distribution:
-      type: uniform
-      lower: 10
-      upper: 50
+- id: repreprocess
+  description: whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation.
+  type: boolean
+  default: True
+- id: palantir_kwargs
+  description: Parameters for Palantir
+  type: dict
+  update: True
+  default: {}
+- id: palantir_results_kwargs
+  description: Parameters for Palantir results
+  type: dict
+  update: True
+  default: {}
+- id: ndim
+  type: integer
+  default: 2
+  distribution:
+    type: uniform
+    lower: 2
+    upper: 30
+- id: knn
+  type: integer
+  default: 30
+  distribution:
+    type: uniform
+    lower: 10
+    upper: 50
+- id: linear_type
+  type: character
+  description: The type of linear trajectory to return. Options are 'pseudotime' or 'entropy'.
+  default: pseudotime
+  options:
+  - pseudotime
+  - entropy

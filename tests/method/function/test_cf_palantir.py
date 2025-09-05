@@ -13,12 +13,13 @@ class TestCFPalantir:
         self.fadata.obs.index = self.fadata.obs["cell_id"].tolist()
 
     def test_palantir(self):
-        pass
-        # # add priority and parameeters
-        # prior_information = {}
-        # parameters = {"ndim": 2, "component": False}
-        # trajectory_dict = cfe.method.cf_state_comp(self.fadata, prior_information, parameters)
-        # assert trajectory_dict.keys() == {"end_state_probabilities", "pseudotime"}
+        parameters = {
+            "palantir_results_kwargs": {
+                "early_cell": "cell1",
+            }
+        }
+        trajectory_dict = cfe.method.cf_palantir(self.fadata, **parameters)
+        assert "pseudotime" in trajectory_dict.keys()
 
 
 if __name__ == "__main__":

@@ -29,6 +29,7 @@ def setup_method_data():
     fadata = cfe.data.FateAnnData(X=counts)
     fadata.obs.index = ["a", "b", "c", "d", "e", "f"]
     fadata.obs["clusters"] = [1, 1, 2, 2, 2, 3]
+    fadata.obs["clusters"] = fadata.obs["clusters"].astype("category")
     fadata.var.index = ["g1", "g2"]
     fadata.layers["counts"] = counts
     fadata.layers["expression"] = counts.copy()
@@ -106,6 +107,19 @@ class TestFateAnnData:
         )
         assert self.fadata.is_wrapped_with_trajectory
 
+    def test_add_trajectory_mannually(self):
+        # mannully specific milestone edge
+        milestone_network = pd.DataFrame(
+            data=[
+                [1, 2],
+                [2, 3],
+            ],
+            columns=["from", "to"],
+        )
+        self.fadata.add_trajectory_mannually(milestone_network=milestone_network, cluster_key="clusters", basis="X_emb")
+
+        assert self.fadata.is_wrapped_with_trajectory
+
     def test_add_waypoints(self):
         # from .test_fate_milestone_wrapper import setup_method_data
         # milestone_wrapper = setup_method_data()
@@ -116,6 +130,21 @@ class TestFateAnnData:
         # self.fadata.write_h5ad("test_fate_anndata.h5ad")
         # fadata = cfe.data.read_h5ad("test_fate_anndata.h5ad")
         # assert fadata.waypoint_wrapper is not None
+
+    def test_get_start_milestone(self):
+        self.test_add_trajectory_mannually()
+        start_milestone = self.fadata.get_start_milestone("a")
+        assert start_milestone == 1
+
+    def test_get_trajectory_pseudotime_by_milestone(self):
+        self.test_add_trajectory_mannually()
+        pseudotime = self.fadata.get_trajectory_pseudotime(start_milestone=1)
+        assert len(pseudotime) == self.fadata.shape[0]  # assert pseudotime length is equal to cell num
+
+    def test_get_trajectory_pseudotime_by_cell(self):
+        self.test_add_trajectory_mannually()
+        pseudotime = self.fadata.get_trajectory_pseudotime(start_cell=1)
+        assert len(pseudotime) == self.fadata.shape[0]
 
     def test_write(self):
         self.test_add_waypoints()

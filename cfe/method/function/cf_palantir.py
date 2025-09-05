@@ -5,49 +5,45 @@ import scanpy as sc
 import scanpy.external as sce
 
 
-def cf_palantir(
+# TODO:
+def palantir(
     adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {},
-    # copy和reprecess 应该在参数字典parameters中
-    # copy: bool = True,
-    # repreprocess: bool = True
+    repreprocess: bool = True,
+    palantir_kwargs: dict = {},
+    palantir_results_kwargs: dict = {},
+    n_comps: int = 5,
+    knn: int = 30,
+    wrapper_type: str = "linear",
+    linear_type: str = "pseudotime",  # or entropy
+    cluster_key: str = "clusters",
+    **kwargs,
 ):
     # ref: https://palantir.readthedocs.io/en/latest/notebooks/Palantir_sample_notebook.html
     # ref: https://scanpy.readthedocs.io/en/stable/external/generated/scanpy.external.tl.palantir.html
-    # 1. prepare data
-    copy = parameters.get("copy", True)
-    adata = adata.copy() if copy else adata
-    cell_ids = adata.obs.index
-
-    # 2. preprocess and execute method simutaneously with pca
-    repreprocess = parameters.get("repreprocess", True)
-    n_comps = parameters["ndim"]
-    knn = knn = parameters["knn"]
+    # 1. preprocess
     if repreprocess:
-        print("repreprocess")
         sc.pp.normalize_per_cell(adata)
         sc.pp.log1p(adata)
         sc.pp.pca(adata, n_comps=n_comps)
         sc.pp.neighbors(adata, knn=knn)
+        print("repreprocess finish")
 
-    # 3. extract results
-    sce.tl.palantir(adata, n_components=3, knn=knn)  # DiffusionMap and MAGIC
-    early_cell = prior_information["start_id"]
-    terminal_states = prior_information["terminal_states"]
-    pr_res = sce.tl.palantir_results(adata, early_cell=early_cell, terminal_states=terminal_states)
+    # 2. execute method
+    # TODO: check early_cell in cell_ids
+    sce.tl.palantir(adata, **palantir_kwargs)  # DiffusionMap and MAGIC
+    pr_res = sce.tl.palantir_results(adata, **palantir_results_kwargs)  # Pseudotime and branch probabilities
+    print("palantir execute finish")
 
-    # 4. save results
+    # 3,4. extract and save results for different wrapper type
     # multiple output data which adapt to multiple wrapper
     # TODO: multiple output wrapper parallelization
-    wrapper_type = parameters.get("wrapper_type", "linear")
-    linear_type = parameters.get("linear_type", "pseudotime")
+    cell_ids = adata.obs.index
     if linear_type == "pseudotime":
         # pseudotime
         pseudotime = pr_res.pseudotime
     else:
         # entropy
-        pseudotime = pr_res.entropy
+        pseudotime = pr_res.entropy  # TODO:
 
     if wrapper_type == "linear":
         # for linear wrapper
@@ -60,15 +56,30 @@ def cf_palantir(
             "end_state_probabilities": end_state_probabilities,
         }
     else:
-        # for lineage wrapper
-        cluster_key = parameters.get("cluster_key", "clusters")
+        # TODO: for lineage wrapper
+        terminal_states = palantir_results_kwargs.get("terminal_states", [])
         probability = pr_res.branch_probs
         probability.columns = adata.obs[cluster_key][cell_ids.get_indexer(terminal_states)]
-
         trajectory_dict = {
             "probability": probability,
             "cluster_key": cluster_key,
         }
+
     trajectory_dict["wrapper_type"] = wrapper_type
 
     return trajectory_dict
+
+
+def cf_palantir(
+    adata: ad.AnnData,
+    prior_information: dict = None,
+    parameters: dict = None,
+    **kwargs,
+):
+    if (prior_information is None) and (parameters is None):
+        # for new backend call, function(**kwargs)
+        return palantir(adata, **kwargs)
+    else:
+        # for old backend call, function(prior_information, parameters)
+        parameters.update(prior_information)
+        return palantir(adata, **parameters)

@@ -23,9 +23,7 @@ class TestCFVeloVI:
         from cf_velovi import cf_velovi
 
         # add priority and parameters
-        prior_information = {
-            # "cluster_key": "lineage"
-        }
+        prior_information = {}
         parameters = {"velovi_train_kwargs": {"max_epochs": 1}}
         trajectory_dict = cf_velovi(self.adata, prior_information, parameters)
         assert trajectory_dict.keys() == {"velocity", "velocity_graph", "velocity_graph_neg", "neighbors", "obs_index", "var_index"}

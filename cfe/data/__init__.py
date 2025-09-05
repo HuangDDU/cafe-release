@@ -1,6 +1,7 @@
 from ._simplify_networkx_network import simplify_networkx_network
 from .fate_anndata import FateAnnData, read_h5ad
 from .fate_dataset import (  # read dataset
+    read_bifurcating_cellrank,
     read_bonemarrow,
     read_dentategyrus,
     read_erythroid_lineage,
@@ -25,4 +26,5 @@ __all__ = [
     "read_erythroid_lineage",
     "read_pancrease",
     "read_pancrease_cellrank",
+    "read_bifurcating_cellrank",
 ]

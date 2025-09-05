@@ -27,6 +27,36 @@ from .fate_anndata import FateAnnData
 # TODO: use decorator to subsample cell from dataset
 
 
+def read_bifurcating_cellrank(
+    filename="../../tests/data/bifurcating.h5ad",
+    cluster_key="lineage",
+    basis="X_umap",
+    **kwargs,  # subsample args
+):
+    """simulation data from cellrank"""
+    adata = sc.read_h5ad(filename)
+    subsample(adata, **kwargs)
+
+    fadata = FateAnnData.from_anndata(adata)
+
+    milestone_network = pd.DataFrame(
+        data=[
+            ["sA -> sB", "sB -> sBmid"],
+            ["sB -> sBmid", "sBmid -> sC"],
+            ["sB -> sBmid", "sBmid -> sD"],
+            ["sBmid -> sC", "sC -> sEndC"],
+            ["sBmid -> sD", "sD -> sEndD"],
+        ],
+        columns=["from", "to"],
+    )
+    fadata.add_trajectory_mannually(
+        milestone_network=milestone_network,
+        cluster_key=cluster_key,
+        basis=basis,
+    )
+    return fadata
+
+
 def read_bonemarrow(
     filename="/home/huang/PyCode/scRNA/data/BoneMarrow/setty_bone_marrow.h5ad",
     cluster_key="clusters",

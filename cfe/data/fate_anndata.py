@@ -89,6 +89,14 @@ class FateAnnData(ad.AnnData):
         else:
             self.cfe_dict["trajectory_history_dict"][self.model_name] = {"waypoint_wrapper": value}
 
+    def get_trajectory_dict(self, model_name=None):
+        if model_name is None:
+            model_name = self.model_name
+        if model_name not in self.trajectory_history_dict:
+            raise ValueError(f"model '{model_name}' not found in trajectory_history_dict")
+        trajectory_dict = self.trajectory_history_dict[model_name]
+        return trajectory_dict
+
     @classmethod
     def read_dynverse_simulation_data(
         cls,
@@ -1087,6 +1095,73 @@ class FateAnnData(ad.AnnData):
             "milestone_positions": milestone_positions,
         }
 
+    def get_start_milestone(self, start_cell, model_name=None):
+        trajectory_dict = self.get_trajectory_dict(model_name)
+
+        milestone_wrapper = trajectory_dict["milestone_wrapper"]
+        milestone_percentages = milestone_wrapper.milestone_percentages
+        start_cell_percentages = milestone_percentages.query(f"cell_id == '{start_cell}'")
+
+        if start_cell_percentages.shape[0] == 0:
+            raise Exception(f"start cell '{start_cell}' is not available")
+
+        # find the max milestone percentage of the cell as start milestone
+        max_idx = start_cell_percentages["percentage"].idxmax()
+        start_milestone = start_cell_percentages.loc[max_idx]["milestone_id"]
+
+        return start_milestone
+
+    def get_trajectory_pseudotime(self, start_milestone=None, start_cell=None, model_name=None):
+        trajectory_dict = self.get_trajectory_dict(model_name)
+
+        if start_milestone is None:
+            logger.debug(
+                f"start_milestone is None, \
+                try to use start cell '{start_cell}' to identify start milestone automatically"
+            )
+            if start_cell is None:
+                raise Exception("start_milestone and start_cell are both None")
+            else:
+                start_milestone = self.get_start_milestone(start_cell, model_name)
+                logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
+
+        pseudotime_key = f"pseudotime_from_{start_milestone}"
+        if pseudotime_key in trajectory_dict:
+            # return pseudotime from trajectory dict directly
+            logger.debug(f"find key:'{pseudotime_key}' in trajectory dict, use it directly")
+            return trajectory_dict[pseudotime_key]
+        else:
+            # calculate new pseudotime
+            logger.debug("calculating new pseudotime")
+            milestone_wrapper = trajectory_dict["milestone_wrapper"]
+            # claculate the distance from the starting milestone to each milestone
+            milestone_network = milestone_wrapper.milestone_network
+            is_directed = milestone_network["directed"].any()
+            G = nx.from_pandas_edgelist(
+                milestone_network,
+                source="from",
+                target="to",
+                edge_attr=["length"],
+                create_using=nx.DiGraph if is_directed else nx.Graph,
+            )
+            m_spl_dict = nx.shortest_path_length(G, source=start_milestone, weight="length")
+            m_spl_df = pd.DataFrame([m_spl_dict]).T
+            m_spl_df.columns = ["distance"]
+
+            # calculate cell distance from start milestone
+            milestone_percentages = milestone_wrapper.milestone_percentages
+            pseudotime = (
+                milestone_percentages.groupby("cell_id")
+                .apply(lambda x: (m_spl_df["distance"].loc[x["milestone_id"]].mul(x["percentage"].tolist())).sum())
+                .loc[self.obs.index]
+                .tolist()
+            )
+
+            # save pseudotime
+            logger.debug(f"save pseudotime to trajectory dict with key: `{pseudotime_key}`")
+            trajectory_dict[pseudotime_key] = pseudotime
+            return pseudotime
+
     def update_uns_cfe(self):
         # update .uns["cfe"]
         self.uns["cfe"] = self.cfe_dict
@@ -1181,8 +1256,29 @@ class FateAnnData(ad.AnnData):
 
 
 def read_h5ad(*args, **kwargs):
-    # read and create MilestoneWrapper and WaypointWrapper object in trajectory_history_dict.
-    # TODO: milestone_wrapper和waypoint_wrapper的读取添加，需要字典解析
+    """
+    read and parse MilestoneWrapper and WaypointWrapper object in trajectory_history_dict.
+    """
     adata = sc.read_h5ad(*args, **kwargs)
     fadata = FateAnnData.from_anndata(adata)
+    # parse milestone_wrapper and waypoint_wrapper in trajectory_history_dict
+    for trajectory_name, trajectory_history in fadata.trajectory_history_dict.items():
+        # parse milestone_wrapper
+        milestone_wrapper = trajectory_history.get("milestone_wrapper", None)
+        if isinstance(milestone_wrapper, dict):
+            # use object.__new__ to avoid __init__ function
+            logger.debug(f"parse 'MilestoneWrapper' object for {trajectory_name}")
+            milestone_wrapper_obj = object.__new__(MilestoneWrapper)
+            for k, v in milestone_wrapper.items():
+                milestone_wrapper_obj[k] = v
+            trajectory_history["milestone_wrapper"] = milestone_wrapper_obj
+        # parse waypoint_wrapper
+        waypoint_wrapper = trajectory_history.get("waypoint_wrapper", None)
+        if (waypoint_wrapper is not None) and isinstance(waypoint_wrapper, dict):
+            logger.debug(f"parse 'WaypointWrapper' object for {trajectory_name}")
+            waypoint_wrapper_obj = object.__new__(WaypointWrapper)
+            for k, v in waypoint_wrapper.items():
+                waypoint_wrapper_obj[k] = v
+            trajectory_history["waypoint_wrapper"] = waypoint_wrapper_obj
+
     return fadata
