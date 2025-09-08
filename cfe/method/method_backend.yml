@@ -1,56 +1,56 @@
 paga:
   python_function: cf_paga
   cfe_docker: huangzhaoyang/cf_paga:0.0.1
-  conda_env: cfe
+  conda: cfe
 
 comp1:
   python_function: cf_comp1
   cfe_docker: huangzhaoyang/cf_comp1:0.0.1
-  conda_env: cfe
+  conda: cfe
 
 angle:
   python_function: cf_angle
   cfe_docker: huangzhaoyang/cf_angle:0.0.1
-  conda_env: cfe
+  conda: cfe
 
 cluster_mst:
   python_function: cf_cluster_mst
   cfe_docker: huangzhaoyang/cf_cluster_mst:0.0.1
-  conda_env: cfe
+  conda: cfe
 
 state_comp:
   python_function: cf_state_comp
   cfe_docker: huangzhaoyang/cf_state_comp:0.0.1
-  conda_env: cfe
+  conda: cfe
 
 projection_mst:
   python_function: cf_projection_mst
   dynverse_docker: dynverse/ti_mst:v0.9.9.01
-  conda_env: cfe
+  conda: cfe
 
 graph_mst:
   python_function: cf_graph_mst
-  conda_env: cfe
+  conda: cfe
 
 scvelo:
   python_function: cf_scvelo
-  conda_env: cfe
+  conda: cfe
 
 velovi:
   python_function: cf_velovi
-  conda_env: scvi-env
+  conda: scvi-env
 
 cytotrace2:
   python_function: cf_cytotrace2
-  conda_env: cytotrace2
+  conda: cytotrace2
 
 palantir:
   python_function: cf_palantir
-  conda_env: cfe
+  conda: cfe
 
 sctc:
   python_function: cf_sctc
-  conda_env: cfe
+  conda: cfe
 
 cellrank:
   python_function: cf_cellrank

@@ -10,7 +10,7 @@ from anndata import AnnData
 
 from .._logging import logger
 from ..data import FateAnnData
-from ..util import parse_resource_useage_string
+from ..util import parse_bash_resource_usage_string
 from .fate_backend import Backend, Definition
 
 
@@ -97,7 +97,7 @@ class CondaBackend(Backend):
                 # read usage string and transfer to dict
                 usage_string = "".join(stderr_lines)
                 logger.debug(f"resource usage string: {usage_string}")
-                usage_dict = parse_resource_useage_string(usage_string)
+                usage_dict = parse_bash_resource_usage_string(usage_string)
                 logger.debug(f"resource usage dict: {usage_dict}")
                 trajectory_dict["resource_usage"] = usage_dict
             return trajectory_dict

@@ -1,7 +1,10 @@
+import json
 import re
 
+import pandas as pd
 
-def parse_resource_useage_string(usage_string: str) -> dict:
+
+def parse_bash_resource_usage_string(usage_string: str) -> dict:
     # parse usage string generate by "/usr/bin/time -v" to usage dict
 
     # extract time(s)
@@ -16,9 +19,11 @@ def parse_resource_useage_string(usage_string: str) -> dict:
     else:
         time_sec = float(parts[0])
 
-    # extract memory(KB)
+    # extract memory(MB)
     mem_match = re.search(r"Maximum resident set size \(kbytes\): (\d+)", usage_string)
-    memory = int(mem_match.group(1)) if mem_match else 0
+    memory = int(mem_match.group(1)) if mem_match else 0  # KB
+    memory = memory / 1024  # MB
+    memory = round(memory, 2)
 
     # extract cpu percentage
     cpu_match = re.search(r"Percent of CPU this job got: (\d+)%", usage_string)
@@ -28,6 +33,33 @@ def parse_resource_useage_string(usage_string: str) -> dict:
         "time": time_sec,
         "memory": memory,
         "cpu": cpu,
+    }
+
+    return usage_dict
+
+
+def parse_docker_resource_usage_string_list(usage_string_list: list) -> dict:
+    usage_dict_list = []
+    for usage_string in usage_string_list:
+        usage_string_dict = json.loads(usage_string)
+        memory = usage_string_dict["memory_stats"]["usage"]
+        memory = memory / 1024 / 1024  # MB
+        memory = round(memory, 2)
+
+        # TODO: CPU can't be calculated
+        cpu = 0
+        tmp_usage_dict = {
+            "memory": memory,
+            "cpu": cpu,
+        }
+        usage_dict_list.append(tmp_usage_dict)
+
+    usage_df = pd.DataFrame(usage_dict_list)
+
+    usage_dict = {
+        "memory": usage_df["memory"].max(),
+        "cpu": usage_df["cpu"].max(),
+        "time": 0,
     }
 
     return usage_dict

@@ -2,6 +2,8 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
+import time
 
 import docker
 import pandas as pd
@@ -9,6 +11,7 @@ import rpy2.robjects as ro
 
 from .._logging import logger
 from ..data import FateAnnData
+from ..util import parse_docker_resource_usage_string_list
 from .fate_backend import DockerBackend
 
 # import yaml
@@ -48,6 +51,7 @@ class DynverseDockerBackend(DockerBackend):
         task["verbose"] = True
         write_h5(task, f"{tmp_wd}/input.h5")  # json->h5
 
+    # TODO: use bash command to start docker instead of
     def execute(self, tmp_wd: str) -> "DynverseDockerOutput":
         """Execute: Dynverse docker execute and parse result file "output.h5"
 
@@ -62,6 +66,8 @@ class DynverseDockerBackend(DockerBackend):
         args = ["--dataset", "/ti/input.h5", "--output", "/ti/output.h5"]
 
         client = docker.from_env()
+
+        start_time = time.time()
         container = client.containers.run(
             image=self.definition["run"]["image_id"],
             command=args,  # r R script command args in Docker
@@ -70,8 +76,20 @@ class DynverseDockerBackend(DockerBackend):
             detach=True,
         )
 
+        stats_list = []
+
+        def collect_stats():
+            for stat in container.stats(stream=True):
+                s = str(stat.decode())[:-1]  # remove '\n'
+                stats_list.append(s)
+
+        stats_thread = threading.Thread(target=collect_stats, daemon=True)
+        stats_thread.start()
+
         log_list = [log.decode("utf-8").strip() for log in container.logs(stream=True)]
         container.wait()  # wait until docker finish
+        end_time = time.time()
+
         container.stop()
         container.remove()
 
@@ -85,6 +103,10 @@ class DynverseDockerBackend(DockerBackend):
             logger.debug("Docker Finish")
             logger.debug(log)
             dynverse_docker_output = read_h5(f"{tmp_wd}/output.h5")  # read docker result h5
+            usage_dict = parse_docker_resource_usage_string_list(stats_list)
+            usage_dict["time"] = start_time - end_time  # mannuly add time
+            logger.debug(f"resource usage dict: {usage_dict}")
+            dynverse_docker_output["resource_usage"] = usage_dict
             return dynverse_docker_output
 
     def postprocess(self, fadata: FateAnnData, trajectory: dict) -> None:
@@ -121,10 +143,13 @@ class DynverseDockerBackend(DockerBackend):
             self.preprocess(inputs, parameters, priors, tmp_wd)
 
             # method run
-            trajectory = self.execute(tmp_wd)
+            trajectory_dict = self.execute(tmp_wd)
 
             # postprocess
-            self.postprocess(fadata, trajectory)
+            self.postprocess(fadata, trajectory_dict)
+
+            if "resource_usage" in trajectory_dict:
+                fadata.add_resource_usage(trajectory_dict["resource_usage"])
 
     def _extract_inputs(self, fdata: FateAnnData, inputs_df: pd.DataFrame) -> dict:
         """extract input dict fom definition

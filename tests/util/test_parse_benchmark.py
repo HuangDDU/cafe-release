@@ -1,7 +1,10 @@
-from cfe.util import parse_resource_useage_string
+from cfe.util import (
+    parse_bash_resource_usage_string,
+    parse_docker_resource_usage_string_list,
+)
 
 
-def test_parse_resource_useage_string():
+def test_parse_bash_resource_usage_string():
     usage_string = """
     Command being timed: "python cfe/cli.py benchmark --data tmp/input.h5ad --method_list comp1 paga --save_fig tmp/comp1.jpg --save_h5ad tmp/comp1.h5ad --parameter_file tmp/comp1.yaml"
         User time (seconds): 21.87
@@ -27,10 +30,24 @@ def test_parse_resource_useage_string():
         Page size (bytes): 4096
         Exit status: 0
     """
-    usage_dict = parse_resource_useage_string(usage_string)
+    usage_dict = parse_bash_resource_usage_string(usage_string)
     expected_usage_dict = {
         "time": 26.1,
-        "memory": 845320,
+        # "memory": 845320, # KB
+        "memory": 825.51,  # MB
         "cpu": 0.99,
     }
     assert usage_dict == expected_usage_dict
+
+
+def test_parse_docker_resource_usage_string_list():
+    usage_string_list = [
+        '{"memory_stats":{"usage": 1048576}}',  # 1MB
+        '{"memory_stats":{"usage": 2097152}}',  # 2MB
+    ]
+    usage_dict = parse_docker_resource_usage_string_list(usage_string_list)
+    # expected_usage_dict = {
+    #     "memory": 2,  # MB
+    #     "cpu": 0,
+    # }
+    assert usage_dict["memory"] == 2

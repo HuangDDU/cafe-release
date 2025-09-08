@@ -1,8 +1,7 @@
 import os.path
 from typing import Literal, Optional
 
-# import pandas as pd
-import yaml
+import pandas as pd
 
 from .._logging import logger
 from .._settings import settings
@@ -12,6 +11,8 @@ from .fate_cfe_docker_backend import CFEDockerBackend
 from .fate_conda_backend import CondaBackend
 from .fate_dynverse_docker_backend import DynverseDockerBackend
 from .fate_function_backend import FunctionBackend
+
+# import yaml
 
 
 class FateMethod:
@@ -65,16 +66,28 @@ class FateMethod:
                 backend = "dynverse_docker"
             settings["backend"] = backend  # update default backend in setting
 
-        with open(os.path.join(os.path.dirname(__file__), "method_backend.yml"), "r") as file:
-            method_backend_dict = yaml.safe_load(file)
+        # with open(os.path.join(os.path.dirname(__file__), "method_backend.yml"), "r") as file:
+        #     method_backend_dict = yaml.safe_load(file)
+        # replace yml by csv, more clearer
+        method_backend_dict = pd.read_csv(os.path.join(os.path.dirname(__file__), "method_backend.csv"), index_col=0).T.to_dict()
 
         # TODO: need adjust for some incomplete methods like slingshot, only dynverse docker is available
+        if pd.isna(method_backend_dict[self.method_name][backend]):
+            # choose backend that have value
+            available_backend_list = []
+            for k, v in method_backend_dict[self.method_name].items():
+                if not pd.isna(v):
+                    available_backend_list.append(k)
+            new_backend = available_backend_list[-1]
+            logger.info(f"backend:'{backend}' is not available for method:'{self.method_name}', choosing new backend: '{new_backend}'")
+            backend = new_backend
+
         if backend == "python_function":
             function_name = method_backend_dict[self.method_name]["python_function"]
             self.method_backend = FunctionBackend(function_name)
         elif backend == "conda":
             function_name = method_backend_dict[self.method_name]["python_function"]
-            conda_name = method_backend_dict[self.method_name]["conda_env"]
+            conda_name = method_backend_dict[self.method_name]["conda"]
             self.method_backend = CondaBackend(function_name, conda_name)
         elif backend == "cfe_docker":
             image_id = method_backend_dict[self.method_name]["cfe_docker"]
