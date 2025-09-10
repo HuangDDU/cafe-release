@@ -5,30 +5,12 @@ import subprocess
 import tempfile
 import threading
 
-import yaml
 from anndata import AnnData
 
-from .._logging import logger
+from .._logging import logger, print_output
 from ..data import FateAnnData
 from ..util import parse_bash_resource_usage_string
-from .fate_backend import Backend, Definition
-
-
-# 读取subprocess子进程输出,
-def print_output(print=logger.info, output_list=[]):
-    def fun(
-        pipe,
-        prefix,
-    ):
-        """print output from a pipe"""
-        for line in iter(pipe.readline, ""):
-            if line:
-                print(f"{prefix}{line.rstrip()}")
-                if output_list is not None:
-                    output_list.append(line.rstrip())
-        pipe.close()
-
-    return fun
+from .fate_backend import Backend
 
 
 class CondaBackend(Backend):
@@ -42,8 +24,17 @@ class CondaBackend(Backend):
 
     def load_backend(self):
         # conda backend just load definition
-        self._load_definition()
-        # TODO: test if conda environment is available, if not, raise error
+        # self._load_definition()
+
+        # test if conda environment is available
+        result = subprocess.run(
+            ["conda", "run", "-n", self.conda_name, "python", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10
+        )
+        if result.returncode != 0:
+            logger.error(f"Conda environment '{self.conda_name}' not available: {result.stderr.strip()}")
+            raise RuntimeError(f"Conda environment '{self.conda_name}' not available.")
+        else:
+            logger.debug(f"Conda environment '{self.conda_name}' is available: {result.stdout.strip()}")
 
     def preprocess(self, fadata: AnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad, prior information and parameters json file in tmp_wd dir"""
@@ -114,8 +105,10 @@ class CondaBackend(Backend):
             benchmark_resource = parameters["benchmark_resource"]
             del parameters["benchmark_resource"]
 
-        prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
-        parameters = self.definition.get_parameters(parameters)
+        # TODO: definition remove ...
+        # prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
+        # parameters = self.definition.get_parameters(parameters)
+        prior_information = {}  # prior_information is some common and frequently parameter, such as cluster_key.
         adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
 
         with tempfile.TemporaryDirectory() as tmp_wd:
@@ -124,12 +117,13 @@ class CondaBackend(Backend):
 
             trajectory_dict = self.execute(tmp_wd, benchmark_resource=benchmark_resource)
 
-            # if multiple wrapper type for a method, it should be shown in trajectory_dict
-            # else, read from definition yaml file
-            if "wrapper_type" not in trajectory_dict:
-                wrapper_type = self.definition["wrapper"]["type"]
-                trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
-            fadata.add_trajectory_by_type(trajectory_dict)
+            # # if multiple wrapper type for a method, it should be shown in trajectory_dict
+            # # else, read from definition yaml file
+            # if "wrapper_type" not in trajectory_dict:
+            #     wrapper_type = self.definition["wrapper"]["type"]
+            #     trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
+
+            fadata.add_trajectory_by_type(trajectory_dict)  # wrapper type sorted in trajectory dict help "add_trajectory_xxx" choice.
 
             # add resource usage if benchmark_resource is True
             if "resource_usage" in trajectory_dict:
@@ -153,12 +147,12 @@ class CondaBackend(Backend):
     def __str__(self):
         return f"CondaBackend: function_name-{self.function_name}, load_backend-{self.conda_name}"
 
-    def _load_definition(self) -> None:
-        """load definition from yaml file and ceate Definition object"""
-        definition_file_path = f"{os.path.dirname(__file__)}/definition/{self.function_name}.yml"
-        with open(definition_file_path, "r") as file:
-            definition_raw = yaml.safe_load(file)
+    # def _load_definition(self) -> None:
+    #     """load definition from yaml file and ceate Definition object"""
+    #     definition_file_path = f"{os.path.dirname(__file__)}/definition/{self.function_name}.yml"
+    #     with open(definition_file_path, "r") as file:
+    #         definition_raw = yaml.safe_load(file)
 
-        definition = Definition(definition_raw)
-        definition["run"] = {"backend": "python_function", "function_name": self.function_name}
-        self.definition = definition
+    #     definition = Definition(definition_raw)
+    #     definition["run"] = {"backend": "python_function", "function_name": self.function_name}
+    #     self.definition = definition

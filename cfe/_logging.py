@@ -23,6 +23,23 @@ def _setup_logger() -> "logging.Logger":
 logger = _setup_logger()
 
 
+def print_output(print=logger.info, output_list=[]):
+    # read from command executed by subprocess and print output
+    def fun(
+        pipe,
+        prefix,
+    ):
+        """print output from a pipe"""
+        for line in iter(pipe.readline, ""):
+            if line:
+                print(f"{prefix}{line.rstrip()}")
+                if output_list is not None:
+                    output_list.append(line.rstrip())
+        pipe.close()
+
+    return fun
+
+
 def format_logger(format):
     # reset format
     for handler in logger.handlers:

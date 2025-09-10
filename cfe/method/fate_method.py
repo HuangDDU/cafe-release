@@ -71,7 +71,7 @@ class FateMethod:
         # replace yml by csv, more clearer
         method_backend_dict = pd.read_csv(os.path.join(os.path.dirname(__file__), "method_backend.csv"), index_col=0).T.to_dict()
 
-        # TODO: need adjust for some incomplete methods like slingshot, only dynverse docker is available
+        # need adjust for some incomplete methods like slingshot, only dynverse docker is available
         if pd.isna(method_backend_dict[self.method_name][backend]):
             # choose backend that have value
             available_backend_list = []
@@ -82,6 +82,7 @@ class FateMethod:
             logger.info(f"backend:'{backend}' is not available for method:'{self.method_name}', choosing new backend: '{new_backend}'")
             backend = new_backend
 
+        # TODO: remove yaml definition file to decrease parameter redundancy , function parameters is sufficient
         if backend == "python_function":
             function_name = method_backend_dict[self.method_name]["python_function"]
             self.method_backend = FunctionBackend(function_name)

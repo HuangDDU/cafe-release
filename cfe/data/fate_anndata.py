@@ -97,6 +97,15 @@ class FateAnnData(ad.AnnData):
         trajectory_dict = self.trajectory_history_dict[model_name]
         return trajectory_dict
 
+    def get_milestone_wrapper(self, model_name=None):
+        return self.get_trajectory_dict(model_name)["milestone_wrapper"]
+
+    def get_waypoint_wrapper(self, model_name=None):
+        return self.get_trajectory_dict(model_name)["waypoint_wrapper"]
+
+    def get_raw_wrapper_dict(self, model_name=None):
+        return self.get_trajectory_dict(model_name)["raw_wrapper_dict"]
+
     @classmethod
     def read_dynverse_simulation_data(
         cls,
@@ -206,7 +215,13 @@ class FateAnnData(ad.AnnData):
         ref: pydynverse/wrap/wrap_add_prior_information add_prior_information
         """
         # TODO: if prior information is needed?
+        # prior information is frequently used in various method function, such as cluster_key, basis, start_id
         self.prior_information.update(kwargs)
+
+    def get_common_parameters(self):
+        common_params = {}
+        # TODO: cluster_key, basis,  start_id
+        return common_params
 
     def add_model_name(self, model_name: str):
         self.model_name = model_name
@@ -336,9 +351,10 @@ class FateAnnData(ad.AnnData):
             trajectory_dict (dict): _description_
         """
         wrapper_type = trajectory_dict["wrapper_type"]
-        logger.debug(f"Add trajectory by wrapper type: {wrapper_type}")
         self.wrapper_type = wrapper_type
-        logger.debug(f"Wrapper type: {wrapper_type}")
+        logger.debug(f"Add trajectory by wrapper type: {wrapper_type}")
+        self.raw_wrapper_dict = trajectory_dict
+
         if wrapper_type == "directed":
             self.add_trajectory(**trajectory_dict)
         elif wrapper_type == "branch":
@@ -386,7 +402,6 @@ class FateAnnData(ad.AnnData):
                 cluster_key=trajectory_dict.get("cluster_key", None),
                 new_cluster_list=trajectory_dict.get("new_cluster_list", None),
             )
-        self.raw_wrapper_dict = trajectory_dict
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None) -> None:
         """Create WaypointWrapper object"""

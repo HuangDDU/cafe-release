@@ -1,4 +1,3 @@
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -11,7 +10,7 @@ from ..data import FateAnnData
 from .add_color import add_milestone_cell_color, add_milestone_color
 
 
-def plot_trajectory_new(
+def plot_trajectory_deprecated(
     fadata: FateAnnData,
     color: str | list = "milestone",
     basis: str = "umap",
@@ -44,40 +43,22 @@ def plot_trajectory_new(
         milestone_percentages = milestone_wrapper["milestone_percentages"]
         milestone_color_list = add_milestone_color(len(milestone_id_list))
         milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
-        milestone_wrapper.color_list = [mcolors.to_hex(mc) for mc in milestone_color_list]  # add color for CXG visualization
         fadata.uns["milestone_color_dict"] = milestone_color_dict
         cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
         fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
         fadata.uns["milestone_colors"] = cell_color_df.loc[fadata.obs.index].values
 
-    # base cell embedding
+    # base embedding
     ax_list = sc.pl.embedding(fadata, color=color, basis=basis, **sc_pl_embedding_kwargs, show=False)
 
-    # trajectory embedding
-    trajectory_embedding = fadata.get_trajectory_embedding(basis)  # trajectory embedding for specific basis
-    if trajectory_embedding is None:
-        # new trajectory embedding, project and save
-        # project waypoint to embedding space
-        cell_positions = pd.DataFrame(data=fadata.obsm[f"X_{basis}"][:, :2], columns=["comp_1", "comp_2"])
-        cell_positions["cell_id"] = fadata.obs.index
-        waypoint_projection = project_waypoints(fadata, cell_positions)
+    # project waypoint to embedding space
+    cell_positions = pd.DataFrame(data=fadata.obsm[f"X_{basis}"][:, :2], columns=["comp_1", "comp_2"])
+    cell_positions["cell_id"] = fadata.obs.index
+    waypoint_projection = project_waypoints(fadata, cell_positions)
 
-        # plot waypoint to show trajectory
-        wp_segments = waypoint_projection["segments"]  # projection to trajectory
-        milestone_positions = wp_segments[wp_segments["milestone_id"].apply(lambda x: x is not None)]  # only save waypoint on milestone
-
-        # save trajectory embedding which is related to cell embbeding
-        fadata.set_trajectory_embedding(basis, wp_segments, milestone_positions)
-
-    else:
-        # old trajectory embedding, read from fadata
-        milestone_positions = trajectory_embedding["milestone_positions"]
-        wp_segments = trajectory_embedding["wp_segments"]
-
-    # temporal dataframe csv file for cellxgene visualization
-    # milestone_positions.to_csv(f"tmp_milestone_positions.csv")
-    # wp_segments.to_csv(f"tmp_wp_segments.csv")
-    # print("Successfully write 'tmp_milestone_positions.csv' and 'tmp_wp_segments.csv' for cellxgene visualization")
+    # plot waypoint to show trajectory
+    wp_segments = waypoint_projection["segments"]  # projection to trajectory
+    milestone_positions = wp_segments[wp_segments["milestone_id"].apply(lambda x: x is not None)]  # only save waypoint on milestone
 
     # plot waypoint curve
     ax_list = ax_list if isinstance(ax_list, list) else [ax_list]

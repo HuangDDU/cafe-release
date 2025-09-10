@@ -19,10 +19,10 @@ class Backend(ABC):
     def run(self):
         pass
 
-    @abstractmethod
-    def _load_definition(self):
-        """_summary_"""
-        pass
+    # @abstractmethod
+    # def _load_definition(self):
+    #     """_summary_"""
+    #     pass
 
     # Note: Only used for dynverse docker backend"
     def _extract_prior_information(self, fdata, inputs_df):
@@ -81,7 +81,8 @@ class DockerBackend(Backend):
         try:
             # exist
             img = client.images.get(image_id)
-            logger.debug(f"Docker image({image_id}) loaded")
+            self.entrypoint = img.attrs["Config"]["Entrypoint"]
+            logger.debug(f"Docker image({image_id}) loaded, entry point is '{self.entrypoint}'")
         except Exception as e:
             # no exist, need pull request
             logger.debug(e)

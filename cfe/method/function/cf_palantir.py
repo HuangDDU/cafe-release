@@ -47,7 +47,7 @@ def palantir(
 
     if wrapper_type == "linear":
         # for linear wrapper
-        trajectory_dict = {"pseudotime": pseudotime}
+        trajectory_dict = {"wrapper_type": "linear", "pseudotime": pseudotime}
     elif wrapper_type == "probability":
         # for probability wrapper
         end_state_probabilities = pr_res.branch_probs

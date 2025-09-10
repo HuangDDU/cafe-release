@@ -31,6 +31,7 @@ def comp1(
 
     # 4. save results
     trajectory_dict = {
+        "wrapper_type": "linear",
         "pseudotime": pseudotime,
     }
 
