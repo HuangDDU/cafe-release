@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy
 
-COPY run.py cf_projection_mst.py definition.yml /code/
+COPY run.py projection_mst.py /code/

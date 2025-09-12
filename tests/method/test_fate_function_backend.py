@@ -21,7 +21,7 @@ def get_test_run_data():
     return fadata, parameters
 
 
-function_name = "cf_paga"
+function_name = "comp1"
 
 
 class TestFunctionBackend:
@@ -47,11 +47,6 @@ class TestFunctionBackend:
         }
 
         self.function_backend(adata, **parameters)
-
-    def test_load_definition(self):
-        # _load_definition is called in test_load_backend, which is called in __init__
-        definition = self.function_backend.definition
-        assert isinstance(definition, cfe.method.Definition)
 
 
 if __name__ == "__main__":

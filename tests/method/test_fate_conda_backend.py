@@ -35,7 +35,6 @@ class TestCondaBackend:
 
     def test_run(self):
         fadata, parameters = get_test_run_data()
-        # TODO:
         self.conda_backend.run(fadata, parameters)
         assert fadata.is_wrapped_with_trajectory
 
@@ -50,11 +49,6 @@ class TestCondaBackend:
         }
 
         self.function_backend(adata, **parameters)
-
-    def test_load_definition(self):
-        # _load_definition is called in test_load_backend, which is called in __init__
-        definition = self.conda_backend.definition
-        assert isinstance(definition, cfe.method.Definition)
 
 
 if __name__ == "__main__":

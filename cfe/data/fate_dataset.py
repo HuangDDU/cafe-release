@@ -1,6 +1,7 @@
 import pandas as pd
 import scanpy as sc
 
+from .._logging import logger
 from ..preprocess import subsample
 from .fate_anndata import FateAnnData
 
@@ -143,8 +144,17 @@ def read_pancrease(
     fadata = FateAnnData.from_anndata(adata)
 
     fadata.layers["expression"] = fadata.layers["spliced"]
-    fadata.layers["count"] = fadata.layers["spliced"]
+    fadata.layers["counts"] = fadata.layers["spliced"]
     fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
+
+    # automatically extracted prior information: {'cluster': 'clusters', 'basis': 'X_umap'}
+    # TODO add prior information mannully,
+    start_cell = "cell_1103"
+    if start_cell in fadata.obs.index:
+        logger.debug(f"add prior information 'start_cell': '{start_cell}'")
+        fadata.add_prior_information(start_cell=start_cell)
+    else:
+        logger.warning(f"{start_cell} is not in '.obs.index', skip adding 'start_cell'")
 
     # add milestone mannually
     milestone_network = pd.DataFrame(
@@ -159,6 +169,7 @@ def read_pancrease(
         ],
         columns=["from", "to"],
     )
+
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
         cluster_key=cluster_key,
@@ -181,7 +192,7 @@ def read_pancrease_cellrank(
 
     fadata = FateAnnData.from_anndata(adata)
     fadata.layers["expression"] = fadata.layers["spliced"]
-    fadata.layers["count"] = fadata.layers["spliced"]
+    fadata.layers["counts"] = fadata.layers["spliced"]
     fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
 
     # add milestone mannually

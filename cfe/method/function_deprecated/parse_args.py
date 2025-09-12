@@ -10,6 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Parse input arguments for the analysis.")
     parser.add_argument("--function_name", type=str, default="cf_paga", help="Function to be executed.")
     parser.add_argument("--adata_path", type=str, default="/data/adata.h5ad", help="Path to the adata file to be read.")
+
     parser.add_argument("--parameters", type=str, default="/data/parameters.json", help="JSON file name for parameters.")
     parser.add_argument("--output_filename", type=str, default="/data/output.pkl", help="Output filename.")
     args = parser.parse_args()

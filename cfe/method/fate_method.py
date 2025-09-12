@@ -91,8 +91,9 @@ class FateMethod:
             conda_name = method_backend_dict[self.method_name]["conda"]
             self.method_backend = CondaBackend(function_name, conda_name)
         elif backend == "cfe_docker":
+            function_name = method_backend_dict[self.method_name]["python_function"]
             image_id = method_backend_dict[self.method_name]["cfe_docker"]
-            self.method_backend = CFEDockerBackend(image_id)
+            self.method_backend = CFEDockerBackend(function_name, image_id)
         elif backend == "dynverse_docker":
             # backend == "dynverse_docker"
             image_id = method_backend_dict[self.method_name]["dynverse_docker"]

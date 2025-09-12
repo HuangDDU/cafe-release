@@ -16,16 +16,13 @@ from .fate_backend import Backend
 class CondaBackend(Backend):
     """Specific implementation of abstract Backend class using Python functions."""
 
-    def __init__(self, function_name="cf_paga", conda_name="cfe"):
+    def __init__(self, function_name="comp1", conda_name="cfe"):
         logger.debug("CondaBackend __init__")
         self.function_name = function_name
         self.conda_name = conda_name
         self.load_backend()
 
     def load_backend(self):
-        # conda backend just load definition
-        # self._load_definition()
-
         # test if conda environment is available
         result = subprocess.run(
             ["conda", "run", "-n", self.conda_name, "python", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10
@@ -36,12 +33,12 @@ class CondaBackend(Backend):
         else:
             logger.debug(f"Conda environment '{self.conda_name}' is available: {result.stdout.strip()}")
 
-    def preprocess(self, fadata: AnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
+        # load function to get parameter
+        self._load_function(self.function_name)
+
+    def preprocess(self, fadata: AnnData, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad, prior information and parameters json file in tmp_wd dir"""
         fadata.write(filename=f"{tmp_wd}/adata.h5ad")
-
-        with open(f"{tmp_wd}/prior_information.json", "w") as f:
-            json.dump(prior_information, f)
 
         with open(f"{tmp_wd}/parameters.json", "w") as f:
             json.dump(parameters, f)
@@ -60,7 +57,7 @@ class CondaBackend(Backend):
         parse_args_script = "/home/huang/PyCode/scRNA/CellFateExplorer/CellFateExplorer/cfe/method/function/parse_args.py"
 
         # construct command
-        cmd = f"python {parse_args_script} --function_name={self.function_name} --adata_path={tmp_wd}/adata.h5ad --prior_information={tmp_wd}/prior_information.json --parameters={tmp_wd}/parameters.json --output_filename={tmp_wd}/output.pkl"
+        cmd = f"python {parse_args_script} --function_name={self.function_name} --adata_path={tmp_wd}/adata.h5ad --parameters={tmp_wd}/parameters.json --output_filename={tmp_wd}/output.pkl"
         if benchmark_resource:
             cmd = f"/usr/bin/time -v {cmd}"
         cmd = f"conda run -n {self.conda_name} --no-capture-output {cmd}"  # use conda environment to run
@@ -105,23 +102,16 @@ class CondaBackend(Backend):
             benchmark_resource = parameters["benchmark_resource"]
             del parameters["benchmark_resource"]
 
-        # TODO: definition remove ...
-        # prior_information = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # check prior information and add to fadata
-        # parameters = self.definition.get_parameters(parameters)
-        prior_information = {}  # prior_information is some common and frequently parameter, such as cluster_key.
+        # prepare data and parameters
         adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
+        parameters = self._get_parameters(fadata, parameters)
 
+        # execute method, save input and output file in tmp dir
         with tempfile.TemporaryDirectory() as tmp_wd:
             logger.debug(f"Temp wd: {tmp_wd}")
-            self.preprocess(adata, prior_information, parameters, tmp_wd)
+            self.preprocess(adata, parameters, tmp_wd)
 
             trajectory_dict = self.execute(tmp_wd, benchmark_resource=benchmark_resource)
-
-            # # if multiple wrapper type for a method, it should be shown in trajectory_dict
-            # # else, read from definition yaml file
-            # if "wrapper_type" not in trajectory_dict:
-            #     wrapper_type = self.definition["wrapper"]["type"]
-            #     trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
 
             fadata.add_trajectory_by_type(trajectory_dict)  # wrapper type sorted in trajectory dict help "add_trajectory_xxx" choice.
 
@@ -146,13 +136,3 @@ class CondaBackend(Backend):
 
     def __str__(self):
         return f"CondaBackend: function_name-{self.function_name}, load_backend-{self.conda_name}"
-
-    # def _load_definition(self) -> None:
-    #     """load definition from yaml file and ceate Definition object"""
-    #     definition_file_path = f"{os.path.dirname(__file__)}/definition/{self.function_name}.yml"
-    #     with open(definition_file_path, "r") as file:
-    #         definition_raw = yaml.safe_load(file)
-
-    #     definition = Definition(definition_raw)
-    #     definition["run"] = {"backend": "python_function", "function_name": self.function_name}
-    #     self.definition = definition

@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy
 
-COPY run.py cf_comp1.py definition.yml /code/
+COPY run.py cf_cluster_mst.py /code/

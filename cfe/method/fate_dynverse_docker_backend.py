@@ -6,15 +6,23 @@ import threading
 import time
 
 import docker
+import h5py
+import numpy as np
 import pandas as pd
-import rpy2.robjects as ro
 
-from .._logging import logger, print_output
+# import rpy2.robjects as ro
+import yaml
+from scipy import sparse
+
+# from .._logging import logger, print_output
+from .._logging import logger
 from ..data import FateAnnData
-from ..util import (
-    parse_bash_resource_usage_string,
-    parse_docker_resource_usage_string_list,
-)
+
+# from ..util import (
+#     parse_bash_resource_usage_string,
+#     parse_docker_resource_usage_string_list,
+# )
+from ..util import parse_docker_resource_usage_string_list
 from .fate_backend import DockerBackend
 
 # import yaml
@@ -33,6 +41,10 @@ class DynverseDockerBackend(DockerBackend):
 
         self.image_id = image_id
         self.load_backend()  # implemented in DockerBackend, get self.entrypoint
+
+    def load_backend(self):
+        self._load_image()  # load image
+        self._load_definition()  # load definition yaml file
 
     def preprocess(self, inputs: dict, parameters: dict, priors: dict, tmp_wd: dict, seed: int = 0) -> None:
         """Preproces: create input.h5 for dynverse docker execute
@@ -54,65 +66,65 @@ class DynverseDockerBackend(DockerBackend):
         task["verbose"] = True
         write_h5(task, f"{tmp_wd}/input.h5")  # json->h5
 
-    def execute_deprecated_deprecated(self, tmp_wd: str, benchmark_resource: bool) -> "DynverseDockerOutput":
-        """Execute: Dynverse docker execute with bash command and parse result file "output.h5"
-        try to use /usr/bin/time in docker container, but it is not available
-        """
+    # def execute_deprecated_deprecated(self, tmp_wd: str, benchmark_resource: bool) -> "DynverseDockerOutput":
+    #     """Execute: Dynverse docker execute with bash command and parse result file "output.h5"
+    #     try to use /usr/bin/time in docker container, but it is not available
+    #     """
 
-        image_id = self.definition["run"]["image_id"]
-        args = "--dataset /ti/input.h5 --output /ti/output.h5"
-        cmd = f"docker run --rm -v {tmp_wd}:/ti -w /ti/workspace {image_id} {args}"
-        if benchmark_resource:
-            # 0. command "/usr/bin/time" should move into docker command,
-            # cmd = f"/usr/bin/time -v docker run --rm -v {tmp_wd}:/ti -w /ti/workspace {image_id} {args}"
-            # the resource result is for docker client(such as pull, start container...), not for container running.
+    #     image_id = self.definition["run"]["image_id"]
+    #     args = "--dataset /ti/input.h5 --output /ti/output.h5"
+    #     cmd = f"docker run --rm -v {tmp_wd}:/ti -w /ti/workspace {image_id} {args}"
+    #     if benchmark_resource:
+    #         # 0. command "/usr/bin/time" should move into docker command,
+    #         # cmd = f"/usr/bin/time -v docker run --rm -v {tmp_wd}:/ti -w /ti/workspace {image_id} {args}"
+    #         # the resource result is for docker client(such as pull, start container...), not for container running.
 
-            # 1. change entrypoint program with "/usr/bin/time"
-            entrypoint = self.entrypoint[0]
+    #         # 1. change entrypoint program with "/usr/bin/time"
+    #         entrypoint = self.entrypoint[0]
 
-            # # (1) solution1: add it in docker command
-            # if entrypoint.split('.')[-1] == 'R':
-            #     entrypoint = f"Rscript {entrypoint}"
-            # else:
-            #     entrypoint = f"python {entrypoint}"
-            # cmd = f" {cmd} /usr/bin/time -v {entrypoint} --dataset /ti/input.h5 --output /ti/output.h5"
+    #         # # (1) solution1: add it in docker command
+    #         # if entrypoint.split('.')[-1] == 'R':
+    #         #     entrypoint = f"Rscript {entrypoint}"
+    #         # else:
+    #         #     entrypoint = f"python {entrypoint}"
+    #         # cmd = f" {cmd} /usr/bin/time -v {entrypoint} --dataset /ti/input.h5 --output /ti/output.h5"
 
-            # (2) solution 2: create new entrypoint file, specify it in bash command. However, "/usr/bin/time" dose not exist in container
-            new_entrypoint = f"{tmp_wd}/entrypoint.sh"
-            with open(new_entrypoint, "w") as f:
-                f.write("#!/bin/bash\n")
-                # f.write(f"/usr/bin/time -v {entrypoint} {args}") # NOTE: fail to time
-                f.write(f"time {entrypoint} {args}")
-            os.chmod(new_entrypoint, 0o755)
-            cmd = f"docker run --rm -v {tmp_wd}:/ti -w /ti/workspace --entrypoint /ti/entrypoint.sh {image_id} {args}"
+    #         # (2) solution 2: create new entrypoint file, specify it in bash command. However, "/usr/bin/time" dose not exist in container
+    #         new_entrypoint = f"{tmp_wd}/entrypoint.sh"
+    #         with open(new_entrypoint, "w") as f:
+    #             f.write("#!/bin/bash\n")
+    #             # f.write(f"/usr/bin/time -v {entrypoint} {args}") # NOTE: fail to time
+    #             f.write(f"time {entrypoint} {args}")
+    #         os.chmod(new_entrypoint, 0o755)
+    #         cmd = f"docker run --rm -v {tmp_wd}:/ti -w /ti/workspace --entrypoint /ti/entrypoint.sh {image_id} {args}"
 
-        logger.info(f"running docker command: {cmd}")
+    #     logger.info(f"running docker command: {cmd}")
 
-        # execuate command
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        # remove unimportant warning log
-        stderr_lines = []
-        threading.Thread(target=print_output(logger.info), args=(process.stdout, "[stdout]"), daemon=True).start()
-        threading.Thread(target=print_output(logger.debug, stderr_lines), args=(process.stderr, "[stderr]"), daemon=True).start()
-        # wait for process
-        process.wait()
+    #     # execuate command
+    #     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    #     # remove unimportant warning log
+    #     stderr_lines = []
+    #     threading.Thread(target=print_output(logger.info), args=(process.stdout, "[stdout]"), daemon=True).start()
+    #     threading.Thread(target=print_output(logger.debug, stderr_lines), args=(process.stderr, "[stderr]"), daemon=True).start()
+    #     # wait for process
+    #     process.wait()
 
-        # read output h5
-        output_h5_filename = f"{tmp_wd}/output.h5"
-        if not os.path.exists(output_h5_filename):
-            # no h5 file generated by docker, show error log
-            logger.error("Docker error, no output.h5 generated by docker command!!!")
-        else:
-            logger.debug("Docker Finish")
-            dynverse_docker_output = read_h5(f"{tmp_wd}/output.h5")  # read docker result h5
-            if benchmark_resource:
-                # read usage string and transfer to dict
-                usage_string = "".join(stderr_lines)
-                logger.debug(f"resource usage string: {usage_string}")
-                usage_dict = parse_bash_resource_usage_string(usage_string)
-                logger.debug(f"resource usage dict: {usage_dict}")
-                dynverse_docker_output["resource_usage"] = usage_dict
-            return dynverse_docker_output
+    #     # read output h5
+    #     output_h5_filename = f"{tmp_wd}/output.h5"
+    #     if not os.path.exists(output_h5_filename):
+    #         # no h5 file generated by docker, show error log
+    #         logger.error("Docker error, no output.h5 generated by docker command!!!")
+    #     else:
+    #         logger.debug("Docker Finish")
+    #         dynverse_docker_output = read_h5(f"{tmp_wd}/output.h5")  # read docker result h5
+    #         if benchmark_resource:
+    #             # read usage string and transfer to dict
+    #             usage_string = "".join(stderr_lines)
+    #             logger.debug(f"resource usage string: {usage_string}")
+    #             usage_dict = parse_bash_resource_usage_string(usage_string)
+    #             logger.debug(f"resource usage dict: {usage_dict}")
+    #             dynverse_docker_output["resource_usage"] = usage_dict
+    #         return dynverse_docker_output
 
     def execute(self, tmp_wd: str, benchmark_resource: bool) -> "DynverseDockerOutput":
         """Execute: Dynverse docker execute and parse result file "output.h5"
@@ -126,9 +138,7 @@ class DynverseDockerBackend(DockerBackend):
             DynverseDockerOutput:  parse result file "output.h5"
         """
         args = ["--dataset", "/ti/input.h5", "--output", "/ti/output.h5"]
-
         client = docker.from_env()
-
         start_time = time.time()
         container = client.containers.run(
             image=self.definition["run"]["image_id"],
@@ -148,14 +158,13 @@ class DynverseDockerBackend(DockerBackend):
         stats_thread = threading.Thread(target=collect_stats, daemon=True)
         stats_thread.start()
 
-        # 实时打印日志而不是收集后一次性输出
+        # real time log
         for log in container.logs(stream=True):
             log_line = log.decode("utf-8").strip()
             logger.info(f"[Docker] {log_line}")
 
         container.wait()  # wait until docker finish
         end_time = time.time()
-
         container.stop()
         container.remove()
 
@@ -196,7 +205,7 @@ class DynverseDockerBackend(DockerBackend):
             parameters (dict): parameter dict
         """
         # check if benchmark resource from parameters.
-        benchmark_resource = True
+        benchmark_resource = False
         if "benchmark_resource" in parameters:
             benchmark_resource = parameters["benchmark_resource"]
             del parameters["benchmark_resource"]
@@ -222,7 +231,7 @@ class DynverseDockerBackend(DockerBackend):
             if "resource_usage" in trajectory:
                 fadata.add_resource_usage(trajectory["resource_usage"])
 
-    def _extract_inputs(self, fdata: FateAnnData, inputs_df: pd.DataFrame) -> dict:
+    def _extract_inputs(self, fadata: FateAnnData, inputs_df: pd.DataFrame) -> dict:
         """extract input dict fom definition
 
         ref: PyDynverse/pydynverse/wrap/method_extract_args.py _method_extract_inputs
@@ -242,13 +251,200 @@ class DynverseDockerBackend(DockerBackend):
         inputs = {}
         for expression_id in input_ids:
             # inputs[expression_id] = get_expression(dataset, expression_id)
-            inputs[expression_id] = fdata.layers[expression_id]
+            inputs[expression_id] = fadata.layers[expression_id]
         # main expression matrix, for example, Component1 and Slingshot need "expression", while monocle_ddrtree need "counts"
         inputs["expression_id"] = input_ids[0]
         # add cell and gene ids
-        inputs["cell_ids"] = fdata.obs.index.tolist()
-        inputs["feature_ids"] = fdata.var.index.tolist()
+        inputs["cell_ids"] = fadata.obs.index.tolist()
+        inputs["feature_ids"] = fadata.var.index.tolist()
         return inputs
+
+    def _load_definition(self):
+        """
+        extract and parse definition.yml, including description, required parameters and prior knowledge
+
+        ref: pydynverse.wrap.container_get._container_get_definition
+        """
+        with tempfile.TemporaryDirectory() as tmp_wd:
+            # start docker container
+            client = docker.from_env()
+            container = client.containers.run(
+                entrypoint="cp /code/definition.yml /copy_mount/definition.yml",  # aim copy dir
+                image=self.image_id,
+                volumes=[f"{tmp_wd}:/copy_mount"],
+                detach=True,
+            )
+            container.wait()
+            container.stop()
+            container.remove()
+            # read and parse yml file
+            with open(f"{tmp_wd}/definition.yml", "r") as file:
+                definition_raw = yaml.safe_load(file)
+
+        definition = Definition(definition_raw)
+        definition["run"] = {"backend": "container", "image_id": self.image_id}
+        self.definition = definition
+
+        # Note: Only used for dynverse docker backend
+
+    def _extract_prior_information(self, fadata, inputs_df):
+        """
+        ref: PyDynverse/pydynverse/wrap/method_extract_args.py _method_extract_priors
+        """
+        # logger.debug("FateMethod _extract_prior_information")
+
+        # extract prior information from
+        cfe_priors = fadata.prior_information
+        priors = {}
+        # same prior infomation means different key for dynverse_docker and other environment.
+        # transfer prior information from cfe style to dynverse style
+        cfe2dynverse = {
+            "basis": "dimred",
+            "start_cell": "start_id",
+            # TODO: show available prior infomation
+        }
+        for k, v in cfe2dynverse.items():
+            if k in cfe_priors:
+                priors[v] = cfe_priors[k]
+        if "cluster" in cfe_priors:
+            groups_id = fadata.obs[cfe_priors["cluster"]].tolist()
+            priors["groups_id"] = groups_id
+            logger.debug(f"extract .obs['{cfe_priors['cluster']}']({len(groups_id)}) in as prior information `groups_id` key for dynverse ")
+
+        priors_key_set = set(priors.keys())
+
+        # check required priors
+        required_prior_ids = inputs_df["input_id"][inputs_df["required"] & (inputs_df["type"] == "prior_information")].tolist()
+        required_prior_ids_set = set(required_prior_ids)
+        if not (required_prior_ids_set <= priors_key_set):
+            # all required priors are needed, if not , raise error
+            missing_priors = required_prior_ids_set - priors_key_set
+            msg = f"""
+                ! Prior information {','.join(missing_priors)} is missing from dataset {fadata.id} but is required by the method. \n
+                -> If known, you can add this prior information using fadata.add_prior_information({' ,'.join([str(i)+' = <prior>' for i in missing_priors])}). \n
+                -> Otherwise, this method cannot be used.
+            """
+            raise Exception(msg)
+        required_prior = {k: priors[k] for k in required_prior_ids}
+
+        # check optional priors
+        optional_prior_ids = inputs_df["input_id"][(~inputs_df["required"]) & (inputs_df["type"] == "prior_information")].tolist()
+        optional_prior_ids_set = set(optional_prior_ids)
+        if not (optional_prior_ids_set <= priors_key_set):
+            # all required priors are not needed, enven if not all are provided, only warning
+            missing_priors = list(optional_prior_ids_set - priors_key_set)
+            msg = f"""
+                Prior information {','.join(missing_priors)} is optional, but missing from dataset {fadata.id}. \n
+                Will not give this prior to method.
+            """
+            logger.warning(msg)
+        optional_prior = {k: priors[k] for k in list(optional_prior_ids_set & priors_key_set)}  # remove irrelevant keys
+
+        priors = required_prior | optional_prior
+
+        return priors
+
+
+# ====================================================================================================
+# read from docker yaml files
+
+
+class Definition:
+    def __init__(self, definition_raw: dict):
+        self.method = definition_raw["method"]
+        self.wrapper = definition_raw["wrapper"]
+        self.container = definition_raw["container"]
+        self.package = definition_raw["package"] if "package" in definition_raw else None
+        self.manuscript = definition_raw["manuscript"] if "manuscript" in definition_raw else None
+        self.parameters = pd.DataFrame(definition_raw["parameters"]).set_index("id")
+        self.run = {}
+
+        # inputs
+        inputs = self.wrapper["input_required"]
+        inputs = inputs.copy() if isinstance(inputs, list) else [inputs]
+        if "input_optional" in self.wrapper:
+            input_optional = self.wrapper["input_optional"]
+            inputs += input_optional if isinstance(input_optional, list) else [input_optional]
+
+        # extra input, including data and parameters
+        params = self.parameters.index.tolist()
+        input_id_list = inputs + params
+        required_list = [i in self.wrapper["input_required"] for i in input_id_list]
+        type_list = []
+        for input_id in input_id_list:
+            # type column
+            if input_id in ["counts", "expression", "expression_future"]:
+                type_list.append("expression")
+            elif input_id in params:
+                type_list.append("parameter")
+            else:
+                type_list.append("prior_information")
+        inputs_df = pd.DataFrame({"input_id": input_id_list, "required": required_list, "type": type_list})
+        self.wrapper["inputs"] = inputs_df
+
+    def get_inputs_df(self):
+        return self.wrapper["inputs"]
+
+    def get_parameters(self, new_parameters=None):
+        default_parameters = self.parameters["default"].to_dict()
+        if new_parameters is None:
+            # return default parameters
+            return default_parameters
+        else:
+            # merge new parameters and default parameters to get parameters
+            parameters = default_parameters
+            # parameters.update(new_parameters)
+            #
+            for k, v in new_parameters.items():
+                if k in parameters:
+                    if isinstance(v, dict) and self.parameters.loc[k, "update"]:
+                        #  for dict parameters, it should be updated by merge but not to replace.
+                        parameters[k].update(v)
+                    else:
+                        parameters[k] = v
+                else:
+                    logger.warning(f"{k} is not a valid parameter")
+            return parameters
+
+    def add_function_wrapper(self, return_function):
+        if not return_function:
+            # 直接返回字典格式
+            return self
+        # else:
+        #     # 返回函数格式，等待默认参数进一步设置
+        #     defaults = get_default_parameters(definition)  # 获取代码函数中的参数默认值
+
+        #     def param_overrider_fun(**kwargs):
+        #         # 参数覆盖, 接受代码函数中的参数默认值传入参数并覆盖definition.yml
+        #         new_defaults = kwargs
+        #         param_names = list(definition["parameters"].index)
+        #         for param_name, v in new_defaults.items():
+        #             if param_name in param_names:
+        #                 definition["parameters"].loc[param_name, "default"] = v
+        #             else:
+        #                 # 该参数不definition.yml文件里定义
+        #                 logger.error(f"Unknown parameter: {param_name}")
+        #         return definition
+
+        #     param_overrider_fun.__kwdefaults__ = defaults
+
+        #     return param_overrider_fun
+
+    def __contains__(self, item):
+        "check if have attribute"
+        return hasattr(self, item)
+
+    def keys(self):
+        """return all attibute name, then the function dict() can be used"""
+        return self.__dict__.keys()
+
+    def __getitem__(self, key):
+        "get attribute"
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        "set attribute"
+        setattr(self, key, value)
 
 
 # ====================================================================================================
@@ -314,6 +510,66 @@ class DynverseDockerInput:
         else:
             logger.debug("json2h5 failed!")
 
+    def write_h5_directly(self, input_h5_filename):
+        """直接将数据写入HDF5文件，跳过JSON转换步骤"""
+        with h5py.File(input_h5_filename, "w") as f:
+            # 写入表达矩阵（稀疏矩阵）
+            if sparse.isspmatrix(self.expression):
+                expr_group = f.create_group(self.expression_id)
+                expr_group.create_dataset("x", data=self.expression.data)
+                expr_group.create_dataset("i", data=self.expression.indices)
+                expr_group.create_dataset("p", data=self.expression.indptr)
+                expr_group.create_dataset("Dim", data=self.expression.shape)
+                expr_group.attrs["rownames"] = np.array(self.cell_ids, dtype="S")
+                expr_group.attrs["colnames"] = np.array(self.feature_ids, dtype="S")
+
+            # 写入其他参数
+            f.attrs["expression_id"] = self.expression_id
+
+            # 写入参数
+            param_group = f.create_group("parameters")
+            for key, value in self.parameters.items():
+                if isinstance(value, (str, int, float, bool)):
+                    param_group.attrs[key] = value
+                elif isinstance(value, dict):
+                    # 对于字典类型的参数，创建子组
+                    sub_group = param_group.create_group(key)
+                    for sub_key, sub_value in value.items():
+                        if isinstance(sub_value, (str, int, float, bool)):
+                            sub_group.attrs[sub_key] = sub_value
+                        else:
+                            # 尝试转换为字符串
+                            sub_group.attrs[sub_key] = str(sub_value)
+                else:
+                    # 其他类型尝试转换为字符串
+                    param_group.attrs[key] = str(value)
+
+            # 写入先验信息
+            priors_group = f.create_group("priors")
+            for key, value in self.priors.items():
+                if isinstance(value, (str, int, float, bool)):
+                    priors_group.attrs[key] = value
+                elif isinstance(value, (list, np.ndarray)):
+                    priors_group.create_dataset(key, data=value)
+                elif isinstance(value, dict):
+                    # 对于字典类型的先验信息，创建子组
+                    sub_group = priors_group.create_group(key)
+                    for sub_key, sub_value in value.items():
+                        if isinstance(sub_value, (str, int, float, bool)):
+                            sub_group.attrs[sub_key] = sub_value
+                        elif isinstance(sub_value, (list, np.ndarray)):
+                            sub_group.create_dataset(sub_key, data=sub_value)
+                        else:
+                            # 尝试转换为字符串
+                            sub_group.attrs[sub_key] = str(sub_value)
+                else:
+                    # 其他类型尝试转换为字符串
+                    priors_group.attrs[key] = str(value)
+
+            # 写入种子和verbose参数
+            f.attrs["seed"] = self.seed
+            f.attrs["verbose"] = self.verbose
+
     def __str__(self) -> str:
         return f"{self.expression}"  # 目前查看稀疏矩阵是最直观的输入
 
@@ -367,6 +623,71 @@ class DynverseDockerOutput:
         # json文件添加，方便查可能不同轨迹推断类型对于wrapper的输出
         self.output_json = output_json
 
+    def load_h5_directly(self, output_h5_filename):
+        """直接从HDF5文件加载数据，无需JSON转换"""
+
+        def recursively_load_dict_from_h5(h5_file, path="/"):
+            """递归地从HDF5文件加载字典结构"""
+            result = {}
+            if path == "/":
+                # 加载根级别的属性
+                for key, value in h5_file.attrs.items():
+                    result[key] = value
+
+            # 遍历组和数据集
+            for key in h5_file[path].keys():
+                item_path = f"{path}/{key}" if path != "/" else f"/{key}"
+
+                if isinstance(h5_file[item_path], h5py.Group):
+                    # 递归处理组
+                    if "Dim" in h5_file[item_path].attrs and "x" in h5_file[item_path]:
+                        # 这是一个稀疏矩阵
+                        group_data = h5_file[item_path]
+                        from scipy.sparse import csc_matrix
+
+                        data = group_data["x"][:]
+                        indices = group_data["i"][:]
+                        indptr = group_data["p"][:]
+                        shape = tuple(group_data["Dim"][:])
+                        result[key] = csc_matrix((data, indices, indptr), shape=shape)
+                    else:
+                        # 普通组
+                        result[key] = recursively_load_dict_from_h5(h5_file, item_path)
+                elif isinstance(h5_file[item_path], h5py.Dataset):
+                    # 处理数据集
+                    dataset = h5_file[item_path][:]
+                    # 如果是字符串数组，转换为列表
+                    if dataset.dtype.kind == "S":
+                        result[key] = [s.decode("utf-8") if isinstance(s, bytes) else s for s in dataset]
+                    else:
+                        result[key] = dataset
+
+            return result
+
+        # 从HDF5文件加载数据
+        with h5py.File(output_h5_filename, "r") as f:
+            data = recursively_load_dict_from_h5(f)
+
+        # 设置对象属性
+        for key, value in data.items():
+            self.__setattr__(key, value)
+
+        # 特殊处理一些字段，确保它们是DataFrame类型
+        if hasattr(self, "milestone_network"):
+            self.milestone_network = pd.DataFrame(self.milestone_network)
+        if hasattr(self, "milestone_percentages"):
+            self.milestone_percentages = pd.DataFrame(self.milestone_percentages)
+        if hasattr(self, "progressions"):
+            self.progressions = pd.DataFrame(self.progressions)
+        if hasattr(self, "divergence_regions") and self.divergence_regions is not None:
+            self.divergence_regions = pd.DataFrame(self.divergence_regions) if len(self.divergence_regions) > 0 else None
+        if hasattr(self, "dimred") and hasattr(self, "cell_ids"):
+            self.dimred = pd.DataFrame(self.dimred, index=self.cell_ids)
+        if hasattr(self, "dimred_segment_progressions"):
+            self.dimred_segment_progressions = pd.DataFrame(self.dimred_segment_progressions)
+        if hasattr(self, "dimred_segment_points"):
+            self.dimred_segment_points = pd.DataFrame(self.dimred_segment_points)
+
     def __str__(self) -> str:
         return f"id: {self.id}, trajectory_type: {self.trajectory_type}, attribute_list: {self.__dict__.keys()}"
 
@@ -392,29 +713,24 @@ class DynverseDockerOutput:
 
 def write_h5(x, h5_filename, via_json=True):
     expression_id = x["expression_id"]
+    dynverse_docker_input = DynverseDockerInput(
+        expression=x[expression_id],  # 从AnnData里提取
+        expression_id=expression_id,
+        cell_ids=x["cell_ids"],
+        feature_ids=x["feature_ids"],
+        parameters=x["parameters"],
+        priors=x["priors"],
+        seed=x["seed"],
+        verbose=x["verbose"],
+    )
     if via_json:
         input_json_filename = f"{h5_filename[:-3]}.json"  # 中间json文件
         input_h5_filename = h5_filename
-        dynverse_docker_input = DynverseDockerInput(
-            expression=x[expression_id],  # 从AnnData里提取
-            expression_id=expression_id,
-            cell_ids=x["cell_ids"],
-            feature_ids=x["feature_ids"],
-            parameters=x["parameters"],
-            priors=x["priors"],
-            seed=x["seed"],
-            verbose=x["verbose"],
-        )
         dynverse_docker_input.save_json(input_json_filename)
         dynverse_docker_input.json2h5(input_h5_filename)
     else:
-        # TODO: 直接通过装饰器的自动转换，不使用json交换文件和单独的R脚本
-        task = x
-        task[expression_id] = None
-        ro.globalenv["task"] = ro.ListVector(task)  # 待添加的内容转换到R变量里
-        ro.globalenv["h5_filename"] = ro.ListVector(h5_filename)  # 待添加的内容转换到R变量里
-        # 调用R修改
-        ro.r("dynutils::write_h5(task, file.path(paths$dir_dynwrap, h5_filename))")
+        # TODO: 直接写入HDF5文件，不使用JSON交换文件单独的R脚本
+        dynverse_docker_input.write_h5_directly(h5_filename)
 
 
 def read_h5(h5_filename, via_json=True):
@@ -424,7 +740,8 @@ def read_h5(h5_filename, via_json=True):
         dynverse_docker_output = DynverseDockerOutput()
         dynverse_docker_output.h52json(output_h5_filename, output_json_filename)
         dynverse_docker_output.load_json()
-        return dynverse_docker_output
     else:
         # TODO: 直接通过装饰器的自动转换，不使用json交换文件和单独的R脚本
-        return
+        dynverse_docker_output = DynverseDockerOutput()
+        dynverse_docker_output.load_h5_direct(h5_filename)
+    return dynverse_docker_output

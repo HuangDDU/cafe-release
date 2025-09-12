@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy
 
-COPY run.py cf_graph_mst.py definition.yml /code/
+COPY run.py angle.py /code/

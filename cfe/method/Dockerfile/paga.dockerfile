@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy scvelo igraph
 
-COPY run.py cf_paga.py definition.yml /code/
+COPY run.py cf_paga.py /code/

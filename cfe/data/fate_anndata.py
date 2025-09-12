@@ -30,8 +30,10 @@ class FateAnnData(ad.AnnData):
         # try to get the stored FateAnnData information
         cfe_dict = self.uns.get("cfe", {})
 
-        # prior inforation means that there are default values for these keys, such is start cell id
+        # prior information is frequently used with common value in various method function
+        # such as cluster_key, basis, start_cell
         self.prior_information = cfe_dict.get("prior_information", {})
+        self.recognize_prior_information()  # recognize prior information dict automatically
         cfe_dict["prior_information"] = self.prior_information
 
         # milestone_wrapper and waypoint_wrapper for latest model
@@ -214,14 +216,30 @@ class FateAnnData(ad.AnnData):
 
         ref: pydynverse/wrap/wrap_add_prior_information add_prior_information
         """
-        # TODO: if prior information is needed?
-        # prior information is frequently used in various method function, such as cluster_key, basis, start_id
         self.prior_information.update(kwargs)
 
-    def get_common_parameters(self):
-        common_params = {}
-        # TODO: cluster_key, basis,  start_id
-        return common_params
+    def recognize_prior_information(self):
+        # recognize rior information dict automatically
+        prior_information = {}
+        # cluster and basis are chosen by candidate list priority.
+        cluster_candidate_list = ["clusters", "celltype"]
+        basis_candidate_list = ["X_umap", "X_tsne", "X_pca", "X_emb"]
+        for cluster_candidate in cluster_candidate_list:
+            if cluster_candidate in self.obs.columns:
+                prior_information["cluster"] = cluster_candidate
+                logger.debug(f"recognize '{cluster_candidate}' in '.obs' columns as 'cluster' key")
+                break
+        for basis_candidate in basis_candidate_list:
+            if basis_candidate in self.obsm.keys():
+                prior_information["basis"] = basis_candidate
+                logger.debug(f"recognize '{basis_candidate}' in '.obsm' keys as 'basis' key")
+                break
+        # TODO: start_cell need specified
+        self.prior_information.update(prior_information)
+
+    def get_prior_infomation_dynverse():
+        # get prior information with dynverse style
+        return
 
     def add_model_name(self, model_name: str):
         self.model_name = model_name
@@ -1130,15 +1148,15 @@ class FateAnnData(ad.AnnData):
         trajectory_dict = self.get_trajectory_dict(model_name)
 
         if start_milestone is None:
-            logger.debug(
-                f"start_milestone is None, \
-                try to use start cell '{start_cell}' to identify start milestone automatically"
-            )
+            logger.debug("start_milestone is None, try to use start cell to identify start milestone automatically")
             if start_cell is None:
-                raise Exception("start_milestone and start_cell are both None")
-            else:
-                start_milestone = self.get_start_milestone(start_cell, model_name)
-                logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
+                start_cell = self.prior_information.get("start_cell")
+                if start_cell is None:
+                    raise Exception("start_milestone and start_cell are both None")
+                else:
+                    logger.debug(f"extract start_cell('{start_cell}') from prior information")
+            start_milestone = self.get_start_milestone(start_cell, model_name)
+            logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"
         if pseudotime_key in trajectory_dict:

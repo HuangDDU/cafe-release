@@ -14,8 +14,8 @@ from .add_color import add_milestone_cell_color, add_milestone_color
 def plot_trajectory(
     fadata: FateAnnData,
     model_name: str = None,
-    color: str | list = "milestone",
-    basis: str = "umap",
+    color: str | list = None,
+    basis: str = None,
     curve: bool = True,
     milestone_color: str | list = None,
     color_trajectory: str = None,
@@ -35,6 +35,13 @@ def plot_trajectory(
         size_transitions (int, optional): waypoint on trajectory curve size.
         color_trajectory (str, optional): trajectory color.
     """
+
+    if basis is None:
+        basis = fadata.prior_information.get("basis")
+        logger.debug(f"extract '{basis}' from prior infomation as parameter 'basis' ")
+    if color is None:
+        color = fadata.prior_information.get("cluster")
+        logger.debug(f"extract '{color}' from prior infomation as parameter 'color' ")
 
     logger.debug("plot_trajectory")
     milestone_wrapper = fadata.get_milestone_wrapper(model_name)
@@ -58,7 +65,7 @@ def plot_trajectory(
     if trajectory_embedding is None:
         # new trajectory embedding, project and save
         # project waypoint to embedding space
-        cell_positions = pd.DataFrame(data=fadata.obsm[f"X_{basis}"][:, :2], columns=["comp_1", "comp_2"])
+        cell_positions = pd.DataFrame(data=fadata.obsm[basis][:, :2], columns=["comp_1", "comp_2"])
         cell_positions["cell_id"] = fadata.obs.index
         waypoint_projection = project_waypoints(fadata, cell_positions)
 

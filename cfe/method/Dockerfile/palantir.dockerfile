@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy palantir
 
-COPY run.py cf_palantir.py definition.yml /code/
+COPY run.py palantir.py /code/

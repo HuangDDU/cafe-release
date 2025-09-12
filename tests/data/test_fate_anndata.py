@@ -92,9 +92,20 @@ class TestFateAnnData:
         pass
 
     def test_add_prior_information(self):
+        fadata = self.fadata
+        start_cell = "a"
+        fadata.add_prior_information(start_cell=start_cell)
+        assert fadata.prior_information["start_cell"] == start_cell
+
         self.fadata.add_prior_information(start_id="a", group_id=self.fadata.obs["clusters"].tolist())
         self.fadata.add_prior_information(end_id="f")
         assert set(["start_id", "group_id", "end_id"]) <= set(self.fadata.prior_information.keys())
+
+    def test_recognize_prior_information(self):
+        fadata = self.fadata
+        fadata.recognize_prior_information()
+        assert fadata.prior_information["cluster"] == "clusters"
+        assert fadata.prior_information["basis"] == "X_emb"
 
     def test_add_trajectory(self):
         from .test_fate_milestone_wrapper import setup_method_data
@@ -142,8 +153,10 @@ class TestFateAnnData:
         assert len(pseudotime) == self.fadata.shape[0]  # assert pseudotime length is equal to cell num
 
     def test_get_trajectory_pseudotime_by_cell(self):
+        fadata = self.fadata
         self.test_add_trajectory_mannually()
-        pseudotime = self.fadata.get_trajectory_pseudotime(start_cell=1)
+        fadata.add_prior_information(start_cell="a")
+        pseudotime = self.fadata.get_trajectory_pseudotime()  # extract start_cell from prior information
         assert len(pseudotime) == self.fadata.shape[0]
 
     def test_write(self):

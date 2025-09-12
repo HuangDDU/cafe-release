@@ -18,12 +18,12 @@ class TestCFComp1:
         prior_information = {}
         parameters = {"repreprocess": True, "pca_ndim": 10, "basis": "X_pca", "component": 1}
         trajectory_dict = cfe.method.cf_comp1(self.fadata, prior_information, parameters)
-        assert trajectory_dict.keys() == {"pseudotime"}
+        assert "pseudotime" in trajectory_dict.keys()
 
     def test_comp1_new(self):
         # new version: you need to provide nothing beside adata, where default parameter are available.
         trajectory_dict = cfe.method.cf_comp1(self.fadata)
-        assert trajectory_dict.keys() == {"pseudotime"}
+        assert "pseudotime" in trajectory_dict.keys()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 import anndata as ad
 import scanpy as sc
 
+METHOD_INFO = {"name": "comp1", "version": "0.0.1", "description": "Component 1 pseudotime method", "wrapper_type": "linear"}
+
 
 def comp1(
     adata: ad.AnnData,

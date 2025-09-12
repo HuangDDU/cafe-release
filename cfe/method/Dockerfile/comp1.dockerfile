@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy
 
-COPY run.py cf_angle.py definition.yml /code/
+COPY run.py comp1.py /code/
