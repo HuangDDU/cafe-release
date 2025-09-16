@@ -33,8 +33,7 @@ def test_plot_trajectory_curve():
 
 def test_plot_trajectory():
     fadata = get_plot_fadata()
-    # cfe.plot.plot_trajectory(fadata, color="clusters", basis="umap", curve=False)
-    cfe.plot.plot_trajectory(fadata, basis="X_umap", curve=False)
+    cfe.plot.plot_trajectory(fadata, color="milestone", basis="X_umap", curve=False)
     plt.savefig(f"{os.path.dirname(__file__)}/img/test_plot_trajectory.png")
 
 

@@ -12,10 +12,11 @@ import pandas as pd
 
 # import rpy2.robjects as ro
 import yaml
-from scipy import sparse
+from scipy import sparse as sp
 
 # from .._logging import logger, print_output
 from .._logging import logger
+from .._settings import settings
 from ..data import FateAnnData
 
 # from ..util import (
@@ -25,13 +26,11 @@ from ..data import FateAnnData
 from ..util import parse_docker_resource_usage_string_list
 from .fate_backend import DockerBackend
 
-# import yaml
-
 
 class DynverseDockerBackend(DockerBackend):
     """DockerBackend: specific implementation of abstract Backend class using Dynverse Docker."""
 
-    def __init__(self, image_id: str = "dynverse/ti_paga:v0.9.9.05"):
+    def __init__(self, image_id: str = "dynverse/ti_comp1:v0.9.9.01"):
         """Initialize the DynverseDockerBackend class.
 
         Args:
@@ -138,6 +137,8 @@ class DynverseDockerBackend(DockerBackend):
             DynverseDockerOutput:  parse result file "output.h5"
         """
         args = ["--dataset", "/ti/input.h5", "--output", "/ti/output.h5"]
+        # TODO: show dynverse docker debug information
+        # args = ["--dataset", "/ti/input.h5", "--output", "/ti/output.h5", "--verbosity", "3"]
         client = docker.from_env()
         start_time = time.time()
         container = client.containers.run(
@@ -346,7 +347,7 @@ class DynverseDockerBackend(DockerBackend):
 
 
 # ====================================================================================================
-# read from docker yaml files
+# YAML ubject for 'definition.yaml' file
 
 
 class Definition:
@@ -448,12 +449,10 @@ class Definition:
 
 
 # ====================================================================================================
-# ref: pydynverse/util/h5.py
+# Dynverse Docker I/O Object
 class DynverseDockerInput:
-    def __init__(self, expression, expression_id, cell_ids, feature_ids, parameters, priors, seed, verbose):
-        from scipy import sparse
-
-        if sparse.isspmatrix_csr(expression):
+    def __init__(self, expression, expression_id: str, cell_ids: list, feature_ids: list, parameters: dict, priors: dict, seed: int, verbose: bool):
+        if sp.isspmatrix_csr(expression):
             expression = expression.tocsc()
             logger.debug("expression transfer to csc from csr")
         self.expression = expression
@@ -467,13 +466,12 @@ class DynverseDockerInput:
 
     def save_json(self, input_json_filename):
         self.input_json_filename = input_json_filename
-        # 稀疏矩阵不能JSON序列化，需要手动提取行列索引
+        # mannually extract index for sparse matrix
         expression_dict = {
             "x": self.expression.data.tolist(),
             "i": self.expression.indices.tolist(),
             "p": self.expression.indptr.tolist(),
             "Dim": self.expression.shape,
-            # TODO: 表达矩阵行、列名称，暂时这样写，后续再把真实的拉进来
             "rownames": list(self.cell_ids),
             "colnames": list(self.feature_ids),
         }
@@ -485,15 +483,13 @@ class DynverseDockerInput:
             "seed": self.seed,
             "verbose": self.verbose,
         }
-        # logger.debug(input_json)
-        # 对于稀疏矩阵的特殊处理
         with open(input_json_filename, "w") as f:
             json.dump(input_json, f)
         logger.debug(f"Save json successfully, path: {input_json_filename}")
 
     def json2h5(self, input_h5_filename):
         self.input_h5_filename = input_h5_filename
-        # 调用R脚本，把生成的json文件转化为h5文件，作为dynverse docker容器需要的的输入
+        # call R script to get h5 for dynverse docker running via json.
         Rscript_filename = f"{os.path.dirname(__file__)}/../rscript/docker_input_json2h5.R"
         logger.debug(f"h52json script: {Rscript_filename}")
         command_list = [
@@ -511,67 +507,65 @@ class DynverseDockerInput:
             logger.debug("json2h5 failed!")
 
     def write_h5_directly(self, input_h5_filename):
-        """直接将数据写入HDF5文件，跳过JSON转换步骤"""
+        def _write_r_like_h5(attr, attr_obj, h5group):
+            group = h5group.create_group(attr)
+
+            if isinstance(attr_obj, sp.csc_matrix):
+                # sparse_matrix(R) : csc_matrix(Python)
+                # expression
+                group.attrs["object_class"] = np.string_("sparse_matrix")
+                group.create_dataset("x", data=attr_obj.data.astype(np.float64))
+                group.create_dataset("i", data=attr_obj.indices.astype(np.int32))
+                group.create_dataset("p", data=attr_obj.indptr.astype(np.int32))
+                group.create_dataset("dims", data=np.array(attr_obj.shape, dtype=np.int32))
+                group.create_dataset("rownames", data=np.array(self.cell_ids, dtype="S"))
+                group.create_dataset("colnames", data=np.array(self.feature_ids, dtype="S"))
+            elif isinstance(attr_obj, dict):
+                # list(R) : dict(Python)
+                group.attrs["object_class"] = "list"
+                group.create_dataset("names", data=np.array(list(attr_obj.keys()), dtype="S"))
+                sub_data_group = group.create_group("data")
+                for k, v in attr_obj.items():
+                    _write_r_like_h5(k, v, sub_data_group)  # recursively call
+            else:
+                # vector(R) : other(Python)
+                group.attrs["object_class"] = "vector"
+                if isinstance(attr_obj, bool):
+                    group.create_dataset("data", data=np.array([attr_obj], dtype=np.bool_))
+                elif isinstance(attr_obj, int):
+                    group.create_dataset("data", data=np.array([attr_obj], dtype=np.int32))
+                elif isinstance(attr_obj, float):
+                    group.create_dataset("data", data=np.array([attr_obj], dtype=np.float64))
+                elif isinstance(attr_obj, str):
+                    group.create_dataset("data", data=np.array([attr_obj], dtype="S"))
+                elif isinstance(attr_obj, (list, tuple, np.ndarray)):
+                    arr = np.array(attr_obj)
+                    if arr.dtype.kind in ("U", "O"):
+                        # automatically convert to string
+                        arr = arr.astype("S")
+                    group.create_dataset("data", data=arr)
+                else:
+                    # default to string
+                    group.create_dataset("data", data=np.array([attr_obj], dtype="S"))
+
+        attr_list = ["expression_id", self.expression_id, "parameters", "priors", "seed", "verbose"]
         with h5py.File(input_h5_filename, "w") as f:
-            # 写入表达矩阵（稀疏矩阵）
-            if sparse.isspmatrix(self.expression):
-                expr_group = f.create_group(self.expression_id)
-                expr_group.create_dataset("x", data=self.expression.data)
-                expr_group.create_dataset("i", data=self.expression.indices)
-                expr_group.create_dataset("p", data=self.expression.indptr)
-                expr_group.create_dataset("Dim", data=self.expression.shape)
-                expr_group.attrs["rownames"] = np.array(self.cell_ids, dtype="S")
-                expr_group.attrs["colnames"] = np.array(self.feature_ids, dtype="S")
+            f.attrs["object_class"] = "list"  # list(R):dict(Python)
+            f.create_dataset("names", data=np.array(attr_list, dtype="S"))
 
-            # 写入其他参数
-            f.attrs["expression_id"] = self.expression_id
-
-            # 写入参数
-            param_group = f.create_group("parameters")
-            for key, value in self.parameters.items():
-                if isinstance(value, (str, int, float, bool)):
-                    param_group.attrs[key] = value
-                elif isinstance(value, dict):
-                    # 对于字典类型的参数，创建子组
-                    sub_group = param_group.create_group(key)
-                    for sub_key, sub_value in value.items():
-                        if isinstance(sub_value, (str, int, float, bool)):
-                            sub_group.attrs[sub_key] = sub_value
-                        else:
-                            # 尝试转换为字符串
-                            sub_group.attrs[sub_key] = str(sub_value)
+            # data group
+            data_group = f.create_group("data")
+            for attr in attr_list:
+                if attr == self.expression_id:
+                    # for expression matrix, the key is specified by expression_id
+                    attr_obj = self.expression
                 else:
-                    # 其他类型尝试转换为字符串
-                    param_group.attrs[key] = str(value)
-
-            # 写入先验信息
-            priors_group = f.create_group("priors")
-            for key, value in self.priors.items():
-                if isinstance(value, (str, int, float, bool)):
-                    priors_group.attrs[key] = value
-                elif isinstance(value, (list, np.ndarray)):
-                    priors_group.create_dataset(key, data=value)
-                elif isinstance(value, dict):
-                    # 对于字典类型的先验信息，创建子组
-                    sub_group = priors_group.create_group(key)
-                    for sub_key, sub_value in value.items():
-                        if isinstance(sub_value, (str, int, float, bool)):
-                            sub_group.attrs[sub_key] = sub_value
-                        elif isinstance(sub_value, (list, np.ndarray)):
-                            sub_group.create_dataset(sub_key, data=sub_value)
-                        else:
-                            # 尝试转换为字符串
-                            sub_group.attrs[sub_key] = str(sub_value)
-                else:
-                    # 其他类型尝试转换为字符串
-                    priors_group.attrs[key] = str(value)
-
-            # 写入种子和verbose参数
-            f.attrs["seed"] = self.seed
-            f.attrs["verbose"] = self.verbose
+                    attr_obj = getattr(self, attr)
+                _write_r_like_h5(attr, attr_obj, data_group)
+        logger.debug(f"Write h5 directly successfully, path: {input_h5_filename}")
 
     def __str__(self) -> str:
-        return f"{self.expression}"  # 目前查看稀疏矩阵是最直观的输入
+        return f"{self.expression}"  # sparse matrix is most clear
 
 
 class DynverseDockerOutput:
@@ -582,7 +576,7 @@ class DynverseDockerOutput:
     def h52json(self, output_h5_filename, output_json_filename):
         self.output_h5_filename = output_h5_filename
         self.output_json_filename = output_json_filename
-        # 调用R脚本，把dynverse docker的输出的h5文件转化JSON文件
+        # call R script to get dynverse docker result via json.
         Rscript_filename = f"{os.path.dirname(__file__)}/../rscript/docker_output_h52json.R"
         logger.debug(f"h52json script: {Rscript_filename}")
         command_list = [
@@ -600,18 +594,15 @@ class DynverseDockerOutput:
             logger.debug("h52json failed!")
 
     def load_json(self):
-        # 读取json
         with open(self.output_json_filename, "r") as f:
             output_json = json.load(f)
         logger.debug(f"Save json successfully, path: {self.output_json_filename}")
-        # 解析JSON
-        # 暂时简单设置属性, 后续需要使用数据类型, 再对应转换
+        # extract significant attribute
         self.id = output_json["id"]
         self.cell_ids = output_json["cell_ids"]
-        # 自动提取JSON中的键值对
         for k, v in output_json.items():
             self.__setattr__(k, v)
-        # 对共有的部分属性的数据结构修改, 方便后续调用, 这部分其实就是wrapper对于轨迹推断输出结果的封装
+        # trajectory result.
         self.milestone_network = pd.DataFrame(self.milestone_network)
         self.milestone_percentages = pd.DataFrame(self.milestone_percentages)
         self.progressions = pd.DataFrame(self.progressions)
@@ -620,79 +611,46 @@ class DynverseDockerOutput:
         self.dimred_segment_progressions = pd.DataFrame(output_json["dimred_segment_progressions"])
         self.dimred_segment_points = pd.DataFrame(output_json["dimred_segment_points"])
 
-        # json文件添加，方便查可能不同轨迹推断类型对于wrapper的输出
+        # save raw json for various output.
         self.output_json = output_json
 
     def load_h5_directly(self, output_h5_filename):
-        """直接从HDF5文件加载数据，无需JSON转换"""
+        def _decode_bytes(x):
+            # decode bytes to str, or recursively decode list/ndarray
+            if isinstance(x, bytes):
+                return x.decode("utf-8")
+            if isinstance(x, np.ndarray):
+                return [_decode_bytes(i) for i in x]
+            return x
 
-        def recursively_load_dict_from_h5(h5_file, path="/"):
-            """递归地从HDF5文件加载字典结构"""
+        def _read_group(g):
+            # read h5 group object recursively
             result = {}
-            if path == "/":
-                # 加载根级别的属性
-                for key, value in h5_file.attrs.items():
-                    result[key] = value
-
-            # 遍历组和数据集
-            for key in h5_file[path].keys():
-                item_path = f"{path}/{key}" if path != "/" else f"/{key}"
-
-                if isinstance(h5_file[item_path], h5py.Group):
-                    # 递归处理组
-                    if "Dim" in h5_file[item_path].attrs and "x" in h5_file[item_path]:
-                        # 这是一个稀疏矩阵
-                        group_data = h5_file[item_path]
-                        from scipy.sparse import csc_matrix
-
-                        data = group_data["x"][:]
-                        indices = group_data["i"][:]
-                        indptr = group_data["p"][:]
-                        shape = tuple(group_data["Dim"][:])
-                        result[key] = csc_matrix((data, indices, indptr), shape=shape)
-                    else:
-                        # 普通组
-                        result[key] = recursively_load_dict_from_h5(h5_file, item_path)
-                elif isinstance(h5_file[item_path], h5py.Dataset):
-                    # 处理数据集
-                    dataset = h5_file[item_path][:]
-                    # 如果是字符串数组，转换为列表
-                    if dataset.dtype.kind == "S":
-                        result[key] = [s.decode("utf-8") if isinstance(s, bytes) else s for s in dataset]
-                    else:
-                        result[key] = dataset
-
+            for k in g.keys():
+                obj = g[k]
+                if isinstance(obj, h5py.Dataset):
+                    value = obj[:]
+                    result[k] = _decode_bytes(value)
+                elif isinstance(obj, h5py.Group):
+                    result[k] = _read_group(obj)
             return result
 
-        # 从HDF5文件加载数据
+        df_list = ["milestone_network", "milestone_percentages", "progressions", "divergence_regions"]
         with h5py.File(output_h5_filename, "r") as f:
-            data = recursively_load_dict_from_h5(f)
+            data_group = f["data"]
+            for key in data_group.keys():
+                value = _read_group(data_group[key])
+                if key in df_list:
+                    # extract data and convert to DataFrame
+                    value = pd.DataFrame(value["data"])
+                setattr(self, key, value)
 
-        # 设置对象属性
-        for key, value in data.items():
-            self.__setattr__(key, value)
-
-        # 特殊处理一些字段，确保它们是DataFrame类型
-        if hasattr(self, "milestone_network"):
-            self.milestone_network = pd.DataFrame(self.milestone_network)
-        if hasattr(self, "milestone_percentages"):
-            self.milestone_percentages = pd.DataFrame(self.milestone_percentages)
-        if hasattr(self, "progressions"):
-            self.progressions = pd.DataFrame(self.progressions)
-        if hasattr(self, "divergence_regions") and self.divergence_regions is not None:
-            self.divergence_regions = pd.DataFrame(self.divergence_regions) if len(self.divergence_regions) > 0 else None
-        if hasattr(self, "dimred") and hasattr(self, "cell_ids"):
-            self.dimred = pd.DataFrame(self.dimred, index=self.cell_ids)
-        if hasattr(self, "dimred_segment_progressions"):
-            self.dimred_segment_progressions = pd.DataFrame(self.dimred_segment_progressions)
-        if hasattr(self, "dimred_segment_points"):
-            self.dimred_segment_points = pd.DataFrame(self.dimred_segment_points)
+        logger.debug(f"load h5 directly successfully, path: {output_h5_filename}")
 
     def __str__(self) -> str:
         return f"id: {self.id}, trajectory_type: {self.trajectory_type}, attribute_list: {self.__dict__.keys()}"
 
     def __getitem__(self, key):
-        # 通过键名访问属性
         if hasattr(self, key):
             return getattr(self, key)
         else:
@@ -704,17 +662,18 @@ class DynverseDockerOutput:
         return self[key]
 
     def __setitem__(self, key, value):
-        # 通过键名设置属性
         setattr(self, key, value)
 
     def __contains__(self, item):
         return hasattr(self, item)
 
 
-def write_h5(x, h5_filename, via_json=True):
+def write_h5(x, h5_filename, via_json=None):
+    if via_json is None:
+        via_json = settings["dynverse_docker_via_json"]
     expression_id = x["expression_id"]
     dynverse_docker_input = DynverseDockerInput(
-        expression=x[expression_id],  # 从AnnData里提取
+        expression=x[expression_id],  # extract from anndata
         expression_id=expression_id,
         cell_ids=x["cell_ids"],
         feature_ids=x["feature_ids"],
@@ -724,24 +683,24 @@ def write_h5(x, h5_filename, via_json=True):
         verbose=x["verbose"],
     )
     if via_json:
-        input_json_filename = f"{h5_filename[:-3]}.json"  # 中间json文件
+        input_json_filename = f"{h5_filename[:-3]}.json"  # middle json file
         input_h5_filename = h5_filename
         dynverse_docker_input.save_json(input_json_filename)
         dynverse_docker_input.json2h5(input_h5_filename)
     else:
-        # TODO: 直接写入HDF5文件，不使用JSON交换文件单独的R脚本
         dynverse_docker_input.write_h5_directly(h5_filename)
 
 
-def read_h5(h5_filename, via_json=True):
+def read_h5(h5_filename, via_json=None):
+    if via_json is None:
+        via_json = settings["dynverse_docker_via_json"]
     if via_json:
         output_h5_filename = h5_filename
-        output_json_filename = f"{h5_filename[:-3]}.json"  # 中间json文件
+        output_json_filename = f"{h5_filename[:-3]}.json"  # middle json file
         dynverse_docker_output = DynverseDockerOutput()
         dynverse_docker_output.h52json(output_h5_filename, output_json_filename)
         dynverse_docker_output.load_json()
     else:
-        # TODO: 直接通过装饰器的自动转换，不使用json交换文件和单独的R脚本
         dynverse_docker_output = DynverseDockerOutput()
-        dynverse_docker_output.load_h5_direct(h5_filename)
+        dynverse_docker_output.load_h5_directly(h5_filename)
     return dynverse_docker_output

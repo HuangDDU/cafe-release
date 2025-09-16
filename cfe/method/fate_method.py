@@ -127,48 +127,50 @@ class FateMethod:
             fadata.add_model_name(self.id)
         self.method_backend.run(fadata, parameters)
 
-    def __call__(
-        self,
-        fadata: FateAnnData = None,
-        rewrite: bool = True,
-        id: str = None,
-        backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
-        **parameters,
-    ):
-        """simplified version for self.infer_trajectory"""
-        if (self.backend is None) or ((backend_name is not None) and (backend_name != self.backend_name)):
-            # choose backend firstly or rechoose new backend
-            backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
-            self.choose_backend(backend_name)
-        if id is None:
-            self.id = random_time_string(f"{self.method_name}-{self.backend}")
-        else:
-            self.id = id
-        if rewrite:
-            # use new model name
-            fadata.add_model_name(self.id)
-        adata = fadata.to_anndata(delete_trajectory=True)
+    # TOOD: consider if __call__ is needed
+    # def __call__(
+    #     self,
+    #     fadata: FateAnnData = None,
+    #     rewrite: bool = True,
+    #     id: str = None,
+    #     backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
+    #     **parameters,
+    # ):
+    #     """simplified version for self.infer_trajectory"""
+    #     if (self.backend is None) or ((backend_name is not None) and (backend_name != self.backend_name)):
+    #         # choose backend firstly or rechoose new backend
+    #         backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
+    #         self.choose_backend(backend_name)
+    #     if id is None:
+    #         self.id = random_time_string(f"{self.method_name}-{self.backend}")
+    #     else:
+    #         self.id = id
+    #     if rewrite:
+    #         # use new model name
+    #         fadata.add_model_name(self.id)
+    #     adata = fadata.to_anndata(delete_trajectory=True)
 
-        trajectory_dict = self.method_backend(adata, **parameters)
+    #     trajectory_dict = self.method_backend(adata, **parameters)
 
-        if "wrapper_type" not in trajectory_dict:
-            #  if the method have only one wrapper , read from definition yaml file
-            wrapper_type = self.method_backend.definition["wrapper"]["type"]
-            trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
+    #     if "wrapper_type" not in trajectory_dict:
+    #         #  if the method have only one wrapper , read from definition yaml file
+    #         wrapper_type = self.method_backend.definition["wrapper"]["type"]
+    #         trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
 
-        fadata.add_trajectory_by_type(trajectory_dict)
+    #     fadata.add_trajectory_by_type(trajectory_dict)
 
-        # add resource usage if benchmark_resource is True
-        if "resource_usage" in trajectory_dict:
-            fadata.add_resource_usage(trajectory_dict["resource_usage"])
+    #     # add resource usage if benchmark_resource is True
+    #     if "resource_usage" in trajectory_dict:
+    #         fadata.add_resource_usage(trajectory_dict["resource_usage"])
 
     def __str__(self):
         return f"FateMethod: method_backend-{self.method_backend}, backend-{self.backend}"
 
-    def get_parameter_df(self):
-        # show parameters from backend's definition object
-        definition = self.method_backend.definition
-        return definition.parameters
+    # # TOOD: consider if __call__ is needed
+    # def get_parameter_df(self):
+    #     # show parameters from backend's definition object
+    #     definition = self.method_backend.definition
+    #     return definition.parameters
 
     # TODO: if prior information is needed?
     # def get_prior_information(self):

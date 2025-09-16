@@ -1,5 +1,3 @@
-from anndata import AnnData
-
 from .._logging import logger
 from ..data import FateAnnData
 from .fate_backend import Backend
@@ -38,11 +36,12 @@ class FunctionBackend(Backend):
 
         fadata.add_trajectory_by_type(trajectory_dict)
 
-    def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
-        """simplified version for self.run"""
-        # transfer FateAnndata to AnnData to avoid other trajectory IO
-        trajectory_dict = self.function(adata, **parameters)
-        return trajectory_dict
+    # TOOD: consider if __call__ is needed
+    # def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
+    #     """simplified version for self.run"""
+    #     # transfer FateAnndata to AnnData to avoid other trajectory IO
+    #     trajectory_dict = self.function(adata, **parameters)
+    #     return trajectory_dict
 
     def __str__(self):
         return f"FunctionBackend: function_name-{self.function_name}"

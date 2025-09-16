@@ -1,5 +1,6 @@
 import pandas as pd
 import scanpy as sc
+from scipy import sparse as sp
 
 from .._logging import logger
 from ..preprocess import subsample
@@ -141,6 +142,12 @@ def read_pancrease(
     adata = sc.read_h5ad(filename)
     adata = subsample(adata, **kwargs)
 
+    # use csc matrix to replace for accelerate dynverse docker running.
+    if not sp.isspmatrix_csc(adata.X):
+        logger.debug("transfer 'X' and 'Spliced' matrix from csr to csc for better dynverse docker performance")
+        adata.X = adata.X.tocsc()
+        adata.layers["spliced"] = adata.layers["spliced"].tocsc()
+
     fadata = FateAnnData.from_anndata(adata)
 
     fadata.layers["expression"] = fadata.layers["spliced"]
@@ -148,7 +155,7 @@ def read_pancrease(
     fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
 
     # automatically extracted prior information: {'cluster': 'clusters', 'basis': 'X_umap'}
-    # TODO add prior information mannully,
+    # add prior information mannully,
     start_cell = "cell_1103"
     if start_cell in fadata.obs.index:
         logger.debug(f"add prior information 'start_cell': '{start_cell}'")

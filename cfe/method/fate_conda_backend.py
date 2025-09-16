@@ -119,20 +119,21 @@ class CondaBackend(Backend):
             if "resource_usage" in trajectory_dict:
                 fadata.add_resource_usage(trajectory_dict["resource_usage"])
 
-    def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
-        """simplified version for self.run"""
-        # check if benchmark resource from parameters.
-        benchmark_resource = False
-        if "benchmark_resource" in parameters:
-            benchmark_resource = parameters["benchmark_resource"]
-            del parameters["benchmark_resource"]
+    # TOOD: consider if __call__ is needed
+    # def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
+    #     """simplified version for self.run"""
+    #     # check if benchmark resource from parameters.
+    #     benchmark_resource = False
+    #     if "benchmark_resource" in parameters:
+    #         benchmark_resource = parameters["benchmark_resource"]
+    #         del parameters["benchmark_resource"]
 
-        with tempfile.TemporaryDirectory() as tmp_wd:
-            logger.debug(f"Temp wd: {tmp_wd}")
-            self.preprocess(adata, {}, parameters, tmp_wd)
-            trajectory_dict = self.execute(tmp_wd, benchmark_resource=benchmark_resource)
+    #     with tempfile.TemporaryDirectory() as tmp_wd:
+    #         logger.debug(f"Temp wd: {tmp_wd}")
+    #         self.preprocess(adata, {}, parameters, tmp_wd)
+    #         trajectory_dict = self.execute(tmp_wd, benchmark_resource=benchmark_resource)
 
-            return trajectory_dict
+    #         return trajectory_dict
 
     def __str__(self):
         return f"CondaBackend: function_name-{self.function_name}, load_backend-{self.conda_name}"

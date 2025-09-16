@@ -68,4 +68,4 @@ jobs:
         pip install rpy2==3.3.0
         mkdir -p ./tests/plot/img
         conda install pytest
-        pytest
+        pytest -m "not local"

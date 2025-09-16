@@ -18,17 +18,17 @@ class CellFateExplorerConfig:
         self.plot_format = "pdf"
         self.sns_palette = "Set3"
 
-        # TODO: parallel number of cpu kernel for some methods: scvelo, ...
+        self.dynverse_docker_via_json = False  # middle file json result in low efficiency
 
         # check if rpy2 is available
         try:
             import rpy2
 
             self.r_available = True
-            logger.debug(f"R and rpy2{rpy2} is available. You can use dynverse backend.")
+            logger.debug(f"R and rpy2{rpy2} are available. You can use dynverse dataset")
         except ImportError:
             self.r_available = False
-            logger.warning("R not available. You cannot use dynverse backend.")
+            logger.warning("R or rpy2 is not available. You can't use dynverse dataset")
         # manually settings r_available=False for testing
         self.r_available = False
 
