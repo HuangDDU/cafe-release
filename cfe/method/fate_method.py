@@ -100,14 +100,14 @@ class FateMethod:
             self.method_backend = DynverseDockerBackend(image_id)
         else:
             raise ValueError(f"backend {backend} not supported")
-        logger.info(f"method_backend: {self.method_backend}")
+        logger.info(f"method backend loaded: {self.method_backend}")
 
         self.backend = backend
 
     def infer_trajectory(
         self,
-        fadata: FateAnnData = None,
-        parameters: dict = None,
+        fadata: FateAnnData,
+        parameters: dict = {},
         rewrite: bool = True,
         backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
     ) -> None:
@@ -116,8 +116,9 @@ class FateMethod:
         ref: pydynverse/wrap/method_execute._method_execute
 
         Args:
-            fadata (FateAnnData, optional): _description_. Defaults to None.
-            parameters (dict, optional): _description_. Defaults to None.
+            fadata (FateAnnData): dataset.
+            parameters (dict, optional): parametre dict. Defaults to {}.
+
         """
         if (self.backend is None) or ((backend_name is not None) and (backend_name == self.backend_name)):
             backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
@@ -126,6 +127,10 @@ class FateMethod:
         if rewrite:
             fadata.add_model_name(self.id)
         self.method_backend.run(fadata, parameters)
+        logger.info(f"method infer trajectory successfully: {self.method_backend}")
+
+    def __call__(self, fadata, parameters, **kwargs):
+        self.infer_trajectory(fadata, parameters, **kwargs)
 
     # TOOD: consider if __call__ is needed
     # def __call__(
@@ -165,15 +170,3 @@ class FateMethod:
 
     def __str__(self):
         return f"FateMethod: method_backend-{self.method_backend}, backend-{self.backend}"
-
-    # # TOOD: consider if __call__ is needed
-    # def get_parameter_df(self):
-    #     # show parameters from backend's definition object
-    #     definition = self.method_backend.definition
-    #     return definition.parameters
-
-    # TODO: if prior information is needed?
-    # def get_prior_information(self):
-    #     # show prior information from backend's definition object
-    #     definition = self.method_backend.definition
-    #     return definition.wrapper["prior_information"]

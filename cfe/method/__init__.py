@@ -6,8 +6,11 @@ from .fate_conda_backend import CondaBackend
 from .fate_dynverse_docker_backend import DynverseDockerBackend
 from .fate_function_backend import FunctionBackend
 from .fate_method import FateMethod
-from .function import comp1
-from .function.method_decorator import scan_method
+from .method_util import scan_method
+
+# TODO: more methods for cfe.method.xxx
+cf_comp1 = FateMethod("comp1")
+cf_scvelo = FateMethod("scvelo")
 
 __all__ = [
     "Definition",
@@ -16,12 +19,10 @@ __all__ = [
     "CFEDockerBackend",
     "FunctionBackend",
     "CondaBackend",
-    # TODO: 其他方法导出
-    "comp1",
     "scan_method",
+    "cf_comp1",
+    "cf_scvelo",
 ]
-
-# directly import
 
 
 # export many trajectory method.

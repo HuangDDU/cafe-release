@@ -5,8 +5,31 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
+try:
+    from method_decorator import method_info
+except ImportError:
+    from cfe.method.function.method_decorator import method_info
 
-def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster_key: str = None, cytotrace2_kwargs: dict = {}, **kwargs):
+
+@method_info(
+    name="cytotrace2",
+    version="0.0.1",
+    description="Cytotrace2: cellular potency categories and absolute developmental potential",
+    wrapper_type="linear",
+)
+def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster: str = None, cytotrace2_kwargs: dict = {}, **kwargs) -> dict:
+    """Cytotrace2: cellular potency categories and absolute developmental potential.
+
+    Args:
+        adata (ad.AnnData):  The input AnnData object.
+        repreprocess (bool, optional): Whether to preprocess the data.
+        cluster (str, optional): Cluster column in '.obs' columns.
+        cytotrace2_kwargs (dict, optional): cytotraces2 core parameter dict, refer to
+            [github source code](https://github.com/digitalcytometry/cytotrace2/blob/main/cytotrace2_python/cytotrace2_py/cytotrace2_py.py).
+
+    Returns:
+        dict: A trajectory dict with keys: "wrapper_type" and "pseudotime".
+    """
     from cytotrace2_py.cytotrace2_py import cytotrace2
 
     with tempfile.TemporaryDirectory() as tmp_wd:
@@ -26,9 +49,9 @@ def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster_key: str = 
         df = pd.DataFrame(X, index=adata.obs_names, columns=adata.var_names).T
         print(f"write expression matrix({df.shape}) to  {expression_file}")
         df.to_csv(expression_file, sep="\t")
-        if cluster_key is not None:
+        if cluster is not None:
             annotation_path = f"{tmp_wd}/cytotrace2_annotations.csv"
-            adata.obs[cluster_key].to_csv(annotation_path, sep="\t")
+            adata.obs[cluster].to_csv(annotation_path, sep="\t")
             print(f"write annotation to {annotation_path}")
 
         # 2. execute method

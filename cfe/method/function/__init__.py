@@ -17,9 +17,3 @@
 #     "cf_graph_mst",
 #     "cf_scvelo",
 # ]
-
-from .comp1 import comp1
-
-__all__ = [
-    "comp1",
-]

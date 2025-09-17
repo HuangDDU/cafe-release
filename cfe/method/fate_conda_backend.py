@@ -97,10 +97,7 @@ class CondaBackend(Backend):
     ):
         """run"""
         # check if benchmark resource from parameters.
-        benchmark_resource = False
-        if "benchmark_resource" in parameters:
-            benchmark_resource = parameters["benchmark_resource"]
-            del parameters["benchmark_resource"]
+        benchmark_resource = self._check_benchmark_resource(parameters)
 
         # prepare data and parameters
         adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
@@ -136,4 +133,4 @@ class CondaBackend(Backend):
     #         return trajectory_dict
 
     def __str__(self):
-        return f"CondaBackend: function_name-{self.function_name}, load_backend-{self.conda_name}"
+        return f"CondaBackend: {self.function_name} in conda env '{self.conda_name}'"

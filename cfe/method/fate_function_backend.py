@@ -44,7 +44,7 @@ class FunctionBackend(Backend):
     #     return trajectory_dict
 
     def __str__(self):
-        return f"FunctionBackend: function_name-{self.function_name}"
+        return f"FunctionBackend:'{self.function_name}'"
 
     def install_pipy_package(self):
         # TODO: install the relevant package from pipy

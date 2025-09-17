@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy
 
-COPY run.py comp1.py /code/
+COPY run.py method_decorator.py cf_comp1.py /code/

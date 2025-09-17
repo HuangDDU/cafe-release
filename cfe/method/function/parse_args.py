@@ -33,7 +33,7 @@ def parse_args():
 if __name__ == "__main__":
     function_name, adata, parameters, output_filename = parse_args()
 
-    module = importlib.import_module(f"{function_name}")
+    module = importlib.import_module(f"cf_{function_name}")
     func = getattr(module, function_name)
     trajectory_dict = func(adata, **parameters)
     with open(output_filename, "wb") as f:

@@ -38,9 +38,11 @@ addopts = [
 log_cli = false
 log_level = "CRITICAL" # 只显示严重错误
 markers = [
-    # "run_method", # marker for run method in specific environment
+    "run_conda_method", # marker for run method in specific conda environment
     "local: only test local", # set it to 'not local' for github workflow to skip them
 ]
 
+[tool.mytest]
+run_conda_method = false
 
 # TODO: requirement.txt

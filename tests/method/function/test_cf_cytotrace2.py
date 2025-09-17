@@ -1,31 +1,52 @@
 import os
-import sys
 
 import pytest
 import scanpy as sc
 
-# pytest -s --tb=long -m run_method test_cf_cytotrace2.py
-sys.path.append("../../../cfe/method/function")  # prepare relative package file for  file dir
+from .method_testcase import method_testcase
+
+if_test_raw = False  # change to True when run in 'cytotrace2' conda environment
 
 
-@pytest.mark.run_method
 class TestCFCytotrace2:
     def setup_method(self):
-        self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")
+        self.method_name = "cytotrace2"
+        self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")  # need real data for gene name
+        self.parameters = {
+            "repreprocess": True,
+            "cytotrace2_kwargs": {
+                "max_cores": 8,
+            },
+        }
 
-    def test_comp1_old(self):
-        from cf_cytotrace2 import cf_cytotrace2
+    # Test raw trajectory dict
+    # conda activate sctc
+    # pytest -s --tb=long test_cf_sctc.py
+    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'cytotrace2'")
+    def test_raw(self):
+        import sys
 
-        prior_information = {}
-        parameters = {}
-        trajectory_dict = cf_cytotrace2(self.fadata, prior_information, parameters)
-        assert trajectory_dict.keys() == {"pseudotime"}
+        sys.path.append("../../../cfe/method/function")  # prepare relative package file
+        from cf_cytotrace2 import cytotrace2
 
-    def test_cytotrace_new(self):
-        from cf_cytotrace2 import cf_cytotrace2
+        trajectory_dict = cytotrace2(self.adata, self.parameters)
 
-        trajectory_dict = cf_cytotrace2(self.adata)
-        assert trajectory_dict.keys() == {"pseudotime"}
+        assert trajectory_dict.keys() == {"wrapper_type", "pseudotime"}
+
+    # Test three backends
+    # function backend is not available
+    # def test_function(self):
+    #     pass
+
+    @pytest.mark.skipif(if_test_raw, reason="skip conda backend test, because it should be in conda environment 'cfe'")
+    def test_conda(self):
+        fadata = method_testcase(self.adata, self.method_name, "conda", self.parameters)
+        assert fadata.is_wrapped_with_trajectory
+
+    @pytest.mark.skipif(if_test_raw, reason="skip cfe docker backend test, because it should be in conda environment 'cfe'")
+    def test_docker(self):
+        fadata = method_testcase(self.adata, self.method_name, "cfe_docker", self.parameters)
+        assert fadata.is_wrapped_with_trajectory
 
 
 if __name__ == "__main__":

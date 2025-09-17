@@ -271,7 +271,7 @@ class FateAnnData(ad.AnnData):
         """Get resource usage for a specific model."""
         if model_name is None:
             model_name = self.model_name
-        return self.cfe_dict["trajectory_history_dict"][model_name].get("resource_usage", {})
+        return self.cfe_dict["trajectory_history_dict"][model_name]["raw_wrapper_dict"].get("resource_usage", {})
 
     def get_all_resource_usage(self):
         """Get resource usage for all models."""

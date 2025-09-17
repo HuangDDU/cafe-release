@@ -123,10 +123,7 @@ class CFEDockerBackend(DockerBackend):
             parameters (dict): parameter dict
         """
         # check if benchmark resource from parameters.
-        benchmark_resource = False
-        if "benchmark_resource" in parameters:
-            benchmark_resource = parameters["benchmark_resource"]
-            del parameters["benchmark_resource"]
+        benchmark_resource = self._check_benchmark_resource(parameters)
 
         # prepare data and parameters
         adata = fadata.to_anndata(delete_trajectory=True)
@@ -140,3 +137,6 @@ class CFEDockerBackend(DockerBackend):
             trajectory_dict = self.execute(tmp_wd, benchmark_resource)
 
             fadata.add_trajectory_by_type(trajectory_dict)
+
+    def __str__(self):
+        return f"CFE Docker Backend: {self.function_name} in docker image '{self.image_id}'"

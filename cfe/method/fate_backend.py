@@ -1,12 +1,10 @@
-import importlib.util
-import inspect
-import os
 from abc import ABC, abstractmethod
 
 import docker
 import tqdm
 
 from .._logging import logger
+from .method_util import get_function_parameter_dict, load_function
 
 
 # Backend: abstract class, used for subsequent specific implementation such as "DockerBackend" class and "FunctionBackend" class
@@ -22,28 +20,14 @@ class Backend(ABC):
     def _load_function(self, function_name):
         # load the method function and extract prameters, will be used in three backend: python_function, conda, cfe_docker
 
-        function_file_path = f"{os.path.dirname(__file__)}/function/{function_name}.py"
-        spec = importlib.util.spec_from_file_location(self.function_name, function_file_path)  # Load the module
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        function_obj = load_function(function_name)
+        parameter_dict = get_function_parameter_dict(function_obj)
+        logger.debug(f"Loaded function '{function_name}': {function_obj}")
 
-        # Get the function from the module
-        function_obj = getattr(module, function_name)
-        logger.info(f"Loaded function: {function_obj} from {function_file_path}")
         self.function = function_obj
+        self.function_parameter_dict = parameter_dict
 
-        # extract defined paramters from function.
-        sig = inspect.signature(function_obj)
-        function_parameter_dict = {}
-        for param_name, param in sig.parameters.items():
-            param_info = {
-                "name": param_name,
-                "default": param.default if param.default != inspect.Parameter.empty else None,
-                "annotation": param.annotation if param.annotation != inspect.Parameter.empty else None,
-                "kind": param.kind.name,
-            }
-            function_parameter_dict[param_name] = param_info
-        self.function_parameter_dict = function_parameter_dict
+        self.function_obj = function_obj
 
     def _get_parameters(self, fadata, parameters):
         # merge parameters and extracted prior information as completed prameters. it should be called after "_load_function"
@@ -64,6 +48,15 @@ class Backend(ABC):
                 parameters[k] = fadata.prior_information[k]
         logger.debug(f"merged parameters: {parameters}")
         return parameters
+
+    def _check_benchmark_resource(self, parameters: dict):
+        # extract benchmark_resource from parameters, default is False. used in CondaBackend, DynverseDockerBackend and CFEDockerBackend
+        if "benchmark_resource" in parameters:
+            benchmark_resource = parameters["benchmark_resource"]
+            del parameters["benchmark_resource"]
+        else:
+            benchmark_resource = False
+        return benchmark_resource
 
 
 class DockerBackend(Backend):

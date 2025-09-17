@@ -10,7 +10,7 @@ image_id = "huangzhaoyang/comp1:0.0.1"
 
 class TestCFEDockerBackend:
     def setup_method(self):
-        function_name = ("comp1",)
+        function_name = "comp1"
         self.cfe_docker = cfe.method.CFEDockerBackend(function_name, image_id)
 
     def test_init(self):
@@ -19,7 +19,7 @@ class TestCFEDockerBackend:
     # def test_load_backend(self):
     #     # load_backend has benn called in __init__, implemented in DockerBackend
 
-    @pytest.mark.skip(reason="TODO: fix")
+    # @pytest.mark.skip(reason="TODO: fix")
     def test_run(self):
         # TODO: image is not uploaded to docker hub
         fadata, parameters = get_test_run_data()

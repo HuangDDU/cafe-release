@@ -4,4 +4,4 @@ ARG CellFateExplorer
 
 RUN pip install scanpy scvelo
 
-COPY run.py scvelo.py /code/
+COPY run.py method_decorator.py cf_scvelo.py /code/

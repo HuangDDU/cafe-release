@@ -206,10 +206,7 @@ class DynverseDockerBackend(DockerBackend):
             parameters (dict): parameter dict
         """
         # check if benchmark resource from parameters.
-        benchmark_resource = False
-        if "benchmark_resource" in parameters:
-            benchmark_resource = parameters["benchmark_resource"]
-            del parameters["benchmark_resource"]
+        benchmark_resource = self._check_benchmark_resource(parameters)
 
         # only parse definition file for dynverse docker
         inputs = self._extract_inputs(fadata, self.definition.get_inputs_df())  # extract main input
@@ -344,6 +341,9 @@ class DynverseDockerBackend(DockerBackend):
         priors = required_prior | optional_prior
 
         return priors
+
+    def __str__(self):
+        return f"Dynverse Docker Backend: {self.function_name} in docker image '{self.image_id}'"
 
 
 # ====================================================================================================
