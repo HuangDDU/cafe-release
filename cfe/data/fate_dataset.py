@@ -152,6 +152,7 @@ def read_pancrease(
 
     fadata.layers["expression"] = fadata.layers["spliced"]
     fadata.layers["counts"] = fadata.layers["spliced"]
+    fadata.obs["raw_index"] = fadata.obs.index
     fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
 
     # automatically extracted prior information: {'cluster': 'clusters', 'basis': 'X_umap'}

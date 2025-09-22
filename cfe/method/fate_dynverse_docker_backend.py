@@ -343,7 +343,7 @@ class DynverseDockerBackend(DockerBackend):
         return priors
 
     def __str__(self):
-        return f"Dynverse Docker Backend: {self.function_name} in docker image '{self.image_id}'"
+        return f"Dynverse Docker Backend: docker image '{self.image_id}'"
 
 
 # ====================================================================================================

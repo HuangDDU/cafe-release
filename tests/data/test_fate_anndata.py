@@ -153,11 +153,17 @@ class TestFateAnnData:
         assert len(pseudotime) == self.fadata.shape[0]  # assert pseudotime length is equal to cell num
 
     def test_get_trajectory_pseudotime_by_cell(self):
-        fadata = self.fadata
         self.test_add_trajectory_mannually()
-        fadata.add_prior_information(start_cell="a")
+        self.fadata.add_prior_information(start_cell="a")
         pseudotime = self.fadata.get_trajectory_pseudotime()  # extract start_cell from prior information
         assert len(pseudotime) == self.fadata.shape[0]
+
+    def test_get_trajectory_pseudo_velocity(self):
+        # divergence test case is in ../metric/test_metric_velocity.py
+        self.test_add_trajectory_mannually()
+        self.fadata.add_prior_information(basis="X_emb")
+        pseudo_velocity = self.fadata.get_trajectory_pseudo_velocity()  # extract start_cell from prior information
+        assert pseudo_velocity.shape == self.fadata.obsm["X_emb"].shape
 
     def test_write(self):
         self.test_add_waypoints()

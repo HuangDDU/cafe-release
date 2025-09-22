@@ -17,7 +17,7 @@ except ImportError:
     description="Cytotrace2: cellular potency categories and absolute developmental potential",
     wrapper_type="linear",
 )
-def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster: str = None, cytotrace2_kwargs: dict = {}, **kwargs) -> dict:
+def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster: str = None, cytotrace2_kwargs: dict = {}) -> dict:
     """Cytotrace2: cellular potency categories and absolute developmental potential.
 
     Args:

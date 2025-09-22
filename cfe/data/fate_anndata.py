@@ -1159,7 +1159,7 @@ class FateAnnData(ad.AnnData):
             logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"
-        if pseudotime_key in trajectory_dict:
+        if pseudotime_key in trajectory_dict.get("raw_wrapper_dict", {}):
             # return pseudotime from trajectory dict directly
             logger.debug(f"find key:'{pseudotime_key}' in trajectory dict, use it directly")
             return trajectory_dict[pseudotime_key]
@@ -1194,6 +1194,70 @@ class FateAnnData(ad.AnnData):
             logger.debug(f"save pseudotime to trajectory dict with key: `{pseudotime_key}`")
             trajectory_dict[pseudotime_key] = pseudotime
             return pseudotime
+
+    def get_trajectory_pseudo_velocity(self, basis=None, model_name=None):
+        # TODO: another strategy, consider about waypoint
+        # calc milestone positions in embedding space: refer to cfe.plot.project_waypoints
+        if basis is None:
+            basis = self.prior_information.get("basis")
+        cell_embedding = pd.DataFrame(self.obsm[basis])
+        cell_embedding["cell_id"] = self.obs.index
+
+        # 1,2 calc milestone positions in embedding space: refer to cfe.plot.project_waypoints
+        # 1. extract trajectory and cell embedding
+        milestone_wrapper = self.get_milestone_wrapper(model_name)
+        if basis is None:
+            basis = self.prior_information.get("basis")
+        cell_embedding = self.obsm[basis]
+        cell_embedding_df = pd.DataFrame(cell_embedding, index=self.obs.index)
+
+        milestone_network = milestone_wrapper.milestone_network
+        progressions = milestone_wrapper.progressions
+        milestone_percentages = milestone_wrapper.milestone_percentages
+
+        # 2. merge and calc weighted avg milestone embedding
+        merged_df = milestone_percentages.merge(cell_embedding_df, left_on="cell_id", right_index=True)
+
+        def weighted_avg(group):
+            coords = group.iloc[:, -cell_embedding.shape[1] :]
+            weights = group["percentage"]
+            # if weights.sum() == 0:
+            #     return pd.Series(np.nan, index=coords.columns)
+            return (coords.multiply(weights, axis=0)).sum() / weights.sum()
+
+        milestone_embedding = merged_df.groupby("milestone_id").apply(weighted_avg)
+
+        # 3. calc pseudovelocity vectors for each cell
+        # TODO: fix for divergence region
+        edge_vectors = milestone_embedding.loc[milestone_network["to"]].values - milestone_embedding.loc[milestone_network["from"]].values
+        edge_vectors_df = pd.DataFrame(edge_vectors, index=pd.MultiIndex.from_frame(milestone_network[["from", "to"]]))
+
+        # Map each cell's progression to its corresponding edge vector
+        prog_with_vectors = progressions.join(edge_vectors_df, on=["from", "to"])
+        prog_with_vectors.fillna(0, inplace=True)  # for cells on milestone, velocity = 0
+
+        def weighted_avg_velocity(group):
+            # For each cell, calculate the weighted average of its associated edge vectors
+            # Extract vectors and weights
+            vectors = group.iloc[:, -cell_embedding.shape[1] :].values
+            weights = group["percentage"].values
+            # Calculate weighted average: sum(vector * weight) / sum(weights)
+            weighted_vectors = vectors * weights[:, np.newaxis]
+            sum_of_weights = weights.sum()
+
+            if sum_of_weights > 0:
+                return weighted_vectors.sum(axis=0) / sum_of_weights
+            else:
+                # Return a zero vector if weights sum to 0 to avoid division by zero
+                return np.zeros(cell_embedding.shape[1])
+
+        # Group by cell_id and apply the weighted average calculation
+        velocity_df = prog_with_vectors.groupby("cell_id").apply(weighted_avg_velocity)
+        velocity_df = pd.DataFrame(velocity_df.to_list(), index=velocity_df.index)
+        velocity_df = velocity_df.loc[self.obs.index]
+        velocity_embedding = velocity_df.values
+
+        return velocity_embedding
 
     def update_uns_cfe(self):
         # update .uns["cfe"]
