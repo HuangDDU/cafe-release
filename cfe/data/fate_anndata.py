@@ -410,7 +410,6 @@ class FateAnnData(ad.AnnData):
                 velocity_graph=trajectory_dict["velocity_graph"],
                 velocity_graph_neg=trajectory_dict["velocity_graph_neg"],
                 neighbors=trajectory_dict["neighbors"],
-                cluster_key=trajectory_dict.get("cluster_key", "clusters"),
                 obs_index=trajectory_dict["obs_index"],
                 var_index=trajectory_dict["var_index"],
             )
@@ -964,12 +963,17 @@ class FateAnnData(ad.AnnData):
         velocity_graph: np.array,
         velocity_graph_neg: np.array,
         neighbors: dict,
-        cluster_key: str = "clusters",
+        cluster: str = None,
         obs_index=None,
         var_index=None,
-        basis="umap",
+        basis=None,
     ):
         "add velocity trajectory using PAGA transform, such as scVelo, VeloAE"
+        if cluster is None:
+            cluster = self.prior_information.get("cluster")
+        if basis is None:
+            basis = self.prior_information.get("basis")
+
         # PAGA
         import scvelo as scv
 
@@ -978,11 +982,12 @@ class FateAnnData(ad.AnnData):
             var_index = self.var.index if var_index is None else var_index
             adata = self[obs_index, var_index].copy()
         else:
-            # TODO: copy may waste time and memory
+            # TODO: copy may waste time and memory, need other strategy
             adata = self.copy()
         logger.debug(f"filterd adata: {adata}")
 
         adata.layers["velocity"] = velocity
+        # Final goal: only save velocity matrix of a method.
         adata.uns["velocity_graph"] = velocity_graph
         adata.uns["velocity_graph_neg"] = velocity_graph_neg
         adata.uns["neighbors"] = neighbors
@@ -992,29 +997,31 @@ class FateAnnData(ad.AnnData):
         # scv.tl.velocity_graph(adata)  # add transition graph by velocity
 
         # execute PAGA and extract result
-        scv.tl.paga(adata, groups=cluster_key)
+        scv.tl.paga(adata, groups=cluster)
         df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-        df.index = df.columns = adata.obs[cluster_key].cat.categories.tolist()
+        df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
         milestone_network = (
             df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
         )
-        milestone_network["length"] = 1  # 暂时统一设置为1
+        milestone_network["length"] = 1  # TODO: need to be modified
         milestone_network["directed"] = True
-        logger.debug("milestone_network:")
-        logger.debug(milestone_network)
+        logger.debug(f"milestone_network:{milestone_network}")
 
-        X_emb = pd.DataFrame(adata.obsm[f"X_{basis}"], index=adata.obs.index)
-        milestone_emb = adata.obs.groupby(cluster_key).apply(lambda x: X_emb.loc[x.index].mean(axis=0))
-        milestone_emb.index = list(adata.obs[cluster_key].cat.categories)
+        X_emb = pd.DataFrame(adata.obsm[basis], index=adata.obs.index)
+        milestone_emb = adata.obs.groupby(cluster).apply(lambda x: X_emb.loc[x.index].mean(axis=0))
+        milestone_emb.index = list(adata.obs[cluster].cat.categories)
 
-        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster_key)
+        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
 
-        # TODO: save raw velocity reuslt for wrapper visualization
+        # save raw velocity reuslt for wrapper visualization
         logger.debug("add raw velocity to fadata")
         # self.layers["velocity"] = velocity
         # self.uns["velocity_graph"] = adata.uns["velocity_graph"]
-        scv.tl.velocity_embedding(adata, basis=basis)
-        self.obsm[f"velocity_{basis}"] = adata.obsm[f"velocity_{basis}"]
+        scv.tl.velocity_embedding(adata, basis=basis[2:])
+        # update raw wrapper dict
+        # self.obsm[f"velocity_{basis[3:]}"] = adata.obsm[f"velocity_{basis[3:]}"]
+        velocity_basis = f"velocity_{basis[2:]}"
+        self.raw_wrapper_dict.update({velocity_basis: adata.obsm[velocity_basis]})
 
         # TODO: another strategy LAP(from Dynamo)
 
@@ -1197,11 +1204,6 @@ class FateAnnData(ad.AnnData):
 
     def get_trajectory_pseudo_velocity(self, basis=None, model_name=None):
         # TODO: another strategy, consider about waypoint
-        # calc milestone positions in embedding space: refer to cfe.plot.project_waypoints
-        if basis is None:
-            basis = self.prior_information.get("basis")
-        cell_embedding = pd.DataFrame(self.obsm[basis])
-        cell_embedding["cell_id"] = self.obs.index
 
         # 1,2 calc milestone positions in embedding space: refer to cfe.plot.project_waypoints
         # 1. extract trajectory and cell embedding
@@ -1209,14 +1211,14 @@ class FateAnnData(ad.AnnData):
         if basis is None:
             basis = self.prior_information.get("basis")
         cell_embedding = self.obsm[basis]
-        cell_embedding_df = pd.DataFrame(cell_embedding, index=self.obs.index)
+        cell_embedding = pd.DataFrame(cell_embedding, index=self.obs.index)
 
         milestone_network = milestone_wrapper.milestone_network
         progressions = milestone_wrapper.progressions
         milestone_percentages = milestone_wrapper.milestone_percentages
 
         # 2. merge and calc weighted avg milestone embedding
-        merged_df = milestone_percentages.merge(cell_embedding_df, left_on="cell_id", right_index=True)
+        merged_df = milestone_percentages.merge(cell_embedding, left_on="cell_id", right_index=True)
 
         def weighted_avg(group):
             coords = group.iloc[:, -cell_embedding.shape[1] :]
@@ -1228,7 +1230,6 @@ class FateAnnData(ad.AnnData):
         milestone_embedding = merged_df.groupby("milestone_id").apply(weighted_avg)
 
         # 3. calc pseudovelocity vectors for each cell
-        # TODO: fix for divergence region
         edge_vectors = milestone_embedding.loc[milestone_network["to"]].values - milestone_embedding.loc[milestone_network["from"]].values
         edge_vectors_df = pd.DataFrame(edge_vectors, index=pd.MultiIndex.from_frame(milestone_network[["from", "to"]]))
 

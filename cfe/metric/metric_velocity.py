@@ -1,3 +1,6 @@
+from ..data import FateAnnData
+from ..util import temporary_obsm_key
+
 # refer to: https://github.com/qiaochen/VeloAE/blob/main/veloproj/eval_util.py
 """Evaluation utility functions.
 
@@ -130,7 +133,16 @@ def inner_cluster_coh(adata, k_cluster, k_velocity, return_raw=False):
     return scores, np.mean([sc for sc in scores.values()])
 
 
-def calculate_velocity_metrics(adata, cluster_edges, cluster, basis="X_umap", return_raw=True, summary=True):
+def calculate_velocity_metrics(
+    fadata: FateAnnData,
+    cluster_edges: list,
+    cluster: str = None,
+    basis: str = None,
+    model_name: str = None,
+    recompute_pseudo_velocity: bool = False,
+    return_raw: bool = False,
+    summary: bool = True,
+):
     """Evaluate velocity estimation results using 5 metrics.
 
     Args:
@@ -138,6 +150,8 @@ def calculate_velocity_metrics(adata, cluster_edges, cluster, basis="X_umap", re
         cluster_edges (list of tuples("A", "B")): pairs of clusters has transition direction A->B
         cluster (str): key to the cluster column in adata.obs DataFrame.
         basis (str): key to x embedding for visualization.
+        model_name (str): model name in raw_wrapper_dict.
+        recompute_pseudo_velocity(bool): whether to recompute pseudo velocity.
         return_raw (bool): return aggregated or raw scores.
         summary (bool): if not return_raw, whether to return summary scores.
 
@@ -146,27 +160,48 @@ def calculate_velocity_metrics(adata, cluster_edges, cluster, basis="X_umap", re
         dict: aggregated metric scores.
 
     """
-    k_velocity = f"velocity_{basis.split('_')[1]}"
+    if cluster is None:
+        cluster = fadata.prior_information.get("cluster")
+    if basis is None:
+        basis = fadata.prior_information.get("basis")
 
-    neighbor_dict = adata.uns["neighbors"]
+    # extract velocity embedding from raw wrapper dict
+    velocity_basis = f"velocity_{basis[2:]}"  # add velocity embedding temporarily, delete after metric calculation
+    raw_wrapper_dict = fadata.get_raw_wrapper_dict(model_name)
+
+    if velocity_basis not in raw_wrapper_dict:
+        logger.info("pseudo velocity don't exist, compute and add it to raw_wrapper_dict ")
+        raw_wrapper_dict[velocity_basis] = fadata.get_trajectory_pseudo_velocity(basis=basis, model_name=model_name)
+    elif recompute_pseudo_velocity:
+        logger.info("recompute pseudo velocity")
+        raw_wrapper_dict[velocity_basis] = fadata.get_trajectory_pseudo_velocity(basis=basis, model_name=model_name)
+    # fadata.trajectory_history_dict[model_name]["raw_wrapper_dict"] = raw_wrapper_dict # update raw_wrapper_dict
+    velocity_embedding = raw_wrapper_dict[velocity_basis]
+
+    # extract neighbors indices from distance matrix
+    neighbor_dict = fadata.uns["neighbors"]
     if "indices" not in neighbor_dict:
         logger.debug("extract knn indices to 'adata.uns['neighbors']['indices']' for metric calculation")
         n_neighbors = neighbor_dict["params"]["n_neighbors"]
-        distances = adata.obsp["distances"]  # csr matrix
+        distances = fadata.obsp["distances"]  # csr matrix
         neighbor_dict["indices"] = distances.indices.reshape(-1, n_neighbors - 1)
 
-    crs_bdr_crc = cross_boundary_correctness(adata, cluster, k_velocity, cluster_edges, return_raw, basis)
-    ic_coh = inner_cluster_coh(adata, cluster, k_velocity, return_raw)
+    # NOTE: (Important) calculate metrics for low dimensional velocity embedding,
+    with temporary_obsm_key(fadata, velocity_basis, velocity_embedding):
+        crs_bdr_crc = cross_boundary_correctness(fadata, cluster, velocity_basis, cluster_edges, return_raw, basis)
+        ic_coh = inner_cluster_coh(fadata, cluster, velocity_basis, return_raw)
 
+    # summarize if need
     if return_raw:
         # if return raw scores, do nothing
         if summary:
-            logger.debug("'return_raw`'and 'summary' both set True, only 'return_raw' is effective.")
+            logger.debug("'return_raw`'and 'summary' both set True, only 'return_raw' is effective, don't summary result.")
     else:
         if summary:
             # if don't return raw, just summary score, do it
             crs_bdr_crc = crs_bdr_crc[1]
             ic_coh = ic_coh[1]
+
     return {
         "CBDir": crs_bdr_crc,
         "ICVCoh": ic_coh,
