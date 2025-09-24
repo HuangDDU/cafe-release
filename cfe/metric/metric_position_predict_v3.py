@@ -116,7 +116,7 @@ def calculate_position_predict(
         out["summary"]["rf_rsq"] = float(np.mean(list(rf_rsqs.values())))
         out["summary"]["rf_nmse"] = float(max(0.0, 1 - out["summary"]["rf_mse"]/baseline_mse))
 
-        # 新增：若 pred 与 gold 完全相同，LM 直接给出完美分数 —— #
+        # 新增：若 pred 与 gold 完全相同，LM 直接给出完美分数
     if any(m in metrics for m in ("lm_mse","lm_rsq","lm_nmse")) and pred.equals(gold):
         # 每个里程碑都完美拟合
         out["lm_rsqs"] = {col: 1.0 for col in gold.columns}
