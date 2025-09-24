@@ -1,11 +1,12 @@
-import pytest
-import cfe
-
 import os
+
+import pytest
 import scanpy as sc
 
+import cfe
 
-class TestCFAngle():
+
+class TestCFAngle:
     def setup_method(self):
         adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/bifurcating.h5ad")
         self.fadata = cfe.data.FateAnnData.from_anndata(adata)

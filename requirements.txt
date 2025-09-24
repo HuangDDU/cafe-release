@@ -9,8 +9,8 @@ networkx==3.4.2
 scikit-learn==1.6.0
 scanpy==1.10.4
 scvelo==0.3.3
-
+plotly==6.0.1
 # # notebook
 # jupyter
-
-
+# dev tools
+pre-commit

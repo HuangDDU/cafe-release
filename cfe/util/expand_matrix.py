@@ -1,5 +1,7 @@
-import scipy.sparse as sp
 import pandas as pd
+
+# import scipy.sparse as sp
+
 
 def expand_matrix(mat, rownames=None, colnames=None, fill=0):
     """
@@ -32,7 +34,7 @@ def expand_matrix(mat, rownames=None, colnames=None, fill=0):
     Returns:
         pd.DataFrame: The expanded matrix with rows and columns as specified.
     """
-    
+
     if rownames is None:
         rownames = mat.index
     if colnames is None:
@@ -45,4 +47,3 @@ def expand_matrix(mat, rownames=None, colnames=None, fill=0):
     common_cols = mat.columns.intersection(newmat.columns)
     newmat.loc[common_rows, common_cols] = mat.loc[common_rows, common_cols]
     return newmat
-

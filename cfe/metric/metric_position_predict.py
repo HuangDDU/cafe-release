@@ -1,20 +1,20 @@
 import numpy as np
 import pandas as pd
-import scipy.sparse as sp
+
+# import scipy.sparse as sp
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
+
 from cfe.util.expand_matrix import expand_matrix
 
+
 def calculate_position_predict_fadata(
-    fadata, 
-    prediction=None, 
-    metrics=["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"],
-    model_name=None
+    fadata, prediction=None, metrics=["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"], model_name=None
 ):
     """
     Compute metrics related to the prediction of cell positions for FateAnnData.
-    
+
     Parameters:
         fadata : FateAnnData
             包含轨迹数据的 FateAnnData 对象，其轨迹信息存储在 fadata.uns["cfe"]["trajectory_history_dict"] 中。
@@ -24,7 +24,7 @@ def calculate_position_predict_fadata(
             指标列表，可选 "rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse" 中的一项或多项。
         model_name : str or None
             指定使用哪一个轨迹模型。如果为 None，则默认为 fadata.model_name。
-            
+
     Returns:
         dict: 返回一个包含 summary 键的字典，其中 summary 下保存总体各项指标，
               同时可能还包含各里程碑的详细指标（例如 rf_mses、lm_rsqs）。
@@ -32,7 +32,7 @@ def calculate_position_predict_fadata(
     # 1. 获取细胞ID列表
     cell_ids = fadata.obs.index.tolist()
     output = {"summary": {}}
-    
+
     # 2. 根据模型名称获取 MilestoneWrapper 对象
     if model_name is None:
         model_name = fadata.model_name
@@ -40,43 +40,27 @@ def calculate_position_predict_fadata(
     milestone_wrapper = fadata.uns["cfe"]["trajectory_history_dict"].get(model_name, {}).get("milestone_wrapper", None)
     if milestone_wrapper is None:
         raise ValueError(f"No milestone_wrapper found for model: {model_name}")
-    
+
     # 3. 从 MilestoneWrapper 中获取金标准的里程碑百分比数据
     # 假设 milestone_wrapper.milestone_percentages 是个 DataFrame，包含 "cell_id", "milestone_id", "percentage"
     gold_mp = milestone_wrapper.milestone_percentages
-    gold_milenet_m = pd.pivot_table(
-        gold_mp,
-        index="cell_id",
-        columns="milestone_id",
-        values="percentage",
-        fill_value=0
-    )
+    gold_milenet_m = pd.pivot_table(gold_mp, index="cell_id", columns="milestone_id", values="percentage", fill_value=0)
     # 使用 expand_matrix 保证行顺序与 cell_ids 对齐
     gold_milenet_m = expand_matrix(gold_milenet_m, rownames=cell_ids)
-    
+
     # 4. 计算 baseline_mse：对每个里程碑列计算各值与均值差的平方均值，再取所有列的平均
-    baseline_mse = np.mean([
-        np.mean((gold_milenet_m[col] - gold_milenet_m[col].mean())**2)
-        for col in gold_milenet_m.columns
-    ])
-    
+    baseline_mse = np.mean([np.mean((gold_milenet_m[col] - gold_milenet_m[col].mean()) ** 2) for col in gold_milenet_m.columns])
+
     # 5. 如果 prediction 有效，则计算预测指标
-    if (prediction is not None and 
-        len(pd.unique(prediction.milestone_wrapper.milestone_percentages["cell_id"])) >= 3):
+    if prediction is not None and len(pd.unique(prediction.milestone_wrapper.milestone_percentages["cell_id"])) >= 3:
         # 从 prediction 的 MilestoneWrapper 中提取预测的里程碑百分比数据
         pred_mp = prediction.milestone_wrapper.milestone_percentages
-        pred_milenet_m = pd.pivot_table(
-            pred_mp,
-            index="cell_id",
-            columns="milestone_id",
-            values="percentage",
-            fill_value=0
-        )
+        pred_milenet_m = pd.pivot_table(pred_mp, index="cell_id", columns="milestone_id", values="percentage", fill_value=0)
         pred_milenet_m = expand_matrix(pred_milenet_m, rownames=cell_ids)
         # 仅保留标准差大于 0 的列
         cols = [col for col in pred_milenet_m.columns if pred_milenet_m[col].std() > 0]
         pred_milenet_m = pred_milenet_m[cols]
-        
+
         # 5.1 使用随机森林模型计算指标
         if any(metric in metrics for metric in ["rf_mse", "rf_rsq", "rf_nmse"]):
             rf_mses = {}
@@ -99,7 +83,7 @@ def calculate_position_predict_fadata(
             output["rf_rsqs"] = rf_rsqs
             output["summary"]["rf_rsq"] = max(np.mean(list(rf_rsqs.values())), 0)
             output["summary"]["rf_nmse"] = max(1 - output["summary"]["rf_mse"] / baseline_mse, 0)
-        
+
         # 5.2 使用线性回归模型计算指标
         if any(metric in metrics for metric in ["lm_mse", "lm_rsq", "lm_nmse"]):
             lm_mses = []
@@ -110,7 +94,7 @@ def calculate_position_predict_fadata(
                 lr = LinearRegression()
                 lr.fit(data.drop("PREDICT", axis=1), data["PREDICT"])
                 preds = lr.predict(data.drop("PREDICT", axis=1))
-                mse = np.mean((data["PREDICT"] - preds)**2)
+                mse = np.mean((data["PREDICT"] - preds) ** 2)
                 lm_mses.append(mse)
                 rsq = lr.score(data.drop("PREDICT", axis=1), data["PREDICT"])
                 lm_rsqs[col] = rsq if not np.isnan(rsq) else 1
@@ -126,7 +110,7 @@ def calculate_position_predict_fadata(
             "rf_rsq": 0,
             "lm_mse": baseline_mse,
             "lm_rsq": 0,
-            "lm_nmse": 0
+            "lm_nmse": 0,
         }
-    
+
     return output

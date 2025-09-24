@@ -18,11 +18,11 @@ wrapper:
   - convergence
   - multifurcation
   - tree
-  input_required: 
+  input_required:
   - expression
   input_optional:
   - groups_id
-  
+
 
 parameters:
   - id: dimred

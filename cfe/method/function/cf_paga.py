@@ -1,16 +1,11 @@
+import anndata as ad
 import numpy as np
 import pandas as pd
-import anndata as ad
 import scanpy as sc
 import scvelo as scv
 
 
-def cf_paga(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
-
+def cf_paga(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
     # extract prior information and parameters
@@ -35,17 +30,28 @@ def cf_paga(
     epsilon = 1e-3  # a very small scaling values
     branch_ids = adata.obs[cluster_key].unique().to_list()
     # (2) branches
-    branches = pd.DataFrame({
-        "branch_id": branch_ids,
-        "directed": True,
-    })
-    branches["length"] = adata.obs[[cluster_key, "dpt_pseudotime"]].groupby(cluster_key).apply(lambda x: x["dpt_pseudotime"].max() - x["dpt_pseudotime"].min() + epsilon).reset_index()[0]
+    branches = pd.DataFrame(
+        {
+            "branch_id": branch_ids,
+            "directed": True,
+        }
+    )
+    branches["length"] = (
+        adata.obs[[cluster_key, "dpt_pseudotime"]]
+        .groupby(cluster_key)
+        .apply(lambda x: x["dpt_pseudotime"].max() - x["dpt_pseudotime"].min() + epsilon)
+        .reset_index()[0]
+    )
     # (3) branch_network
-    branch_network = pd.DataFrame(
-        np.triu(adata.uns["paga"]["connectivities"].todense(), k=0),  # keep the upper triangular matrix
-        index=adata.obs[cluster_key].cat.categories,
-        columns=adata.obs[cluster_key].cat.categories
-    ).stack().reset_index()
+    branch_network = (
+        pd.DataFrame(
+            np.triu(adata.uns["paga"]["connectivities"].todense(), k=0),  # keep the upper triangular matrix
+            index=adata.obs[cluster_key].cat.categories,
+            columns=adata.obs[cluster_key].cat.categories,
+        )
+        .stack()
+        .reset_index()
+    )
     branch_network.columns = ["from", "to", "length"]
     branch_network = branch_network[branch_network["length"] >= connectivity_cutoff]  # set threshold to filter insignificant edges
     average_pseudotime_dict = adata.obs.groupby(cluster_key)["dpt_pseudotime"].mean()
@@ -56,6 +62,7 @@ def cf_paga(
         else:
             x["from"], x["to"] = x["to"], x["from"]
             return x
+
     branch_network.apply(modify_milestone_network_direction, axis=1)  # Adjust the direction of the edge
     # sort edges by "from" and "to" columns to facilitate subsequent milestone numbering
     branch_network["from_pseudotime"] = branch_network["from"].apply(lambda x: average_pseudotime_dict[x])
@@ -63,13 +70,11 @@ def cf_paga(
     branch_network = branch_network.sort_values(["from_pseudotime", "to_pseudotime"])
     branch_network = branch_network[["from", "to"]].reset_index(drop=True)
     # (4) branch_progressions
-    branch_progressions = pd.DataFrame({
-        "cell_id": adata.obs.index,
-        "branch_id": adata.obs[cluster_key],
-        "percentage": adata.obs["dpt_pseudotime"]
-    })
+    branch_progressions = pd.DataFrame({"cell_id": adata.obs.index, "branch_id": adata.obs[cluster_key], "percentage": adata.obs["dpt_pseudotime"]})
     # sort cells by pseudo time within the branch
-    branch_progressions["percentage"] = branch_progressions.groupby("branch_id")["percentage"].apply(lambda x: (x - x.min()) / (x.max() - x.min() + epsilon)).values
+    branch_progressions["percentage"] = (
+        branch_progressions.groupby("branch_id")["percentage"].apply(lambda x: (x - x.min()) / (x.max() - x.min() + epsilon)).values
+    )
     branch_progressions
 
     # 5. save results

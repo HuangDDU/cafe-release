@@ -1,7 +1,7 @@
 import pandas as pd
 import scanpy as sc
-from .fate_anndata import FateAnnData
 
+from .fate_anndata import FateAnnData
 
 # class FateDataset():
 
@@ -64,7 +64,7 @@ def read_bonemarrow(
             ["Ery_1", "Ery_2"],
             ["Ery_1", "Mega"],
         ],
-        columns=["from", "to"]
+        columns=["from", "to"],
     )
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
@@ -79,7 +79,7 @@ def read_erythroid_lineage(
     filename="/home/huang/PyCode/scRNA/data/Gastrulation/erythroid_lineage.h5ad",
     n_obs=-1,
     cluster_key="celltype",
-    basis="X_umap"
+    basis="X_umap",
 ):
     # read case study dataset of palantir and scvelo: bone marrow
     adata = sc.read_h5ad(filename)
@@ -94,7 +94,7 @@ def read_erythroid_lineage(
             ["Erythroid1", "Erythroid2"],
             ["Erythroid2", "Erythroid3"],
         ],
-        columns=["from", "to"]
+        columns=["from", "to"],
     )
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
@@ -114,7 +114,7 @@ def read_pancrease(
     filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.h5ad",
     basis="X_umap",
     cluster_key="clusters",
-    n_obs=-1
+    n_obs=-1,
 ):
     # read scvelo case study dataset: pancrease
     adata = sc.read_h5ad(filename)
@@ -136,7 +136,7 @@ def read_pancrease(
             ["Pre-endocrine", "Delta"],
             ["Pre-endocrine", "Epsilon"],
         ],
-        columns=["from", "to"]
+        columns=["from", "to"],
     )
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
@@ -151,7 +151,7 @@ def read_pancrease_cellrank(
     filename="/home/huang/PyCode/scRNA/data/Pancreas/endocrinogenesis_day15.5_velocity_kernel.h5ad",
     basis="X_umap",
     cluster_key="clusters",
-    n_obs=-1
+    n_obs=-1,
 ):
     # read cellrank case study dataset: pancrease
     adata = sc.read_h5ad(filename)
@@ -172,7 +172,7 @@ def read_pancrease_cellrank(
             ["Fev+", "Delta"],
             ["Fev+", "Epsilon"],
         ],
-        columns=["from", "to"]
+        columns=["from", "to"],
     )
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,

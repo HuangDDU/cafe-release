@@ -1,10 +1,12 @@
+import os
+
+import matplotlib.pyplot as plt
 import pytest
+
 import cfe
 
-import os
-import matplotlib.pyplot as plt
-
 from .test_plot_trajectory import get_plot_fadata
+
 
 def test_plot_graph():
     fadata = get_plot_fadata()

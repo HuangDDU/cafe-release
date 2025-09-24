@@ -1,5 +1,8 @@
-from ._logging import logger
+import os
+import sys
 import warnings
+
+from ._logging import logger
 
 
 class CellFateExplorerConfig:
@@ -11,11 +14,13 @@ class CellFateExplorerConfig:
         self.plot_format = "pdf"
 
         # backend settings
-        self.backend = "python_function"  # ["python_function", "cfe_docker", "dynverse_docker"]
+        # ["python_function", "cfe_docker", "dynverse_docker"]
+        self.backend = "python_function"
 
         # check if rpy2 is available
         try:
             import rpy2
+
             self.r_available = True
             logger.debug(f"R and rpy2{rpy2} is available. You can use dynverse backend.")
         except ImportError:
@@ -39,10 +44,6 @@ class CellFateExplorerConfig:
 settings = CellFateExplorerConfig()
 
 if settings.filter_warning:
-    import warnings
-    import sys
-    import os
-
     sys.stderr = open(os.devnull, "w")
 
     os.environ["PYTHONWARNINGS"] = "ignore"

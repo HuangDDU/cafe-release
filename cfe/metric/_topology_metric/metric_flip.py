@@ -1,8 +1,9 @@
 from itertools import combinations, product
 
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
+
 from ...data import simplify_networkx_network
 
 
@@ -10,9 +11,9 @@ def calculate_edge_flip(
     net1: pd.DataFrame,
     net2: pd.DataFrame,
     return_type="score",
-    simplify=False, # 提前简化过了
+    simplify=False,  # 提前简化过了
     limit_flips=5,
-    limit_combinations=12650
+    limit_combinations=12650,
 ):
     """Edge flip metric
 
@@ -40,7 +41,7 @@ def calculate_edge_flip(
     # 提取下三角矩阵，计算边的数量差异
     adj1_tril_mask = np.tril(adj1.values, k=-1)  # 去除对角线的下三角的邻接矩阵
     adj2_tril_mask = np.tril(adj2.values, k=-1)
-    edge_difference =  adj2_tril_mask.sum() - adj1_tril_mask.sum()
+    edge_difference = adj2_tril_mask.sum() - adj1_tril_mask.sum()
 
     # calculate the possible edges which can be added and removed to net1
     # 计算可能的添加、删除边再edge_membership1中的序号
@@ -52,7 +53,7 @@ def calculate_edge_flip(
     nodes1 = adj1.index.tolist()
     n_adj1 = adj1.shape[0]
     for j in range(n_adj1):
-        for i in range(j+1, n_adj1):
+        for i in range(j + 1, n_adj1):
             index = edge2index[(nodes1[j], nodes1[i])]
             if adj1_tril_mask[i, j]:
                 possible_edge_removes.append(index)
@@ -83,12 +84,14 @@ def calculate_edge_flip(
         else:
             # calculate the number of additions and removes
             # 计算添加和删除边的数量
-            n_additions = int((n_flips + edge_difference)/2)
-            n_removes = int((n_flips - edge_difference)/2)
+            n_additions = int((n_flips + edge_difference) / 2)
+            n_removes = int((n_flips - edge_difference) / 2)
             if n_additions < 0 or n_removes < 0:
-                raise "Edge additions and removes should be integer and higher than 0"
+                raise Exception("Edge additions and removes should be integer and higher than 0")
             else:
-                if (len(list(combinations(possible_edge_additions, n_additions))) > limit_combinations) or (len(list(combinations(possible_edge_removes, n_removes))) > limit_combinations):
+                if (len(list(combinations(possible_edge_additions, n_additions))) > limit_combinations) or (
+                    len(list(combinations(possible_edge_removes, n_removes))) > limit_combinations
+                ):
                     n_flips = upper_bound
                     break
                 else:
@@ -98,7 +101,7 @@ def calculate_edge_flip(
                     edge_removes = [list(i) for i in combinations(possible_edge_removes, n_removes)]
 
                     if n_additions > 0 and n_removes > 0:
-                        edge_flips = [i[0]+i[1] for i in product(edge_additions, edge_removes)]  # 添加和删除组合，相当于是笛卡尔积
+                        edge_flips = [i[0] + i[1] for i in product(edge_additions, edge_removes)]  # 添加和删除组合，相当于是笛卡尔积
                     elif n_additions > 0:
                         edge_flips = edge_additions
                     else:
@@ -120,7 +123,9 @@ def calculate_edge_flip(
 
                         # generate matrix with in the columns each flip and in the rows the vector format of the new adjacency of net1
                         # 生成矩阵的1列为1种flip翻转后的邻接矩阵的向量格式
-                        edge_flip_vectors1 = generate_edge_flip_vectors(edge_flips_group, adj1, possible_edge_removes)  # (n_flips, n_edge) # 这里额外给要已有的边
+                        edge_flip_vectors1 = generate_edge_flip_vectors(
+                            edge_flips_group, adj1, possible_edge_removes
+                        )  # (n_flips, n_edge) # 这里额外给要已有的边
                         degree_vectors1 = edge_flip_vectors1 @ edge_membership1.values  # (n_flips, n_nodes)
 
                         # now check several metrics of the new adjacency matrix, from fastest to slowest
@@ -157,11 +162,7 @@ def calculate_edge_flip(
         return score
 
     else:
-        return {
-            "score": score,
-            "newadj1": new_adj1,
-            "oldadj1": adj1
-        }
+        return {"score": score, "newadj1": new_adj1, "oldadj1": adj1}
 
 
 def get_adjacency_lengths(net, nodes=None):
@@ -186,15 +187,20 @@ def complete_matrix(mat, dim, fill=0):
     old_dim = mat.shape[0]
     new_mat = np.zeros((dim, dim))
     new_mat[:old_dim, :old_dim] = mat.values
-    nodes = mat.index.tolist() + list(range(dim-old_dim))
+    nodes = mat.index.tolist() + list(range(dim - old_dim))
     new_mat = pd.DataFrame(new_mat, index=nodes, columns=nodes)
     return new_mat
 
 
-def get_matched_adjacencies(net1, net2, simplify=True,):
+def get_matched_adjacencies(
+    net1,
+    net2,
+    simplify=True,
+):
     # 获得简化处理后的邻接矩阵
 
     if simplify:
+
         def simplify_net(net):
             # 转化为networkX对象进行简化
             directed = net["directed"].any()
@@ -217,7 +223,7 @@ def get_matched_adjacencies(net1, net2, simplify=True,):
 
     # make the adjacency matrices have the same dimensions
     # 补充使其具有相同的维度
-    if (adj1.shape[0] >= adj2.shape[0]):
+    if adj1.shape[0] >= adj2.shape[0]:
         adj2 = complete_matrix(adj2, adj1.shape[0], fill=0)
     else:
         adj1 = complete_matrix(adj1, adj2.shape[0], fill=0)
@@ -233,12 +239,13 @@ def calculate_edge_membership(adj):
 
     return edge_membership
 
+
 # flip edges (in edge vector format)
 
 
 def generate_edge_flip_vectors(edge_flips, adj, possible_edge_removes):
     n = adj.shape[0]
-    adjv = np.full(int(n*(n-1)/2), 0)
+    adjv = np.full(int(n * (n - 1) / 2), 0)
     adjv[possible_edge_removes] = 1
     edge_flip_vectors = []
     for edge_filp in edge_flips.T:
@@ -270,6 +277,6 @@ def flip_adj(edge_flip, adj, index2edge):
     new_adj = adj.copy()
     for edge_index in edge_flip:
         edge = index2edge[edge_index]
-        new_adj.loc[edge[1], edge[0]] = ~ adj.loc[edge[1], edge[0]]
-    new_adj = pd.DataFrame(np.tril(new_adj.values, k=-1), index=new_adj.index, columns=new_adj.index) # 只保留下三角
+        new_adj.loc[edge[1], edge[0]] = ~adj.loc[edge[1], edge[0]]
+    new_adj = pd.DataFrame(np.tril(new_adj.values, k=-1), index=new_adj.index, columns=new_adj.index)  # 只保留下三角
     return new_adj

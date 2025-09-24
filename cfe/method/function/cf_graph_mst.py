@@ -1,14 +1,11 @@
-import pandas as pd
-import networkx as nx
 import anndata as ad
+import networkx as nx
+
+# import pandas as pd
 import scanpy as sc
 
 
-def cf_graph_mst(
-    adata: ad.AnnData,
-    prior_information: dict = {},
-    parameters: dict = {}
-):
+def cf_graph_mst(adata: ad.AnnData, prior_information: dict = {}, parameters: dict = {}):
     # 1. prepare data
     adata = adata.copy()
     cell_ids = adata.obs.index
@@ -20,7 +17,8 @@ def cf_graph_mst(
     # construct the minimum spanning tree between cells directly
     distance_metric = parameters["distance_metric"]
     sc.pp.neighbors(adata, metric=distance_metric)
-    G = nx.from_scipy_sparse_array(adata.obsp["distances"])  # construct graph from a sparse matrix
+    # construct graph from a sparse matrix
+    G = nx.from_scipy_sparse_array(adata.obsp["distances"])
     cell_mst = nx.minimum_spanning_tree(G, weight="weight")
 
     # 4. extract results

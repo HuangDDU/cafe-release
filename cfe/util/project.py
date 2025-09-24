@@ -43,7 +43,7 @@ def project_to_segments(
 
     # Calculate lengths of the segments
     diff = segment_end - segment_start
-    length = np.sum(diff ** 2, axis=1)
+    length = np.sum(diff**2, axis=1)
 
     # Initialize output objects
     x_proj = np.zeros((npts, ncols))
@@ -86,12 +86,7 @@ def project_to_segments(
         segment[i] = best_segment + 1  # Increase by 1 for R-like indexing
         progression[i] = best_progression
 
-    out = {
-        "x_proj": x_proj,
-        "distance": distance,
-        "segment": segment,
-        "progression": progression
-    }
+    out = {"x_proj": x_proj, "distance": distance, "segment": segment, "progression": progression}
 
     return out
 
@@ -105,12 +100,7 @@ def project_to_divergence_regions(
     distance = None
     segment = None
     progression = None
-    
-    out = {
-        "x_proj": x_proj,
-        "distance": distance,
-        "segment": segment,
-        "progression": progression
-    }
+
+    out = {"x_proj": x_proj, "distance": distance, "segment": segment, "progression": progression}
 
     return out

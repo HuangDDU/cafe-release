@@ -5,7 +5,7 @@
 1. function:
    - result visualization
    - method selection
-  
+
 2. technology stack:
    - Backend: Flask
    - Frontend: React

@@ -1,27 +1,37 @@
-from typing import Callable
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import Any, Callable
 
+import h5py
+import igraph as ig
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-import igraph as ig
+from anndata._io.specs.registry import (  # global I/O registry
+    _REGISTRY,
+    IOSpec,
+    Reader,
+    Writer,
+)
+from anndata._types import GroupStorageType
 from sklearn.metrics.pairwise import pairwise_distances
 
 from ..util import random_time_string
-from .fate_wrapper import FateWrapper
 from .fate_milestone_wrapper import MilestoneWrapper
+from .fate_wrapper import FateWrapper
 
 
 class WaypointWrapper(FateWrapper):
-    """Wrapper for trajectory waypoint
-    """
+    """Wrapper for trajectory waypoint"""
 
     def __init__(
         self,
         milestone_wrapper: MilestoneWrapper,
         name: str = "WaypointWrapper",
         n_waypoints: int = 200,
-        transform: Callable[[float], float] = lambda x: x,  # edge length transform function
-        resolution: float = None
+        # edge length transform function
+        transform: Callable[[float], float] = lambda x: x,
+        resolution: float = None,
     ):
         """Initialize the WaypointWrapper class.
 
@@ -33,14 +43,18 @@ class WaypointWrapper(FateWrapper):
             resolution (float, optional): resolution.
         """
         self.id = random_time_string(name)
+        # need to be deleted after __init__ function
         self.milestone_wrapper = milestone_wrapper
         self._select_waypoints(n_waypoints, transform, resolution)
+        # del self.milestone_wrapper  # delete the attribute to save memory
 
     def _select_waypoints(
-            self,
-            n_waypoints: int = 200,
-            transform: Callable[[float], float] = lambda x: x,  # edge length transform function
-            resolution: float = None) -> None:
+        self,
+        n_waypoints: int = 200,
+        # edge length transform function
+        transform: Callable[[float], float] = lambda x: x,
+        resolution: float = None,
+    ) -> None:
         """select waypoints base milestone network edge length and resolution parameter
 
         ref: pydynverse/wrap/wrap_add_waypoints.select_waypoints
@@ -66,6 +80,7 @@ class WaypointWrapper(FateWrapper):
                     return f"MILESTONE_END_W{row['from']}_{row['to']}"
                 case _:
                     return f"W{row.name+1}"  # waypoint id start from 1
+
         waypoint_progressions = mr.milestone_network.copy()
         waypoint_progressions["percentage"] = waypoint_progressions["length"].apply(lambda x: [i / x for i in np.arange(0, x, resolution)] + [1])
         waypoint_progressions = waypoint_progressions[["from", "to", "percentage"]]
@@ -81,28 +96,34 @@ class WaypointWrapper(FateWrapper):
         waypoint_progressions_tmp = waypoint_progressions_tmp.rename(columns={"waypoint_id": "cell_id"})  # reuse pre column name
         # tmp "cell_id" column name for MilestoneWrapper.reuse convert_progressions_to_milestone_percentages
         waypoint_milestone_percentages = MilestoneWrapper.convert_progressions_to_milestone_percentages(
-            milestone_network=mr.milestone_network,
-            progressions=waypoint_progressions_tmp
+            milestone_network=mr.milestone_network, progressions=waypoint_progressions_tmp
         ).rename(columns={"cell_id": "waypoint_id"})
         self.waypoint_milestone_percentages = waypoint_milestone_percentages
 
         self.waypoint_geodesic_distances = self._calculate_geodesic_distances().loc[waypoint_progressions["waypoint_id"]]
 
-        waypoint_network = waypoint_progressions\
-            .sort_values(by=["from", "to", "percentage"])\
-            .groupby(["from", "to"])\
-            .apply(lambda group: group.assign(
-                from_waypoint=group["waypoint_id"],
-                to_waypoint=group["waypoint_id"].shift(-1),
-            ))\
-            .dropna()\
-            .reset_index(drop=True)  # Sort in ascending percentage within the group. "lead" function get the next row, get None if is the last row in group
+        waypoint_network = (
+            waypoint_progressions.sort_values(by=["from", "to", "percentage"])
+            .groupby(["from", "to"])
+            .apply(
+                lambda group: group.assign(
+                    from_waypoint=group["waypoint_id"],
+                    to_waypoint=group["waypoint_id"].shift(-1),
+                )
+            )
+            .dropna()
+            .reset_index(drop=True)
+        )  # Sort in ascending percentage within the group. "lead" function get the next row, get None if is the last row in group
         waypoint_network = waypoint_network[["from_waypoint", "to_waypoint", "from", "to"]]
         waypoint_network.columns = ["from", "to", "from_milestone_id", "to_milestone_id"]
         self.waypoint_network = waypoint_network
 
-        waypoints = waypoint_milestone_percentages.iloc[waypoint_milestone_percentages.groupby("waypoint_id")["percentage"].idxmax()].reset_index(drop=True)
-        waypoints["milestone_id"] = waypoints.apply(lambda x: x["milestone_id"] if x["percentage"] == 1 else None, axis=1)  # if waypoint is not on milestone, the milestone_id=None
+        waypoints = waypoint_milestone_percentages.iloc[waypoint_milestone_percentages.groupby("waypoint_id")["percentage"].idxmax()].reset_index(
+            drop=True
+        )
+        waypoints["milestone_id"] = waypoints.apply(
+            lambda x: x["milestone_id"] if x["percentage"] == 1 else None, axis=1
+        )  # if waypoint is not on milestone, the milestone_id=None
         waypoints = waypoints[["waypoint_id", "milestone_id"]]
         self.waypoints = waypoints
 
@@ -129,19 +150,18 @@ class WaypointWrapper(FateWrapper):
         waypoint_id_list = self.id_list
         waypoint_milestone_percentages = self.waypoint_milestone_percentages
 
-        milestone_percentages = pd.concat([
-            milestone_percentages,
-            waypoint_milestone_percentages.rename(columns={"waypoint_id": "cell_id"})
-        ])
+        milestone_percentages = pd.concat([milestone_percentages, waypoint_milestone_percentages.rename(columns={"waypoint_id": "cell_id"})])
 
         # remae all milestone ids to MILESTONE_ID
         def milestone_trafo_fun(x):
-            #可能的补丁如下，这里我加了一个检查
+            # 可能的补丁如下，这里我加了一个检查
             x = str(x)
             if x.startswith("MILESTONE_"):
                 return x
             return f"MILESTONE_{x}"
-        milestone_network = milestone_network.copy()  # don't affect the original milestone_network
+
+        # don't affect the original milestone_network
+        milestone_network = milestone_network.copy()
         milestone_network["from"] = milestone_network["from"].apply(milestone_trafo_fun)
         milestone_network["to"] = milestone_network["to"].apply(milestone_trafo_fun)
         milestone_id_list = list(map(milestone_trafo_fun, milestone_id_list))
@@ -160,14 +180,19 @@ class WaypointWrapper(FateWrapper):
                 if milestone_set.issubset(divergence_regions_set):
                     return True
             return False
-        extra_divergences["in_divergence"] = extra_divergences.apply(lambda x: is_milestone_in_divergence({x["from"], x["to"]}, divergence_regions_set_list), axis=1)
+
+        extra_divergences["in_divergence"] = extra_divergences.apply(
+            lambda x: is_milestone_in_divergence({x["from"], x["to"]}, divergence_regions_set_list), axis=1
+        )
         extra_divergences = extra_divergences[~extra_divergences["in_divergence"]]  # only reserve the new divergence area
         extra_divergences["divergence_id"] = extra_divergences.apply(lambda x: f"{x['from']}__{x['to']}", axis=1)
-        extra_divergences = pd.concat([
-            # add new columns: milestone_id, is_start
-            extra_divergences.assign(milestone_id=extra_divergences["from"], is_start=True),
-            extra_divergences.assign(milestone_id=extra_divergences["to"], is_start=False)
-        ])[["divergence_id", "milestone_id", "is_start"]]
+        extra_divergences = pd.concat(
+            [
+                # add new columns: milestone_id, is_start
+                extra_divergences.assign(milestone_id=extra_divergences["from"], is_start=True),
+                extra_divergences.assign(milestone_id=extra_divergences["to"], is_start=False),
+            ]
+        )[["divergence_id", "milestone_id", "is_start"]]
 
         # merge divergence regions
         divergence_regions = pd.concat([divergence_regions, extra_divergences]).reset_index(drop=True)
@@ -181,9 +206,13 @@ class WaypointWrapper(FateWrapper):
         # calculate the distance between cells within the divergent
         def calc_divergence_inner_distance_df(did):
             dir = divergence_regions[divergence_regions["divergence_id"] == did]
-            mid = dir[dir["is_start"]]["milestone_id"].tolist()  # starting point of the region is milestone_id
-            tent = dir["milestone_id"].tolist()  # milestone_id of all milestones in the divergence
-            tent_distances = pd.DataFrame(index=mid, columns=tent, data=np.zeros((len(mid), len(tent))))  # The distance from the starting point within the region to all milestones
+            # starting point of the region is milestone_id
+            mid = dir[dir["is_start"]]["milestone_id"].tolist()
+            # milestone_id of all milestones in the divergence
+            tent = dir["milestone_id"].tolist()
+            tent_distances = pd.DataFrame(
+                index=mid, columns=tent, data=np.zeros((len(mid), len(tent)))
+            )  # The distance from the starting point within the region to all milestones
             # extract corresponding edges from the graph
             for i in mid:
                 for j in tent:
@@ -192,7 +221,9 @@ class WaypointWrapper(FateWrapper):
                     else:
                         tent_distances.loc[i, j] = milestone_graph.edges[(i, j)]["length"]
             # find cell_id of relevant points by reusing is_milestone_in_divergence
-            relevant_pct_cell_id_list = milestone_percentages.groupby("cell_id")["milestone_id"].apply(lambda x: is_milestone_in_divergence(set(x), [set(tent)]))
+            relevant_pct_cell_id_list = milestone_percentages.groupby("cell_id")["milestone_id"].apply(
+                lambda x: is_milestone_in_divergence(set(x), [set(tent)])
+            )
             relevant_pct_cell_id_list = relevant_pct_cell_id_list[relevant_pct_cell_id_list].index.to_list()
             relevant_pct = milestone_percentages[milestone_percentages["cell_id"].apply(lambda x: x in relevant_pct_cell_id_list)]
             if relevant_pct.shape[0] <= 1:
@@ -203,12 +234,17 @@ class WaypointWrapper(FateWrapper):
             tent_distances_long = tent_distances.melt(var_name="from", value_name="length")  # wide data to long data
             tent_distances_long["to"] = tent_distances_long["from"]
 
-            pct_mat = pd.concat([
-                scaled_dists[["cell_id", "milestone_id", "dist"]].rename(columns={"cell_id": "from", "milestone_id": "to", "dist": "length"}),
-                tent_distances_long
-            ])\
-                .drop_duplicates()\
-                .pivot(index="from", columns="to", values="length").fillna(0)  # (n_cell+n_milestone+n_waypoint)*n_milestone, long data to wide data, "from" is index
+            pct_mat = (
+                pd.concat(
+                    [
+                        scaled_dists[["cell_id", "milestone_id", "dist"]].rename(columns={"cell_id": "from", "milestone_id": "to", "dist": "length"}),
+                        tent_distances_long,
+                    ]
+                )
+                .drop_duplicates()
+                .pivot(index="from", columns="to", values="length")
+                .fillna(0)
+            )  # (n_cell+n_milestone+n_waypoint)*n_milestone, long data to wide data, "from" is index
 
             wp_cells = list(set(pct_mat.index) & set(waypoint_id_list))
 
@@ -249,3 +285,31 @@ class WaypointWrapper(FateWrapper):
             pass
 
         return out.loc[waypoint_id_list, cell_id_list]
+
+
+save_attribute_list = ["name"]
+
+
+@_REGISTRY.register_write(dest_type=h5py.Group, src_type=WaypointWrapper, spec=IOSpec("WaypointWrapper", "0.1.0"))
+def write_waypoint_wrapper(
+    f: GroupStorageType,
+    k: str,
+    waypoint_wrapper: WaypointWrapper,
+    *,
+    _writer: Writer,
+    dataset_kwargs: Mapping[str, Any] = MappingProxyType({}),
+):
+    # create h5 key and save for MilestoneWrapper and WaypointWrapper
+    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py write_anndata
+    print("write_waypoint_wrapper")
+    g = f.require_group(k)
+    _writer.write_elem(g, "waypoint_progressions", waypoint_wrapper.waypoint_progressions, dataset_kwargs=dataset_kwargs)
+
+
+@_REGISTRY.register_read(h5py.Group, IOSpec("WaypointWrapper", "0.1.0"))
+def read_waypoint_wrapper(elem: GroupStorageType, *, _reader: Reader):
+    # read and create MilestoneWrapper object
+    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
+    print("write_waypoint_wrapper")
+    d = {}
+    return d

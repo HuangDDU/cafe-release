@@ -12,4 +12,3 @@
         - [x] palantir: bonemarrow
         - [ ] scvelo: pancrease, dentategyrus
     - [ ] lineage datasets:
-    

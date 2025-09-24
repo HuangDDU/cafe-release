@@ -1,7 +1,8 @@
-import os
-import tempfile
 import json
+import os
 import pickle
+import tempfile
+
 import docker
 
 from .._logging import logger
@@ -10,8 +11,7 @@ from .fate_backend import DockerBackend
 
 
 class CFEDockerBackend(DockerBackend):
-    """CFEDockerBackend: specific implementation of abstract Backend class using CFE Docker.
-    """
+    """CFEDockerBackend: specific implementation of abstract Backend class using CFE Docker."""
 
     def __init__(self, image_id: str = "huangzhaoyang/cf_paga:0.0.1"):
         """Initialize the CFEDockerBackend class.
@@ -26,11 +26,7 @@ class CFEDockerBackend(DockerBackend):
         self.image_id = image_id
         self.load_backend()  # implemented in DockerBackend
 
-    def preprocess(self,
-                   fadata: FateAnnData,
-                   prior_information: dict,
-                   parameters: dict,
-                   tmp_wd: str) -> None:
+    def preprocess(self, fadata: FateAnnData, prior_information: dict, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad , prior information and parameters json file in tmp_wd dir
 
         Args:
@@ -118,5 +114,5 @@ class CFEDockerBackend(DockerBackend):
             # else, read from definition yaml file
             if "wrapper_type" not in trajectory_dict:
                 wrapper_type = self.definition["wrapper"]["type"]
-                trajectory_dict["wrapper_type"] = wrapper_type[0] if type(wrapper_type) == list else wrapper_type
+                trajectory_dict["wrapper_type"] = wrapper_type[0] if isinstance(wrapper_type, list) else wrapper_type
             fadata.add_trajectory_by_type(trajectory_dict)

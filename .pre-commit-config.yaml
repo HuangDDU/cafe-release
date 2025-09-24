@@ -1,0 +1,44 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+# pre-commit基础配置
+# -   repo: https://github.com/pre-commit/pre-commit-hooks
+#     rev: v3.2.0
+#     hooks:
+#     -   id: trailing-whitespace # 删除行尾空格
+#     -   id: end-of-file-fixer
+#     -   id: check-yaml
+#     # -   id: check-added-large-files #不允许大文件保存（不推荐） # Uncomment if you want to check for large files
+# 代码格式化 (black)
+-   repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        args: [--line-length=150]  # 可选参数
+# import 导入包排序
+-   repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black]  # 兼容 black 的配置
+# 语法检查 (flake8)
+-   repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        entry: flake8
+        additional_dependencies: [
+          flake8-bugbear, # 潜在bug分析
+          flake8-pyproject # 读取 pyproject.toml 中的配置
+        ]  # 可选插件
+
+# push的时候需要通过所有测试用例, 这里pytest的配置会在pyproject.toml中
+-   repo: local
+    hooks:
+      - id: pytest
+        name: Run tests (pre-push)
+        entry: bash -c "PYTHONUNBUFFERED=1 pytest --color=yes 2>&1 | tee /dev/tty"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]  # 只在 push 时运行

@@ -1,7 +1,7 @@
-import pytest
-import cfe
-
 import docker
+import pytest
+
+import cfe
 
 from .test_fate_function_backend import get_test_run_data
 

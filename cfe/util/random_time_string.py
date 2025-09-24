@@ -7,7 +7,7 @@ from .._logging import logger
 
 def random_time_string(name=None):
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")  # formated time
-    random_chars = ''.join(random.choices(string.ascii_letters + string.digits, k=10))  # random string
+    random_chars = "".join(random.choices(string.ascii_letters + string.digits, k=10))  # random string
     # combine them
     if name:
         time_string = f"{current_time}__{name}__{random_chars}"

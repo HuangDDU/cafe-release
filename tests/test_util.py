@@ -32,14 +32,8 @@ def compare_dataframes_closely(df1, df2, on_columns):
 
 if __name__ == "__main__":
     # Demo for compare_dataframes
-    data1 = {
-        "id": ["A", "B", "C"],
-        "value": [1, 2, 3]
-    }
-    data2 = {
-        "id": ["C", "A", "B"],
-        "value": [3, 1, 2]
-    }
+    data1 = {"id": ["A", "B", "C"], "value": [1, 2, 3]}
+    data2 = {"id": ["C", "A", "B"], "value": [3, 1, 2]}
     df1 = pd.DataFrame(data1)
     df2 = pd.DataFrame(data2)
     # compare
@@ -47,14 +41,8 @@ if __name__ == "__main__":
     print("Two dataframe are equal:", result)
 
     # Demo for compare_dataframes
-    data1 = {
-        "id": ["A", "B", "C"],
-        "value": [1.000005, 2, 3]
-    }
-    data2 = {
-        "id": ["C", "A", "B"],
-        "value": [3.00001, 1, 2.000009]
-    }
+    data1 = {"id": ["A", "B", "C"], "value": [1.000005, 2, 3]}
+    data2 = {"id": ["C", "A", "B"], "value": [3.00001, 1, 2.000009]}
     df1 = pd.DataFrame(data1)
     df2 = pd.DataFrame(data2)
     # compare

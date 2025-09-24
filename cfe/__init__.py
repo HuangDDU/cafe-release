@@ -1,13 +1,6 @@
-from ._settings import settings
+from . import data, method, metric, plot, preprocess, util
 from ._logging import logger
-
-from . import data
-from . import preprocess
-from . import method
-from . import plot
-from . import util
-from . import metric
-
+from ._settings import settings
 
 logo = """
    _____     _ _ ______    _       ______            _
@@ -21,13 +14,4 @@ logo = """
 """
 logger.info(logo)
 
-__all__ = [
-    "settings",
-    "logger",
-    "data",
-    "preprocess",
-    "method",
-    "plot",
-    "util",
-    "metric"
-]
+__all__ = ["settings", "logger", "data", "preprocess", "method", "plot", "util", "metric"]

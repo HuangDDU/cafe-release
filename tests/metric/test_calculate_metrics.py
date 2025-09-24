@@ -1,25 +1,20 @@
-import pytest
-import cfe
-
 import numpy as np
 import pandas as pd
+import pytest
 
+import cfe
 import cfe.metric
 
 
 def test_calculate_metrics():
     cell_ids = ["a", "b", "c", "d", "e"]
-    milestone_ids = ["A", "B", "C", "D"]
+    # milestone_ids = ["A", "B", "C", "D"]
     fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
 
     # trajectory1: ref model
     fadata.add_model_name("ref")
     milestone_network = pd.DataFrame(
-        data=[
-            ["A", "B", 1, True],
-            ["B", "C", 1, True],
-            ["C", "D", 1, True]
-        ],
+        data=[["A", "B", 1, True], ["B", "C", 1, True], ["C", "D", 1, True]],
         columns=["from", "to", "length", "directed"],
     )
     progressions = pd.DataFrame(
@@ -30,18 +25,14 @@ def test_calculate_metrics():
             ["d", "B", "C", 0.8],
             ["e", "C", "D", 0.4],
         ],
-        columns=["cell_id", "from", "to", "percentage"]
+        columns=["cell_id", "from", "to", "percentage"],
     )
     fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
     # trajectory2: new model
     fadata.add_model_name("new")
     milestone_network = pd.DataFrame(
-        data=[
-            ["A", "B", 1, True],
-            ["B", "C", 1, True],
-            ["B", "D", 1, True]
-        ],
+        data=[["A", "B", 1, True], ["B", "C", 1, True], ["B", "D", 1, True]],
         columns=["from", "to", "length", "directed"],
     )
     progressions = pd.DataFrame(
@@ -52,7 +43,7 @@ def test_calculate_metrics():
             ["d", "B", "C", 0.8],
             ["e", "B", "D", 0.5],
         ],
-        columns=["cell_id", "from", "to", "percentage"]
+        columns=["cell_id", "from", "to", "percentage"],
     )
     fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
@@ -64,6 +55,7 @@ def test_calculate_metrics():
 
     assert summary_dict_self["edge_flip"] == 1
     assert summary_dict["edge_flip"] == 0
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

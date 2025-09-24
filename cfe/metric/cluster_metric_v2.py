@@ -1,13 +1,15 @@
+# import numpy as np
 import pandas as pd
-import numpy as np
+
 from cfe.data import FateAnnData
+
 
 def calculate_mapping(
     fadata: FateAnnData,
-    grouping: str = 'milestones',
+    grouping: str = "milestones",
     simplify: bool = False,
     ref_model: str = "ref",
-    pred_model: str = "default"
+    pred_model: str = "default",
 ) -> dict:
     """
     计算轨迹映射指标——只需一个 FateAnnData，通过 ref_model / pred_model 从
@@ -24,9 +26,9 @@ def calculate_mapping(
         {'recovery': ..., 'relevance': ..., 'F1': ...}
     """
     # 参数校验
-    if grouping not in ['branches', 'milestones']:
+    if grouping not in ["branches", "milestones"]:
         raise ValueError("grouping must be either 'branches' or 'milestones'")
-    
+
     # 1. 取出所有历史轨迹字典
     hist = fadata.uns.get("cfe", {}).get("trajectory_history_dict", {})
     # 如果任一模型不存在，直接返回 0
@@ -39,9 +41,9 @@ def calculate_mapping(
         fadata.simplify_trajectory(pred_model)
 
     # 3. 分组用到的列名
-    if grouping == 'milestones':
+    if grouping == "milestones":
         group_key = "_cfe_nm_group"
-    elif grouping == 'branches':
+    elif grouping == "branches":
         group_key = "_cfe_te_group"
     else:
         raise ValueError("grouping must be either 'milestones' or 'branches'")
@@ -51,7 +53,7 @@ def calculate_mapping(
 
     # 4. 对“参考”轨迹做分组
     fadata.model_name = ref_model
-    if grouping == 'milestones':
+    if grouping == "milestones":
         fadata.group_onto_nearest_milestones(cluster_key=group_key)
     else:
         fadata.group_onto_trajectory_edges(cluster_key=group_key)
@@ -59,7 +61,7 @@ def calculate_mapping(
 
     # 5. 对“预测”轨迹做分组
     fadata.model_name = pred_model
-    if grouping == 'milestones':
+    if grouping == "milestones":
         fadata.group_onto_nearest_milestones(cluster_key=group_key)
     else:
         fadata.group_onto_trajectory_edges(cluster_key=group_key)
@@ -69,19 +71,15 @@ def calculate_mapping(
     fadata.model_name = orig_model
 
     # 6. 计算 Jaccard 矩阵
-    jaccard = pd.DataFrame(
-        index=groups_ref.index,
-        columns=groups_pred.index,
-        dtype=float
-    )
+    jaccard = pd.DataFrame(index=groups_ref.index, columns=groups_pred.index, dtype=float)
     for rname, rcells in groups_ref.items():
         for pname, pcells in groups_pred.items():
             inter = len(rcells & pcells)
-            uni   = len(rcells | pcells)
+            uni = len(rcells | pcells)
             jaccard.loc[rname, pname] = (inter / uni) if uni > 0 else 0.0
 
     # 7. recovery, relevance, F1
-    recovery  = jaccard.max(axis=1).mean() if not jaccard.empty else 0.0
+    recovery = jaccard.max(axis=1).mean() if not jaccard.empty else 0.0
     relevance = jaccard.max(axis=0).mean() if not jaccard.empty else 0.0
     if (recovery + relevance) > 0:
         f1 = 2 * recovery * relevance / (recovery + relevance)
@@ -91,19 +89,13 @@ def calculate_mapping(
     return {"recovery": recovery, "relevance": relevance, "F1": f1}
 
 
-def calculate_mapping_milestones(
-    fadata: FateAnnData,
-    **kwargs
-) -> dict:
+def calculate_mapping_milestones(fadata: FateAnnData, **kwargs) -> dict:
     """计算里程碑分组映射指标"""
-    m = calculate_mapping(fadata, grouping='milestones', **kwargs)
+    m = calculate_mapping(fadata, grouping="milestones", **kwargs)
     return {f"{k}_milestones": v for k, v in m.items()}
 
 
-def calculate_mapping_branches(
-    fadata: FateAnnData,
-    **kwargs
-) -> dict:
+def calculate_mapping_branches(fadata: FateAnnData, **kwargs) -> dict:
     """计算分支分组映射指标"""
-    m = calculate_mapping(fadata, grouping='branches', **kwargs)
+    m = calculate_mapping(fadata, grouping="branches", **kwargs)
     return {f"{k}_branches": v for k, v in m.items()}

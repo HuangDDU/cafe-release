@@ -1,20 +1,16 @@
+from typing import Any, Dict, List
+
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any
-
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 
-from cfe.util.expand_matrix import expand_matrix
 from cfe.data import FateAnnData
+from cfe.util.expand_matrix import expand_matrix
 
-def calculate_position_predict(
-    fadata: FateAnnData,
-    ref_model: str = "ref",
-    pred_model: str = "default",
-    metrics: List[str] = None
-) -> Dict[str, Any]:
+
+def calculate_position_predict(fadata: FateAnnData, ref_model: str = "ref", pred_model: str = "default", metrics: List[str] = None) -> Dict[str, Any]:
     """
     Compute cell-position–prediction metrics (RF and LM) by comparing two trajectories
     stored inside the same FateAnnData.
@@ -36,12 +32,12 @@ def calculate_position_predict(
           - per-milestone dicts "rf_mses", "rf_rsqs", "lm_rsqs" when computed.
     """
     if metrics is None:
-        metrics = ["rf_mse","rf_rsq","rf_nmse","lm_mse","lm_rsq","lm_nmse"]
+        metrics = ["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"]
 
     # 1. 拉取两个 MilestoneWrapper
     hist = fadata.uns.get("cfe", {}).get("trajectory_history_dict", {})
     ref_w = hist.get(ref_model, {}).get("milestone_wrapper")
-    pred_w= hist.get(pred_model, {}).get("milestone_wrapper")
+    pred_w = hist.get(pred_model, {}).get("milestone_wrapper")
     if ref_w is None:
         raise ValueError(f"Reference model '{ref_model}' has no milestone_wrapper")
     if pred_w is None:
@@ -49,30 +45,32 @@ def calculate_position_predict(
 
     # 2. 构建金标准 vs 预测的百分比矩阵 (cells × milestones)
     cells = list(fadata.obs.index)
+
     def _matrix_from_wrapper(w):
         mp = w.milestone_percentages
-        mat = pd.pivot_table(
-            mp, index="cell_id", columns="milestone_id", values="percentage", fill_value=0
-        )
+        mat = pd.pivot_table(mp, index="cell_id", columns="milestone_id", values="percentage", fill_value=0)
         return expand_matrix(mat, rownames=cells)
 
     gold_m = _matrix_from_wrapper(ref_w)
     pred_m = _matrix_from_wrapper(pred_w)
 
     # 3. baseline MSE (每个里程碑预测其自身平均值)
-    baseline_mse = np.mean([
-        ((gold_m[col] - gold_m[col].mean()) ** 2).mean()
-        for col in gold_m.columns
-    ])
+    baseline_mse = np.mean([((gold_m[col] - gold_m[col].mean()) ** 2).mean() for col in gold_m.columns])
 
     out: Dict[str, Any] = {"summary": {}}
 
     # 如果预测样本过少，直接返回 baseline
     if pred_w.milestone_percentages["cell_id"].nunique() < 3:
-        out["summary"].update({
-            "rf_mse": baseline_mse, "rf_rsq": 0.0, "rf_nmse": 0.0,
-            "lm_mse": baseline_mse, "lm_rsq": 0.0, "lm_nmse": 0.0,
-        })
+        out["summary"].update(
+            {
+                "rf_mse": baseline_mse,
+                "rf_rsq": 0.0,
+                "rf_nmse": 0.0,
+                "lm_mse": baseline_mse,
+                "lm_rsq": 0.0,
+                "lm_nmse": 0.0,
+            }
+        )
         return out
 
     # 为了稳定，只保留在 pred_m 中方差>0 的列
@@ -80,15 +78,12 @@ def calculate_position_predict(
     pred_m = pred_m[valid_cols]
 
     # 4. 随机森林部分
-    if any(m in metrics for m in ("rf_mse","rf_rsq","rf_nmse")):
+    if any(m in metrics for m in ("rf_mse", "rf_rsq", "rf_nmse")):
         rf_mses: Dict[str, float] = {}
         rf_rsqs: Dict[str, float] = {}
         for col in gold_m.columns:
             # DataFrame: 目标列为 gold 中当前 col，特征为 pred_m
-            df = pd.concat([
-                gold_m[[col]].rename(columns={col: "target"}),
-                pred_m
-            ], axis=1)
+            df = pd.concat([gold_m[[col]].rename(columns={col: "target"}), pred_m], axis=1)
             X = df.drop("target", axis=1)
             y = df["target"]
 
@@ -108,14 +103,11 @@ def calculate_position_predict(
         out["summary"]["rf_nmse"] = max(0.0, 1 - out["summary"]["rf_mse"] / baseline_mse)
 
     # 5. 线性回归部分
-    if any(m in metrics for m in ("lm_mse","lm_rsq","lm_nmse")):
+    if any(m in metrics for m in ("lm_mse", "lm_rsq", "lm_nmse")):
         lm_mses: List[float] = []
         lm_rsqs: Dict[str, float] = {}
         for col in gold_m.columns:
-            df = pd.concat([
-                gold_m[[col]].rename(columns={col: "target"}),
-                pred_m
-            ], axis=1)
+            df = pd.concat([gold_m[[col]].rename(columns={col: "target"}), pred_m], axis=1)
             X = df.drop("target", axis=1)
             y = df["target"]
 
