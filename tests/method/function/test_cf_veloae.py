@@ -5,28 +5,28 @@ import scanpy as sc
 
 from .method_testcase import method_testcase
 
-if_test_raw = False  # change to True when run in 'palantir' conda environment
+if_test_raw = False  # change to True when run in 'veloae' conda environment
 
 
-class TestCFPalantir:
+@pytest.mark.run_method
+class TestCFVeloAE:
     def setup_method(self):
-        self.method_name = "palantir"
-        self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")  # need real data for gene name
-        self.parameters = {"repreprocess": True, "start_cell": "cell_000"}
+        self.method_name = "veloae"
+        self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")
+        self.parameters = {}
 
     # Test raw trajectory dict
-    # conda activate sctc
-    # pytest -s --tb=long test_cf_palantir.py
-    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'sctc'")
+    # conda activate veloae
+    # pytest -s --tb=long test_cf_sctc.py
+    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'cytotrace2'")
     def test_raw(self):
         import sys
 
         sys.path.append("../../../cfe/method/function")  # prepare relative package file
-        from cf_palantir import sctc
+        from cf_veloae import veloae
 
-        trajectory_dict = sctc(self.adata, **self.parameters)
-
-        assert trajectory_dict.keys() == {"pseudotime", "wrapper_type"}  # check trajectory dict keys
+        trajectory_dict = veloae(self.adata, **self.parameters)
+        assert trajectory_dict["wrapper_type"] == "velocity"
 
     # Test three backends
     # function backend is not available
@@ -38,7 +38,7 @@ class TestCFPalantir:
         fadata = method_testcase(self.adata, self.method_name, "conda", self.parameters)
         assert fadata.is_wrapped_with_trajectory
 
-    @pytest.mark.skipif(if_test_raw, reason="skip conda backend test, because it should be in conda environment 'cfe'")
+    @pytest.mark.skipif(if_test_raw, reason="skip cfe docker backend test, because it should be in conda environment 'cfe'")
     def test_docker(self):
         fadata = method_testcase(self.adata, self.method_name, "cfe_docker", self.parameters)
         assert fadata.is_wrapped_with_trajectory

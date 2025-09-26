@@ -32,7 +32,7 @@ class FunctionBackend(Backend):
 
         adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
 
-        trajectory_dict = self.function(adata, parameters)
+        trajectory_dict = self.function(adata, **parameters)
 
         fadata.add_trajectory_by_type(trajectory_dict)
 

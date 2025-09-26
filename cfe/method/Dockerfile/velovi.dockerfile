@@ -1,7 +1,7 @@
-FROM python:3.10.15
+FROM pytorch/pytorch:2.5.1-cuda11.8-cudnn9-runtime
 
 ARG CellFateExplorer
 
-RUN pip install scanpy
+RUN pip install scanpy scvelo scvi-tools
 
-COPY run.py method_decorator.py angle.py /code/
+COPY run.py method_decorator.py preprocess_pipeline.py cf_velovi.py /code/

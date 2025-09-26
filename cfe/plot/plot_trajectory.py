@@ -61,20 +61,21 @@ def plot_trajectory(
     ax_list = sc.pl.embedding(fadata, color=color, basis=basis, **sc_pl_embedding_kwargs, show=False)
 
     # trajectory embedding
-    trajectory_embedding = fadata.get_trajectory_embedding(basis)  # trajectory embedding for specific basis
+    trajectory_embedding = fadata.get_trajectory_embedding(basis, model_name)  # trajectory embedding for specific basis
     if trajectory_embedding is None:
+        logger.debug(f"calculate new trajectory embedding for model_name:{model_name}, basis:{basis}.")
         # new trajectory embedding, project and save
         # project waypoint to embedding space
         cell_positions = pd.DataFrame(data=fadata.obsm[basis][:, :2], columns=["comp_1", "comp_2"])
         cell_positions["cell_id"] = fadata.obs.index
-        waypoint_projection = project_waypoints(fadata, cell_positions)
+        waypoint_projection = project_waypoints(fadata, cell_positions, model_name)
 
         # plot waypoint to show trajectory
         wp_segments = waypoint_projection["segments"]  # projection to trajectory
         milestone_positions = wp_segments[wp_segments["milestone_id"].apply(lambda x: x is not None)]  # only save waypoint on milestone
 
         # save trajectory embedding which is related to cell embbeding
-        fadata.set_trajectory_embedding(basis, wp_segments, milestone_positions)
+        fadata.set_trajectory_embedding(wp_segments, milestone_positions, basis, model_name)
 
     else:
         # old trajectory embedding, read from fadata
@@ -170,7 +171,7 @@ def plot_trajectory(
     return ax
 
 
-def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, trajectory_projection_sd: float = None) -> dict:
+def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, model_name: str = None, trajectory_projection_sd: float = None) -> dict:
     """projectory waypoint into embbeding space
 
     ref: pydynverse/plot/project_waypoints.project_waypoints_coloured
@@ -186,10 +187,10 @@ def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, traject
     # if waypoints is None:
     # select waypoint
     logger.debug("add waypoints")
-    milestone_wrapper = fadata.milestone_wrapper
-    fadata.add_waypoints(milestone_wrapper)
-    waypoints = fadata.waypoint_wrapper
-    logger.debug(f"add waypoints shape is {waypoints['waypoint_geodesic_distances'].shape}, finished!")
+    milestone_wrapper = fadata.get_milestone_wrapper(model_name)
+    fadata.add_waypoints(milestone_wrapper, model_name)
+    waypoints = fadata.get_waypoint_wrapper(model_name)
+    logger.debug(f"add waypoints shape is {waypoints['waypoint_geodesic_distances'].shape} for '{model_name}', finished!")
 
     if trajectory_projection_sd is None:
         trajectory_projection_sd = sum(milestone_wrapper["milestone_network"]["length"]) * 0.05

@@ -24,8 +24,7 @@ class TestCFComp1:
         # call function directly, use AnnData
         from cfe.method.function.cf_comp1 import comp1
 
-        trajectory_dict = comp1(self.adata, self.parameters)
-
+        trajectory_dict = comp1(self.adata, **self.parameters)
         assert trajectory_dict.keys() == {"pseudotime", "wrapper_type"}  # check trajectory dict keys
 
     # Test three backends

@@ -52,6 +52,7 @@ def scan_method(return_type="dataframe"):
         method_info["parameter"] = parameter_dict
 
         methods_dict[function_name] = method_info
+        # TODO: Github star and google scholar citations statistics
 
     if return_type == "dataframe":
         result = pd.DataFrame(methods_dict).T

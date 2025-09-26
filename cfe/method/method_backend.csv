@@ -1,5 +1,5 @@
 ,python_function,cfe_docker,conda,dynverse_docker
-paga,paga,,cfe,
+paga,paga,huangzhaoyang/paga:0.0.1,cfe,
 comp1,comp1,huangzhaoyang/comp1:0.0.1,cfe,
 angle,angle,,cfe,
 cluster_mst,cluster_mst,,cfe,
@@ -8,6 +8,7 @@ projection_mst,projection_mst,,cfe,dynverse/ti_mst:v0.9.9.01
 graph_mst,graph_mst,,cfe,
 scvelo,scvelo,huangzhaoyang/scvelo:0.0.1,cfe,
 velovi,velovi,,scvi-env,
+veloae,veloae,huangzhaoyang/veloae:0.0.1,veloae,
 cytotrace2,cytotrace2,huangzhaoyang/cytotrace2:0.0.1,cytotrace2,
 palantir,palantir,huangzhaoyang/palantir:0.0.1,cfe,
 sctc,sctc,huangzhaoyang/sctc:0.0.1,cfe,

@@ -103,6 +103,7 @@ class FateMethod:
         logger.info(f"method backend loaded: {self.method_backend}")
 
         self.backend = backend
+        # TODO: method info parsed from @method_info
 
     def infer_trajectory(
         self,

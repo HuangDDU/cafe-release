@@ -2,51 +2,61 @@ import anndata as ad
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import scvelo as scv
+
+try:
+    # for docker
+    from method_decorator import method_info
+    from preprocess_pipeline import preprocess_pipeline
+except ImportError:
+    # for completed cfe environment
+    from cfe.method.function.method_decorator import method_info
+    from cfe.method.function.preprocess_pipeline import preprocess_pipeline
 
 
+@method_info(
+    name="paga",
+    version="0.0.1",
+    description="PAGA: partition-based graph abstraction",
+    wrapper_type="branch",
+)
 def paga(
     adata: ad.AnnData,
-    start_id: str,
+    start_cell: str,
     repreprocess: bool = True,
-    filter_and_normalize_kwargs: dict = {},
-    neighbors_kwargs: dict = {},
-    cluster_key: str = "clusters",
+    repreprocess_kwargs: dict = {},
+    cluster: str = "clusters",
     n_dcs: int = 15,
     connectivity_cutoff=0.5,
-    **kwargs,
 ):
-    """PAGA trajectory inference method.
+    """PAGA: partition-based graph abstraction.
 
     Args:
         adata (ad.AnnData): AnnData object
-        start_id (str): Starting cell ID for pseudotime calculation.
-        repreprocess (bool, optional): whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation. Defaults to True.
-        filter_and_normalize_kwargs (dict, optional): Parameters for preprocess in scvelo style, refer to "scvelo.pp.filter_and_normalize"(https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html). Defaults to {}.
-        neighbors_kwargs (dict, optional):  Parameters for neighbor construction in scanpy style, refer to "scanpy.pp.neighbors"(https://scanpy.readthedocs.io/en/latest/api/generated/scanpy.pp.neighbors.html). Defaults to {}.
-        cluster_key (str, optional): Cluster column name in adata.obs. Defaults to "clusters".
-        n_dcs (int, optional): Number of diffusion components. Defaults to 15.
-        connectivity_cutoff (float, optional): Cutoff for the connectivity matrix. Defaults to 0.5.
+        start_cell (str): Starting cell ID for pseudotime calculation.
+        repreprocess (bool, optional): whether to repreprocess the anndata object.
+        repreprocess_kwargs (dict, optional):  Parameters for repreprocess pipeline.
+        cluster (str, optional): Cluster column name in adata.obs.
+        n_dcs (int, optional): Number of diffusion components.
+        connectivity_cutoff (float, optional): Cutoff for the connectivity matrix.
 
     Returns:
         dict: Trajectory results including branch network, branches, and progressions.
     """
     # 1. preprocess
     if repreprocess:
-        scv.pp.filter_and_normalize(adata, **filter_and_normalize_kwargs)
-        sc.pp.neighbors(adata, **neighbors_kwargs)
+        preprocess_pipeline(adata, **repreprocess_kwargs)
     sc.tl.diffmap(adata)
 
     # 2. execute method
-    sc.tl.paga(adata, groups=cluster_key)
+    sc.tl.paga(adata, groups=cluster)
     # set start porint for dpt
-    adata.uns["iroot"] = np.where(adata.obs.index == start_id)[0][0]
+    adata.uns["iroot"] = np.where(adata.obs.index == start_cell)[0][0]
     sc.tl.dpt(adata, n_dcs=n_dcs)
 
     # 3. extract results
     # (1) parameters for results extracting
     epsilon = 1e-3  # a very small scaling values
-    branch_ids = adata.obs[cluster_key].unique().to_list()
+    branch_ids = adata.obs[cluster].unique().to_list()
     # (2) branches
     branches = pd.DataFrame(
         {
@@ -55,8 +65,8 @@ def paga(
         }
     )
     branches["length"] = (
-        adata.obs[[cluster_key, "dpt_pseudotime"]]
-        .groupby(cluster_key)
+        adata.obs[[cluster, "dpt_pseudotime"]]
+        .groupby(cluster)
         .apply(lambda x: x["dpt_pseudotime"].max() - x["dpt_pseudotime"].min() + epsilon)
         .reset_index()[0]
     )
@@ -64,15 +74,15 @@ def paga(
     branch_network = (
         pd.DataFrame(
             np.triu(adata.uns["paga"]["connectivities"].todense(), k=0),  # keep the upper triangular matrix
-            index=adata.obs[cluster_key].cat.categories,
-            columns=adata.obs[cluster_key].cat.categories,
+            index=adata.obs[cluster].cat.categories,
+            columns=adata.obs[cluster].cat.categories,
         )
         .stack()
         .reset_index()
     )
     branch_network.columns = ["from", "to", "length"]
     branch_network = branch_network[branch_network["length"] >= connectivity_cutoff]  # set threshold to filter insignificant edges
-    average_pseudotime_dict = adata.obs.groupby(cluster_key)["dpt_pseudotime"].mean()
+    average_pseudotime_dict = adata.obs.groupby(cluster)["dpt_pseudotime"].mean()
 
     def modify_milestone_network_direction(x):
         if average_pseudotime_dict[x["from"]] <= average_pseudotime_dict[x["to"]]:
@@ -88,7 +98,7 @@ def paga(
     branch_network = branch_network.sort_values(["from_pseudotime", "to_pseudotime"])
     branch_network = branch_network[["from", "to"]].reset_index(drop=True)
     # (4) branch_progressions
-    branch_progressions = pd.DataFrame({"cell_id": adata.obs.index, "branch_id": adata.obs[cluster_key], "percentage": adata.obs["dpt_pseudotime"]})
+    branch_progressions = pd.DataFrame({"cell_id": adata.obs.index, "branch_id": adata.obs[cluster], "percentage": adata.obs["dpt_pseudotime"]})
     # sort cells by pseudo time within the branch
     branch_progressions["percentage"] = (
         branch_progressions.groupby("branch_id")["percentage"].apply(lambda x: (x - x.min()) / (x.max() - x.min() + epsilon)).values
@@ -97,6 +107,7 @@ def paga(
 
     # 4. save results
     trajectory_dict = {
+        "wrapper_type": "branch",
         "branch_network": branch_network,
         "branches": branches,
         "branch_progressions": branch_progressions,

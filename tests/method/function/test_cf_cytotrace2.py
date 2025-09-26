@@ -29,7 +29,7 @@ class TestCFCytotrace2:
         sys.path.append("../../../cfe/method/function")  # prepare relative package file
         from cf_cytotrace2 import cytotrace2
 
-        trajectory_dict = cytotrace2(self.adata, self.parameters)
+        trajectory_dict = cytotrace2(self.adata, **self.parameters)
 
         assert trajectory_dict.keys() == {"wrapper_type", "pseudotime"}
 

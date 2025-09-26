@@ -2,17 +2,27 @@ import anndata as ad
 import scvelo as scv
 
 try:
+    # for docker
     from method_decorator import method_info
+    from preprocess_pipeline import preprocess_pipeline
 except ImportError:
+    # for completed cfe environment
     from cfe.method.function.method_decorator import method_info
+    from cfe.method.function.preprocess_pipeline import preprocess_pipeline
 
 
-@method_info(name="scvelo", version="0.0.1", description="scVelo: RNA velocity generalized through dynamical modeling", wrapper_type="velocity")
+@method_info(
+    name="scvelo",
+    version="0.0.1",
+    description="scVelo: RNA velocity generalized through dynamical modeling",
+    wrapper_type="velocity",
+    doi="10.1038/s41592-024-02303-9",
+    github_url="https://github.com/theislab/scvelo",
+)
 def scvelo(
     adata: ad.AnnData,
     repreprocess: bool = True,
-    filter_and_normalize_kwargs: dict = {},
-    moments_kwargs: dict = {},
+    repreprocess_kwargs: dict = {},
     velocity_kwargs: dict = {},
     velocity_graph_kwargs: dict = {},
 ):
@@ -20,11 +30,10 @@ def scvelo(
 
     Args:
         adata (ad.AnnData): AnnData object
-        repreprocess (bool, optional): whether reprocess the anndata object, including feature selection, normalization, scale, pca and neighbor computation.
-        filter_and_normalize_kwargs (dict, optional): Parameters for preprocess in scvelo style, refer to [scvelo.pp.filter_and_normalize](https://scvelo.readthedocs.io/en/stable/scvelo.pp.filter_and_normalize.html).
-        moments_kwargs (dict, optional): Parameters for neighbor moment in scvelo style, refer to [scvelo.pp.moments](https://scvelo.readthedocs.io/en/stable/scvelo.pp.moments.html).
-        velocity_kwargs (dict, optional): refer to [scvelo.tl.velocity](https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity.html).
-        velocity_graph_kwargs (dict, optional): refer to [scvelo.tl.velocity_embedding](https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity_embedding.html).
+        repreprocess (bool, optional): Whether to repreprocess the anndata object.
+        repreprocess_kwargs (dict, optional):  Parameter dict for repreprocess pipeline.
+        velocity_kwargs (dict, optional): Parameter dict for velocity calculation, refer to [scvelo.tl.velocity](https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity.html).
+        velocity_graph_kwargs (dict, optional): Parameter dict for velocity graph calculation, refer to [scvelo.tl.velocity_embedding](https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity_embedding.html).
 
     Returns:
         dict: trajectory dict with keys about velocity
@@ -32,8 +41,7 @@ def scvelo(
     # ref: https://scvelo.readthedocs.io/en/stable/VelocityBasics.html
     # 1. preprocess
     if repreprocess:
-        scv.pp.filter_and_normalize(adata, **filter_and_normalize_kwargs)
-        scv.pp.moments(adata, **moments_kwargs)
+        preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)
 
     # 2. execute method
     scv.tl.velocity(adata, **velocity_kwargs)  # compute high dimensional velocity

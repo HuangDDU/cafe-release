@@ -22,8 +22,19 @@ class CondaBackend(Backend):
         self.conda_name = conda_name
         self.load_backend()
 
+    def test_conda_env(self):
+        # TODO: test if conda environment is available
+        return True
+
+    def install_conda_env(self):
+        # TODO: new user should create environment firstly by correspoding conda environment yml file
+
+        pass
+
     def load_backend(self):
-        # test if conda environment is available
+        if self.test_conda_env() is False:
+            self.install_conda_env()
+
         result = subprocess.run(
             ["conda", "run", "-n", self.conda_name, "python", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10
         )

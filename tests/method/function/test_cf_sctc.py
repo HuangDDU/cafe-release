@@ -24,8 +24,7 @@ class TestCFSCTC:
         sys.path.append("../../../cfe/method/function")  # prepare relative package file
         from cf_sctc import sctc
 
-        trajectory_dict = sctc(self.adata, self.parameters)
-
+        trajectory_dict = sctc(self.adata, **self.parameters)
         assert trajectory_dict.keys() == {"pseudotime", "wrapper_type"}  # check trajectory dict keys
 
     # Test three backends

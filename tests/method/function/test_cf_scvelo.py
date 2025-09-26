@@ -19,11 +19,9 @@ class TestCFscVelo:
         self.fadata = fadata
         self.parameters = {
             "repreprocess": True,
-            "filter_and_normalize_kwargs": {
+            "repreprocess_kwargs": {
                 "min_shared_counts": 20,
                 "n_top_genes": 2000,
-            },
-            "moments_kwargs": {
                 "n_pcs": 20,
                 "n_neighbors": 10,
             },
@@ -36,7 +34,7 @@ class TestCFscVelo:
         # call function directly, use AnnData
         from cfe.method.function.cf_scvelo import scvelo
 
-        trajectory_dict = scvelo(self.adata, self.parameters)
+        trajectory_dict = scvelo(self.adata, **self.parameters)
 
         assert trajectory_dict.keys() == {
             "wrapper_type",

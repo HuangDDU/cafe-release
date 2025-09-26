@@ -7,11 +7,13 @@ destination_dir="method_docker"
 # path of source and definition file
 source_parse_file="cfe/method/function/parse_args.py"
 source_decorator_file="cfe/method/function/method_decorator.py"
+source_preprocess_file="cfe/method/function/preprocess_pipeline.py"
 source_method_file="cfe/method/function/cf_${method_name}.py"
 source_dockerfile="cfe/method/Dockerfile/${method_name}.dockerfile"
 
 destination_parse_file="${destination_dir}/run.py"
 destination_decorator_file="${destination_dir}/method_decorator.py"
+destination_preprocess_file="${destination_dir}/preprocess_pipeline.py"
 destination_method_file="${destination_dir}/cf_${method_name}.py"
 destination_dockerfile="${destination_dir}/Dockerfile"
 
@@ -20,6 +22,7 @@ mkdir -p "${destination_dir}"
 # copy and rename related file
 cp "${source_parse_file}" "${destination_parse_file}"
 cp "${source_decorator_file}" "${destination_decorator_file}"
+cp "${source_preprocess_file}" "${destination_preprocess_file}"
 cp "${source_method_file}" "${destination_method_file}"
 cp "${source_dockerfile}" "${destination_dockerfile}"
 echo "Files have been copied and renamed successfully."
@@ -52,5 +55,5 @@ echo "Docker image:${image_name} test successfully."
 # 	-v ./method_docker_input:/data \
 # 	--workdir /code \
 # 	--entrypoint bash \
-# 	huangzhaoyang/cytotrace2:0.0.1
+# 	huangzhaoyang/veloae:0.0.1
 	

@@ -1,39 +1,47 @@
 import os
-import sys
 
 import pytest
 import scanpy as sc
 
-# don't import cfe here, because other conda environment may not have cfe relative package file
+from .method_testcase import method_testcase
 
-# Note: run the following command to run the test  in project dir with scvi-env conda environment
-# conda activate scvi-env
-# pytest -s --tb=long -m run_method test_cf_velovi.py
-
-sys.path.append("../../../cfe/method/function")  # prepare relative package file for  file dir
-# sys.path.append("cfe/method/function")  # prepare relative package file for project dir
+if_test_raw = False  # change to True when run in 'velovi' conda environment
 
 
 @pytest.mark.run_method
 class TestCFVeloVI:
     def setup_method(self):
-        self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/bifurcating.h5ad")
+        self.method_name = "velovi"
+        self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")
+        self.parameters = {"velovi_train_kwargs": {"max_epochs": 1}}
 
-    def test_velovi_old(self):
-        from cf_velovi import cf_velovi
+    # Test raw trajectory dict
+    # conda activate sctc
+    # pytest -s --tb=long test_cf_sctc.py
+    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'cytotrace2'")
+    def test_raw(self):
+        import sys
 
-        # add priority and parameters
-        prior_information = {}
-        parameters = {"velovi_train_kwargs": {"max_epochs": 1}}
-        trajectory_dict = cf_velovi(self.adata, prior_information, parameters)
-        assert trajectory_dict.keys() == {"velocity", "velocity_graph", "velocity_graph_neg", "neighbors", "obs_index", "var_index"}
+        sys.path.append("../../../cfe/method/function")  # prepare relative package file
+        from cf_velovi import velovi
 
-    def test_velovi_new(self):
-        from cf_velovi import cf_velovi
+        trajectory_dict = velovi(self.adata, **self.parameters)
+        assert trajectory_dict["wrapper_type"] == "velocity"
 
-        parameters = {"velovi_train_kwargs": {"max_epochs": 1}}
-        trajectory_dict = cf_velovi(self.adata, **parameters)
-        assert trajectory_dict.keys() == {"velocity", "velocity_graph", "velocity_graph_neg", "neighbors", "obs_index", "var_index"}
+    # Test three backends
+    # function backend is not available
+    # def test_function(self):
+    #     pass
+
+    @pytest.mark.skipif(if_test_raw, reason="skip conda backend test, because it should be in conda environment 'cfe'")
+    def test_conda(self):
+        fadata = method_testcase(self.adata, self.method_name, "conda", self.parameters)
+        assert fadata.is_wrapped_with_trajectory
+
+    @pytest.mark.skipif(if_test_raw, reason="skip cfe docker backend test, because it should be in conda environment 'cfe'")
+    def test_docker(self):
+        fadata = method_testcase(self.adata, self.method_name, "cfe_docker", self.parameters)
+        assert fadata.is_wrapped_with_trajectory
 
 
 if __name__ == "__main__":

@@ -102,8 +102,14 @@ class FateAnnData(ad.AnnData):
     def get_milestone_wrapper(self, model_name=None):
         return self.get_trajectory_dict(model_name)["milestone_wrapper"]
 
+    def set_milestone_wrapper(self, milestone_wrapper: MilestoneWrapper, model_name=None):
+        self.get_trajectory_dict(model_name)["milestone_wrapper"] = milestone_wrapper
+
     def get_waypoint_wrapper(self, model_name=None):
         return self.get_trajectory_dict(model_name)["waypoint_wrapper"]
+
+    def set_waypoint_wrapper(self, waypoint_wrapper: WaypointWrapper, model_name=None):
+        self.get_trajectory_dict(model_name)["waypoint_wrapper"] = waypoint_wrapper
 
     def get_raw_wrapper_dict(self, model_name=None):
         return self.get_trajectory_dict(model_name)["raw_wrapper_dict"]
@@ -412,6 +418,7 @@ class FateAnnData(ad.AnnData):
                 neighbors=trajectory_dict["neighbors"],
                 obs_index=trajectory_dict["obs_index"],
                 var_index=trajectory_dict["var_index"],
+                X=trajectory_dict.get("X"),  # add X for velocity method like veloae
             )
         elif wrapper_type == "lineage":
             self.add_trajectory_lineage(
@@ -420,19 +427,23 @@ class FateAnnData(ad.AnnData):
                 new_cluster_list=trajectory_dict.get("new_cluster_list", None),
             )
 
-    def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None) -> None:
+    def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None) -> None:
         """Create WaypointWrapper object"""
         logger.debug("FateAnnData add_waypoints")
-        milestone_wrapper = milestone_wrapper if milestone_wrapper is not None else self.milestone_wrapper  # waypoint is based on milestone
+
+        milestone_wrapper = (
+            milestone_wrapper if milestone_wrapper is not None else self.get_milestone_wrapper(model_name)
+        )  # waypoint is based on milestone
         waypoint_wrapper = WaypointWrapper(milestone_wrapper)
         # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] #
         # self.waypoint_wrapper = waypoint_wrapper
         # self.cfe_dict["waypoint_wrapper"] = waypoint_wrapper
         self.is_wrapped_with_waypoints = True
 
-        if self.model_name not in self.trajectory_history_dict:
-            self.trajectory_history_dict[self.model_name] = {}
-        self.trajectory_history_dict[self.model_name]["waypoint_wrapper"] = waypoint_wrapper
+        # if model_name not in self.trajectory_history_dict:
+        #     self.trajectory_history_dict[model_name] = {}
+        # self.trajectory_history_dict[model_name]["waypoint_wrapper"] = waypoint_wrapper
+        self.set_waypoint_wrapper(waypoint_wrapper, model_name)
 
     def __getitem__(self, key):
         sub_adata = super().__getitem__(key)
@@ -963,10 +974,12 @@ class FateAnnData(ad.AnnData):
         velocity_graph: np.array,
         velocity_graph_neg: np.array,
         neighbors: dict,
+        milestone_network_strategy: str = "paga",
         cluster: str = None,
         obs_index=None,
         var_index=None,
         basis=None,
+        X: np.array = None,
     ):
         "add velocity trajectory using PAGA transform, such as scVelo, VeloAE"
         if cluster is None:
@@ -977,13 +990,24 @@ class FateAnnData(ad.AnnData):
         # PAGA
         import scvelo as scv
 
-        if (obs_index is not None) or (var_index is not None):
-            obs_index = self.obs.index if obs_index is None else obs_index
-            var_index = self.var.index if var_index is None else var_index
-            adata = self[obs_index, var_index].copy()
+        if X is not None:
+            # for veloae
+            adata = ad.AnnData(X)
+            adata.obs.index = obs_index if obs_index is not None else self.obs.index
+            adata.var.index = var_index if var_index is not None else self.var.index
+            adata.obs[cluster] = self[adata.obs.index].obs[cluster]
+            adata.obsm[basis] = self[adata.obs.index].obsm[basis]
         else:
-            # TODO: copy may waste time and memory, need other strategy
-            adata = self.copy()
+            # extract sub adata
+            if (obs_index is not None) or (var_index is not None):
+                obs_index = self.obs.index if obs_index is None else obs_index
+                var_index = self.var.index if var_index is None else var_index
+                adata = self[obs_index, var_index].copy()
+            else:
+                # TODO: copy may waste time and memory, need other strategy
+                # adata = self.copy()
+                adata = self.to_anndata()
+
         logger.debug(f"filterd adata: {adata}")
 
         adata.layers["velocity"] = velocity
@@ -992,38 +1016,58 @@ class FateAnnData(ad.AnnData):
         adata.uns["velocity_graph_neg"] = velocity_graph_neg
         adata.uns["neighbors"] = neighbors
 
-        # recompute neighbors and velocity graph may
+        # recompute neighbors and velocity graph may waste time
         # scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
         # scv.tl.velocity_graph(adata)  # add transition graph by velocity
 
-        # execute PAGA and extract result
-        scv.tl.paga(adata, groups=cluster)
-        df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-        df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
-        milestone_network = (
-            df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
-        )
-        milestone_network["length"] = 1  # TODO: need to be modified
-        milestone_network["directed"] = True
-        logger.debug(f"milestone_network:{milestone_network}")
+        logger.debug("add raw velocity embedding to fadata")
+        scv.tl.velocity_embedding(adata, basis=basis[2:])
+        velocity_basis = f"velocity_{basis[2:]}"
+        velocity_embedding = adata.obsm[velocity_basis]
+        self.raw_wrapper_dict.update({velocity_basis: velocity_embedding})
 
+        # compute milestone embedding based clustered cell embedding
         X_emb = pd.DataFrame(adata.obsm[basis], index=adata.obs.index)
         milestone_emb = adata.obs.groupby(cluster).apply(lambda x: X_emb.loc[x.index].mean(axis=0))
         milestone_emb.index = list(adata.obs[cluster].cat.categories)
 
+        # construct milestone_network based velocity
+        if milestone_network_strategy == "paga":
+            # use paga based graph connectivity
+            scv.tl.paga(adata, groups=cluster)
+            df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
+            df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
+            milestone_network = (
+                df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
+            )
+            milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
+            milestone_network["directed"] = True
+        else:
+            # TODO: use velocity similarity method
+            threshold = 0.5
+            cluster_list = adata.obs[cluster].cat.categories.to_list()
+            cluster_connection_df = pd.DataFrame(0.0, index=cluster_list, column=cluster_list)
+            for source_cluster in cluster_list:
+                source_cell_velocity = velocity_embedding[np.where(self.obs[cluster] == source_cluster)[0]]
+                source_cell_velocity = source_cell_velocity / (np.linalg.norm(source_cell_velocity, axis=1, keepdims=True) + 1e-6)
+                for target_cluster in cluster_list:
+                    if source_cluster == target_cluster:
+                        continue
+                    cluster_velocity = milestone_emb.loc[target_cluster].values - milestone_emb.loc[source_cluster].values
+                    cluster_velocity = cluster_velocity / (np.linalg.norm(cluster_velocity) + 1e-6)
+                    # cosine similarity between each cell's velocity and the inter-cluster direction
+                    # normalized vector dot calculation is equal to cosin  similarity calculation.
+                    cosine_sims = np.dot(cluster_velocity, source_cell_velocity)
+                    # TODO: weighted
+                    cluster_connection_df.loc[source_cluster, target_cluster] = cosine_sims
+            logger.debug(f"cluster_connection_df:\n{cluster_connection_df.round(2)}")
+            milestone_network = milestone_network[milestone_network["score"] > threshold].copy()
+            milestone_network["length"] = 1.0
+            milestone_network["directed"] = True
+        # TODO: other strategy LAP
+        logger.debug(f"milestone_network:{milestone_network}")
+
         self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
-
-        # save raw velocity reuslt for wrapper visualization
-        logger.debug("add raw velocity to fadata")
-        # self.layers["velocity"] = velocity
-        # self.uns["velocity_graph"] = adata.uns["velocity_graph"]
-        scv.tl.velocity_embedding(adata, basis=basis[2:])
-        # update raw wrapper dict
-        # self.obsm[f"velocity_{basis[3:]}"] = adata.obsm[f"velocity_{basis[3:]}"]
-        velocity_basis = f"velocity_{basis[2:]}"
-        self.raw_wrapper_dict.update({velocity_basis: adata.obsm[velocity_basis]})
-
-        # TODO: another strategy LAP(from Dynamo)
 
     def add_metric(
         self,
@@ -1125,12 +1169,20 @@ class FateAnnData(ad.AnnData):
 
         return snn(G, force_keep=force_keep, edge_points=edge_points)
 
-    def get_trajectory_embedding(self, basis):
-        trajectory_embedding = self.trajectory_history_dict[self.model_name]["trajectory_embedding"]
+    def get_trajectory_embedding(self, basis=None, model_name=None):
+        if model_name is None:
+            model_name = self.model_name
+        if basis is None:
+            basis = self.prior_information.get("basis")
+        trajectory_embedding = self.trajectory_history_dict[model_name]["trajectory_embedding"]
         return trajectory_embedding.get(basis, None)
 
-    def set_trajectory_embedding(self, basis, wp_segments, milestone_positions):
-        self.trajectory_history_dict[self.model_name]["trajectory_embedding"][basis] = {
+    def set_trajectory_embedding(self, wp_segments, milestone_positions, basis=None, model_name=None):
+        if model_name is None:
+            model_name = self.model_name
+        if basis is None:
+            basis = self.prior_information.get("basis")
+        self.trajectory_history_dict[model_name]["trajectory_embedding"][basis] = {
             "wp_segments": wp_segments.replace({None: ""}),
             "milestone_positions": milestone_positions,
         }
