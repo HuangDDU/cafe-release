@@ -200,8 +200,9 @@ def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, model_n
 
     # calculate wayppoint embedding based geodesic distances and gaussian kernel
     # calculate weight
-    weights = wps["waypoint_geodesic_distances"].values
-    weights = norm.pdf(weights, scale=trajectory_projection_sd)  # gaussian kernel
+    weights = wps["waypoint_geodesic_distances"].values.astype(float)
+    weights = np.nan_to_num(weights)
+    weights = norm.pdf(weights, scale=trajectory_projection_sd)  # gaussian kernel, the longer the distance, the smaller the weight
     weights /= weights.sum(axis=1, keepdims=True)  # weight normalization
     # get cell embedding
     positions = cell_positions[["cell_id", "comp_1", "comp_2"]].set_index("cell_id")

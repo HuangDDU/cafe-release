@@ -413,11 +413,11 @@ class FateAnnData(ad.AnnData):
         elif wrapper_type == "velocity":
             self.add_trajectory_velocity(
                 velocity=trajectory_dict["velocity"],
-                velocity_graph=trajectory_dict["velocity_graph"],
-                velocity_graph_neg=trajectory_dict["velocity_graph_neg"],
-                neighbors=trajectory_dict["neighbors"],
-                obs_index=trajectory_dict["obs_index"],
-                var_index=trajectory_dict["var_index"],
+                velocity_graph=trajectory_dict.get("velocity_graph"),
+                velocity_graph_neg=trajectory_dict.get("velocity_graph_neg"),
+                neighbors=trajectory_dict.get("neighbors"),
+                obs_index=trajectory_dict.get("obs_index"),
+                var_index=trajectory_dict.get("var_index"),
                 X=trajectory_dict.get("X"),  # add X for velocity method like veloae
             )
         elif wrapper_type == "lineage":
@@ -718,6 +718,17 @@ class FateAnnData(ad.AnnData):
         if not isinstance(X_emb, pd.DataFrame):
             X_emb = pd.DataFrame(X_emb, index=self.obs.index)
 
+        # add self loop for discrete isolated milestone
+        discrete_milestones = list(set(milestone_emb.index) - (set(milestone_network["from"]) | set(milestone_network["to"])))
+        if len(discrete_milestones) > 0:
+            logger.info(f"discrete milestones: {discrete_milestones}")
+            self_loop_milestone_network = pd.DataFrame()
+            self_loop_milestone_network["from"] = discrete_milestones
+            self_loop_milestone_network["to"] = discrete_milestones
+            self_loop_milestone_network["length"] = 0
+            self_loop_milestone_network["directed"] = False
+            milestone_network = milestone_network.append(self_loop_milestone_network)
+
         if cluster_key is None:
             # if no cluster key is given, just project all cells to the segments
             proj = project_to_segments(
@@ -762,10 +773,6 @@ class FateAnnData(ad.AnnData):
 
             progressions = pd.concat(progressions)
             progressions.reset_index(drop=True)
-
-        discrete_milestones = list(set(milestone_emb.index) - (set(milestone_network["from"]) | set(milestone_network["to"])))
-        if len(discrete_milestones) > 0:
-            logger.info(f"descrete milestones: {discrete_milestones}")
 
         self.add_trajectory(
             milestone_network=milestone_network,
@@ -1011,14 +1018,17 @@ class FateAnnData(ad.AnnData):
         logger.debug(f"filterd adata: {adata}")
 
         adata.layers["velocity"] = velocity
-        # Final goal: only save velocity matrix of a method.
-        adata.uns["velocity_graph"] = velocity_graph
-        adata.uns["velocity_graph_neg"] = velocity_graph_neg
-        adata.uns["neighbors"] = neighbors
-
-        # recompute neighbors and velocity graph may waste time
-        # scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
-        # scv.tl.velocity_graph(adata)  # add transition graph by velocity
+        if (velocity_graph is not None) and (velocity_graph_neg is not None):
+            # Final goal: only save velocity matrix of a method.
+            adata.uns["velocity_graph"] = velocity_graph
+            adata.uns["velocity_graph_neg"] = velocity_graph_neg
+            adata.uns["neighbors"] = {}
+            adata.obsp["distances"] = neighbors["distances"]
+            adata.obsp["connectivities"] = neighbors["connectivities"]
+        else:
+            # recompute neighbors and velocity graph may waste time
+            scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
+            scv.tl.velocity_graph(adata)  # add transition graph by velocity
 
         logger.debug("add raw velocity embedding to fadata")
         scv.tl.velocity_embedding(adata, basis=basis[2:])

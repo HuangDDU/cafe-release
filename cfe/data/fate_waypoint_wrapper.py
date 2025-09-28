@@ -84,6 +84,7 @@ class WaypointWrapper(FateWrapper):
                     return f"W{row.name+1}"  # waypoint id start from 1
 
         waypoint_progressions = mr.milestone_network.copy()
+        # waypoint_progressions = waypoint_progressions[~(waypoint_progressions["from"] == waypoint_progressions["to"])] # remove self-loop edge
         waypoint_progressions["percentage"] = waypoint_progressions["length"].apply(lambda x: [i / x for i in np.arange(0, x, resolution)] + [1])
         waypoint_progressions = waypoint_progressions[["from", "to", "percentage"]]
         waypoint_progressions = waypoint_progressions.explode("percentage").reset_index(drop=True)
@@ -154,9 +155,8 @@ class WaypointWrapper(FateWrapper):
 
         milestone_percentages = pd.concat([milestone_percentages, waypoint_milestone_percentages.rename(columns={"waypoint_id": "cell_id"})])
 
-        # remae all milestone ids to MILESTONE_ID
+        # rename all milestone ids to MILESTONE_ID
         def milestone_trafo_fun(x):
-            # 可能的补丁如下，这里我加了一个检查
             x = str(x)
             if x.startswith("MILESTONE_"):
                 return x
@@ -172,8 +172,9 @@ class WaypointWrapper(FateWrapper):
 
         # add an extra divergence area, where normal edges are also treated as divergence areas
         extra_divergences = milestone_network.copy()
-        extra_divergences = extra_divergences[~(extra_divergences["from"] == extra_divergences["to"])]
-        # extra_divergences = extra_divergences.query("not from == to") # query is more elegant
+        # remove self-loop edge in _select_waypoints function
+        # extra_divergences = extra_divergences[~(extra_divergences["from"] == extra_divergences["to"])] # remove self-loop edge
+        # extra_divergences = extra_divergences.query("from != to") # query is more elegant, but from is a key for python
         # in_divergence determines whether the current edge is within the existing divergence region
         divergence_regions_set_list = divergence_regions.groupby("divergence_id")["milestone_id"].apply(set).tolist()
 
@@ -204,7 +205,7 @@ class WaypointWrapper(FateWrapper):
         milestone_graph = nx.from_pandas_edgelist(milestone_network, source="from", target="to", edge_attr="length")
         divergence_regions["is_start"] = divergence_regions["is_start"].astype(bool)  # ensure "is_start" column is bool
 
-        # NOTE: 1. Calculate separately
+        # 1. calculate inner-divergence distances separately
         # calculate the distance between cells within the divergent
         def calc_divergence_inner_distance_df(did):
             dir = divergence_regions[divergence_regions["divergence_id"] == did]
@@ -232,7 +233,11 @@ class WaypointWrapper(FateWrapper):
                 return None
 
             scaled_dists = relevant_pct.copy()
-            scaled_dists["dist"] = scaled_dists.apply(lambda x: x["percentage"] * tent_distances.loc[mid, x["milestone_id"]], axis=1)
+            # scaled_dists["dist"] = scaled_dists.apply(lambda x: x["percentage"] * tent_distances.loc[mid, x["milestone_id"]], axis=1)
+            scaled_dists["dist"] = scaled_dists.apply(
+                lambda x: x["percentage"] * tent_distances.loc[mid, x["milestone_id"]].values.flatten()[0], axis=1
+            )  # fix for self-loop waypoint
+
             tent_distances_long = tent_distances.melt(var_name="from", value_name="length")  # wide data to long data
             tent_distances_long["to"] = tent_distances_long["from"]
 
@@ -285,13 +290,20 @@ class WaypointWrapper(FateWrapper):
         # # print("gr:\n", gr)
         # print("waypoint_id_list:\n", waypoint_id_list)
         # print("cell_id_list:\n", cell_id_list)
-        shortest_paths = gr.shortest_paths(source=waypoint_id_list, target=cell_id_list, weights="length", mode=mode)
-        out = pd.DataFrame(shortest_paths, index=waypoint_id_list, columns=cell_id_list)
 
-        # TODO: filter cells
-        cell_ids_filtered_list = []
-        if len(cell_ids_filtered_list) > 0:
-            pass
+        # for isolated milestones and cells which not shown in did, set shortest path = None
+        out = pd.DataFrame(index=waypoint_id_list, columns=cell_id_list)
+        valid_nodes = set(edgelist_df["from"].unique()) | set(edgelist_df["from"].unique())
+        valid_waypoint_id_list = list(set(waypoint_id_list) & valid_nodes)
+        valid_cell_id_list = list(set(cell_id_list) & valid_nodes)
+
+        shortest_paths = gr.shortest_paths(source=valid_waypoint_id_list, target=valid_cell_id_list, weights="length", mode=mode)
+        out.loc[valid_waypoint_id_list, valid_cell_id_list] = shortest_paths
+
+        # # TODO: filter cells
+        # cell_ids_filtered_list = []
+        # if len(cell_ids_filtered_list) > 0:
+        #     pass
 
         return out.loc[waypoint_id_list, cell_id_list]
 

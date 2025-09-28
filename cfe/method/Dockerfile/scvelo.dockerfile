@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.5.1-cuda11.8-cudnn9-runtime
+FROM python:3.10.15
 
 ARG CellFateExplorer
 

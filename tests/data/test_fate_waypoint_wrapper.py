@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -11,7 +12,6 @@ class TestWaypointWrapper:
         from .test_fate_milestone_wrapper import setup_method_data
 
         self.milestone_wrapper = setup_method_data()
-        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
 
     def test_magic_method(self):
         """test __***__ methods"""
@@ -29,6 +29,7 @@ class TestWaypointWrapper:
         assert set(attribute_name_list).issubset(set(ww.keys())), f"{attribute_name_list} should be the keys of the dict: {ww_dict}"
 
     def test_init(self):
+        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
         # ww.pipeline()
 
@@ -39,8 +40,8 @@ class TestWaypointWrapper:
         assert ww.waypoints is not None
 
     def test_select_waypoints(self):
+        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
-        # ww._select_waypoints(resolution=1)
 
         # 预期构造结果
         expected_waypoint_milestone_percentages = pd.DataFrame(
@@ -80,31 +81,6 @@ class TestWaypointWrapper:
                 ["Z", "A", 1, "MILESTONE_END_WZ_A"],
             ],
         )
-        expected_waypoint_geodesic_distances = pd.DataFrame(
-            columns=self.milestone_wrapper.cell_id_list,
-            index=[
-                "MILESTONE_BEGIN_WW_X",
-                "MILESTONE_END_WW_X",
-                "MILESTONE_BEGIN_WX_Y",
-                "MILESTONE_END_WX_Y",
-                "MILESTONE_BEGIN_WX_Z",
-                "MILESTONE_END_WX_Z",
-                "MILESTONE_BEGIN_WZ_A",
-                "W8",
-                "MILESTONE_END_WZ_A",
-            ],
-            data=[
-                [0.0, 0.8, 1.2, 2.0, 1.7, 2.4],
-                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4],
-                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4],
-                [2.0, 1.2, 1.2, 2.0, 1.3, 2.4],
-                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4],
-                [2.0, 1.2, 0.8, 0.0, 0.7, 0.4],
-                [2.0, 1.2, 0.8, 0.0, 0.7, 0.4],
-                [3.0, 2.2, 1.8, 1.0, 1.7, 0.6],
-                [4.0, 3.2, 2.8, 2.0, 2.7, 1.6],
-            ],
-        )
         expected_waypoint_network = pd.DataFrame(
             columns=["from", "to", "from_milestone_id", "to_milestone_id"],
             data=[
@@ -132,17 +108,102 @@ class TestWaypointWrapper:
 
         assert compare_dataframes(ww.waypoint_milestone_percentages, expected_waypoint_milestone_percentages, ["waypoint_id", "milestone_id"])
         assert compare_dataframes(ww.waypoint_progressions, expected_waypoint_progressions, ["from", "to", "waypoint_id"])
+        assert compare_dataframes(ww.waypoint_network, expected_waypoint_network, ["from", "to"])
+        assert compare_dataframes(ww.waypoints, expected_waypoints, "waypoint_id")
+
+    def test_calculate_geodesic_distances(self):
+        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
+        ww = self.waypoint_wrapper
+
+        expected_waypoint_geodesic_distances = pd.DataFrame(
+            columns=self.milestone_wrapper.cell_id_list,
+            index=[
+                "MILESTONE_BEGIN_WW_X",
+                "MILESTONE_END_WW_X",
+                "MILESTONE_BEGIN_WX_Y",
+                "MILESTONE_END_WX_Y",
+                "MILESTONE_BEGIN_WX_Z",
+                "MILESTONE_END_WX_Z",
+                "MILESTONE_BEGIN_WZ_A",
+                "W8",
+                "MILESTONE_END_WZ_A",
+            ],
+            data=[
+                [0.0, 0.8, 1.2, 2.0, 1.7, 2.4],
+                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4],
+                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4],
+                [2.0, 1.2, 1.2, 2.0, 1.3, 2.4],
+                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4],
+                [2.0, 1.2, 0.8, 0.0, 0.7, 0.4],
+                [2.0, 1.2, 0.8, 0.0, 0.7, 0.4],
+                [3.0, 2.2, 1.8, 1.0, 1.7, 0.6],
+                [4.0, 3.2, 2.8, 2.0, 2.7, 1.6],
+            ],
+        )
         assert compare_dataframes_closely(
             ww.waypoint_geodesic_distances,
             expected_waypoint_geodesic_distances,
             expected_waypoint_geodesic_distances.columns.tolist(),
         )
-        assert compare_dataframes(ww.waypoint_network, expected_waypoint_network, ["from", "to"])
-        assert compare_dataframes(ww.waypoints, expected_waypoints, "waypoint_id")
 
-    def calculate_geodesic_distances(self):
-        # test in test_select_waypoints
-        pass
+    def test_calculate_geodesic_distances_isolated(self):
+        mw = self.milestone_wrapper
+
+        milestone_network = mw.milestone_network
+        divergence_regions = mw.divergence_regions
+        milestone_percentages = mw.milestone_percentages
+
+        # add lonely milestone 'B' and cell 'g' for previous milestone network
+        milestone_network = milestone_network.append(
+            pd.DataFrame(
+                columns=["from", "to", "length", "directed"],
+                data=[["B", "B", 0.0, False]],  # isolated milestone
+            )
+        )
+        milestone_percentages = milestone_percentages.append(
+            pd.DataFrame(
+                columns=["cell_id", "milestone_id", "percentage"],
+                data=[["g", "B", 1]],
+            )
+        )
+        milestone_wrapper = cfe.data.MilestoneWrapper(
+            milestone_network=milestone_network, divergence_regions=divergence_regions, milestone_percentages=milestone_percentages
+        )
+        waypoint_wrapper = cfe.data.WaypointWrapper(milestone_wrapper, resolution=1)
+        # unconnected milestone network test
+
+        expected_waypoint_geodesic_distances = pd.DataFrame(
+            columns=milestone_wrapper.cell_id_list,
+            index=[
+                "MILESTONE_BEGIN_WW_X",
+                "MILESTONE_END_WW_X",
+                "MILESTONE_BEGIN_WX_Y",
+                "MILESTONE_END_WX_Y",
+                "MILESTONE_BEGIN_WX_Z",
+                "MILESTONE_END_WX_Z",
+                "MILESTONE_BEGIN_WZ_A",
+                "W8",
+                "MILESTONE_END_WZ_A",
+                "MILESTONE_END_WB_B",
+            ],
+            data=[
+                [0.0, 0.8, 1.2, 2.0, 1.7, 2.4, np.inf],
+                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4, np.inf],
+                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4, np.inf],
+                [2.0, 1.2, 1.2, 2.0, 1.3, 2.4, np.inf],
+                [1.0, 0.2, 0.2, 1.0, 0.7, 1.4, np.inf],
+                [2.0, 1.2, 0.8, 0.0, 0.7, 0.4, np.inf],
+                [2.0, 1.2, 0.8, 0.0, 0.7, 0.4, np.inf],
+                [3.0, 2.2, 1.8, 1.0, 1.7, 0.6, np.inf],
+                [4.0, 3.2, 2.8, 2.0, 2.7, 1.6, np.inf],
+                [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 0.0],
+            ],
+        )
+        assert compare_dataframes_closely(
+            waypoint_wrapper.waypoint_geodesic_distances.astype(float),
+            expected_waypoint_geodesic_distances,
+            expected_waypoint_geodesic_distances.columns.tolist(),
+        )
 
 
 if __name__ == "__main__":

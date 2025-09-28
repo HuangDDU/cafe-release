@@ -11,6 +11,7 @@ from .method_util import scan_method
 # TODO: more methods for cfe.method.xxx
 cf_comp1 = FateMethod("comp1")
 cf_scvelo = FateMethod("scvelo")
+cf_dynamo = FateMethod("dynamo")
 
 __all__ = [
     "Definition",
