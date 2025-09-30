@@ -24,6 +24,7 @@ def pyrovelocity(
     repreprocess_kwargs: dict = {},
 ):
     """PyroVelocity: probabilistic modeling of RNA velocity"""
+    # TODO: ref: https://docs.pyrovelocity.net/templates/user_example/user_example
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)

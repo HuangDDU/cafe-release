@@ -15,6 +15,7 @@ class TestWaypointWrapper:
 
     def test_magic_method(self):
         """test __***__ methods"""
+        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
 
         # test __contains__

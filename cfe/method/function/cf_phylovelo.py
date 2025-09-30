@@ -24,6 +24,7 @@ def phylovelo(
     repreprocess_kwargs: dict = {},
 ):
     """PhyloVelo: Phylogeny-based transcriptomic velocity of single cells"""
+    # ref: https://phylovelo.readthedocs.io/en/latest/notebook/getting_start.html
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)
