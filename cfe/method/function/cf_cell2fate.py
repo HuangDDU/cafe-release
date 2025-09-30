@@ -11,19 +11,19 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="Cell2fate",
     version="0.0.1",
-    description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
+    description="Cell2fate infers RNA velocity modules to improve cell fate prediction",
     wrapper_type="velocity",
-    doi="10.1073/pnas.2105859118",
-    github_url="https://github.com/qiaochen/VeloAE",
+    doi="10.1038/s41592-025-02608-3",
+    github_url="https://github.com/BayraktarLab/cell2fate",
 )
-def velocity(
+def cell2fate(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """VeloAE: Representation learning of RNA velocity reveals robust cell transitions"""
+    """Cell2fate: Inferring RNA velocity modules to improve cell fate prediction"""
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)

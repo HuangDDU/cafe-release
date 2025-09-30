@@ -16,6 +16,8 @@ except ImportError:
     version="0.0.1",
     description="Cytotrace2: cellular potency categories and absolute developmental potential",
     wrapper_type="linear",
+    doi="10.1101/2024.03.19.585637",
+    github_url="https://github.com/digitalcytometry/cytotrace2",
 )
 def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster: str = None, cytotrace2_kwargs: dict = {}) -> dict:
     """Cytotrace2: cellular potency categories and absolute developmental potential.

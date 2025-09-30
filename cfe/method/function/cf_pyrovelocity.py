@@ -11,19 +11,19 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="pyrovelocity",
     version="0.0.1",
-    description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
+    description="PyroVelocity: probabilistic modeling of RNA velocity",
     wrapper_type="velocity",
-    doi="10.1073/pnas.2105859118",
-    github_url="https://github.com/qiaochen/VeloAE",
+    doi="10.1101/2022.09.12.507691",
+    github_url="https://github.com/pinellolab/pyrovelocity",
 )
-def velocity(
+def pyrovelocity(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """VeloAE: Representation learning of RNA velocity reveals robust cell transitions"""
+    """PyroVelocity: probabilistic modeling of RNA velocity"""
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)

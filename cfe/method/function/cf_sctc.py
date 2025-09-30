@@ -7,7 +7,14 @@ except ImportError:
     from cfe.method.function.method_decorator import method_info
 
 
-@method_info(name="sctc", version="0.0.1", description="SCTC: single-Cell Transcriptional Complexity", wrapper_type="linear")
+@method_info(
+    name="sctc",
+    version="0.0.1",
+    description="SCTC: single-Cell Transcriptional Complexity",
+    wrapper_type="linear",
+    doi="10.1093/nar/gkae340",
+    github_url="https://github.com/hailinphysics/sctc",
+)
 def sctc(
     adata: ad.AnnData,
     repreprocess: bool = True,

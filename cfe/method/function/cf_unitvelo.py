@@ -11,19 +11,19 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="unitvelo",
     version="0.0.1",
-    description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
+    description="UniTVelo: temporally unified RNA velocity reinforces single-cell trajectory inference",
     wrapper_type="velocity",
-    doi="10.1073/pnas.2105859118",
-    github_url="https://github.com/qiaochen/VeloAE",
+    doi="https://doi.org/10.1038/s41467-022-34188-7",
+    github_url="https://github.com/StatBiomed/UniTVelo",
 )
-def velocity(
+def unitvelo(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """VeloAE: Representation learning of RNA velocity reveals robust cell transitions"""
+    """UniTVelo: temporally unified RNA velocity reinforces single-cell trajectory inference"""
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)

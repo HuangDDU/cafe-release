@@ -11,19 +11,19 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="velovae",
     version="0.0.1",
-    description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
+    description="VeloVAE: Bayesian Inference of RNA Velocity from Multi-Lineage Single-Cell Data",
     wrapper_type="velocity",
-    doi="10.1073/pnas.2105859118",
-    github_url="https://github.com/qiaochen/VeloAE",
+    doi="10.1101/2022.07.08.499381",
+    github_url="https://github.com/welch-lab/VeloVAE",
 )
-def velocity(
+def velovae(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """VeloAE: Representation learning of RNA velocity reveals robust cell transitions"""
+    """VeloVAE: Bayesian Inference of RNA Velocity from Multi-Lineage Single-Cell Data"""
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)

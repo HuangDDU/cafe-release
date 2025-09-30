@@ -200,7 +200,7 @@ class TestWaypointWrapper:
             ],
         )
         assert compare_dataframes_closely(
-            waypoint_wrapper.waypoint_geodesic_distances.astype(float),
+            waypoint_wrapper.waypoint_geodesic_distances,
             expected_waypoint_geodesic_distances,
             expected_waypoint_geodesic_distances.columns.tolist(),
         )

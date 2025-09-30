@@ -305,7 +305,7 @@ class WaypointWrapper(FateWrapper):
         # if len(cell_ids_filtered_list) > 0:
         #     pass
 
-        return out.loc[waypoint_id_list, cell_id_list]
+        return out.loc[waypoint_id_list, cell_id_list].astype(float)
 
 
 save_attribute_list = ["name"]

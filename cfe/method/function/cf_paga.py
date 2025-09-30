@@ -18,6 +18,8 @@ except ImportError:
     version="0.0.1",
     description="PAGA: partition-based graph abstraction",
     wrapper_type="branch",
+    doi="10.1186/s13059-019-1663-x",
+    github_url="https://github.com/theislab/paga",
 )
 def paga(
     adata: ad.AnnData,

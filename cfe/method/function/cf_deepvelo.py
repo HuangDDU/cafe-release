@@ -11,19 +11,19 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="deepvelo",
     version="0.0.1",
-    description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
+    description="DeepVelo: Single-cell transcriptomic deep velocity field learning with neural ordinary differential equations",
     wrapper_type="velocity",
-    doi="10.1073/pnas.2105859118",
-    github_url="https://github.com/qiaochen/VeloAE",
+    doi="10.1126/sciadv.abq3745",
+    github_url="https://github.com/gersteinlab/DeepVelo",
 )
-def velocity(
+def deepvelo(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """VeloAE: Representation learning of RNA velocity reveals robust cell transitions"""
+    """DeepVelo: Single-cell transcriptomic deep velocity field learning with neural ordinary differential equations"""
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="scvelo", **repreprocess_kwargs)

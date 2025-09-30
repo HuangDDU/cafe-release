@@ -1,0 +1,21 @@
+name: veloae
+channels:
+- https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+- https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/pro
+- https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+- https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+- https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+- defaults
+dependencies:
+- python=3.10.18
+- pip:
+  - scipy==1.10.1
+  - numpy==1.23.5
+  - matplotlib==3.7.5
+  - anndata==0.9.2
+  - scanpy==1.9.6
+  - scvelo==0.2.5
+  - torch==2.8.0
+  - torch-geometric==2.6.1
+  # TODO: pip install git+https://github.com/qiaochen/VeloAE
+prefix: /usr/local/conda/envs/veloae

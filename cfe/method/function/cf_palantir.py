@@ -15,6 +15,8 @@ except ImportError:
     version="0.0.1",
     description="Palantir: characterization of cell fate probabilities",
     wrapper_type=["linear", "probability", "lineage"],
+    doi="10.1038/s41587-019-0068-4",
+    github_url="https://github.com/dpeerlab/Palantir",
 )
 def palantir(
     adata: ad.AnnData,
