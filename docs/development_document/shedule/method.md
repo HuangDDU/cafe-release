@@ -80,6 +80,25 @@ method(fadata, parameters={"cluster_key": "lineage",  "connectivity_cutoff": 0.5
 |  | VeloAE | |
 |  | Dynamo | |
 
+TODO list for velocity methods. Popularity is shown in "Github Stars" and "Paper Citation" column ().
+
+| Method Name | Finished Time | Paper Citation | Github Stars |
+| --- | --- | --- | --- |
+| scvelo | 2025.09.30 | 2605 | 467 |
+| velovi | 2025.09.30 | 97 | 40 |
+| veloae | 2025.09.30 | 57 | 28 |
+| dynamo | 2025.09.30 | 385 | 472 |
+| pyrovelocity | 2025.10.08 | 23 | 47 |
+| phylovelo | | 46 | 43 |
+| latentvelo | | 30 | 26 |
+| unitvelo | |  | 26 |
+| regvelo | | 5 | 56 |
+| deepvelo2 | | 51 | 46 |
+| celldancer | | 90 | 70 |
+| velovae | | 35 | 35 |
+| deepvelo | | 74 | 14 |
+| cell2fate | | 4 | 79 |
+
 > Methods to be categorized: WaddingtonOT, TrajectoryNet, pyVIA
 >
 ### TODO
