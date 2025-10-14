@@ -415,6 +415,7 @@ class FateAnnData(ad.AnnData):
                 velocity=trajectory_dict["velocity"],
                 velocity_graph=trajectory_dict.get("velocity_graph"),
                 velocity_graph_neg=trajectory_dict.get("velocity_graph_neg"),
+                velocity_embedding=trajectory_dict.get("velocity_embedding"),
                 neighbors=trajectory_dict.get("neighbors"),
                 obs_index=trajectory_dict.get("obs_index"),
                 var_index=trajectory_dict.get("var_index"),
@@ -980,6 +981,7 @@ class FateAnnData(ad.AnnData):
         velocity: np.array,
         velocity_graph: np.array,
         velocity_graph_neg: np.array,
+        velocity_embedding: np.array,
         neighbors: dict,
         milestone_network_strategy: str = "paga",
         cluster: str = None,
@@ -1017,23 +1019,27 @@ class FateAnnData(ad.AnnData):
 
         logger.debug(f"filterd adata: {adata}")
 
-        adata.layers["velocity"] = velocity
-        if (velocity_graph is not None) and (velocity_graph_neg is not None):
-            # Final goal: only save velocity matrix of a method.
-            adata.uns["velocity_graph"] = velocity_graph
-            adata.uns["velocity_graph_neg"] = velocity_graph_neg
-            adata.uns["neighbors"] = {}
-            adata.obsp["distances"] = neighbors["distances"]
-            adata.obsp["connectivities"] = neighbors["connectivities"]
-        else:
-            # recompute neighbors and velocity graph may waste time
-            scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
-            scv.tl.velocity_graph(adata)  # add transition graph by velocity
-
-        logger.debug("add raw velocity embedding to fadata")
-        scv.tl.velocity_embedding(adata, basis=basis[2:])
         velocity_basis = f"velocity_{basis[2:]}"
-        velocity_embedding = adata.obsm[velocity_basis]
+        if velocity_embedding is not None:
+            milestone_network_strategy = "low_dim_paga"  # force to use cons strategy
+            logger.debug(f"use given velocity embedding, use strategy '{milestone_network_strategy}' to get milestone_network")
+        else:
+            adata.layers["velocity"] = velocity
+            if (velocity_graph is not None) and (velocity_graph_neg is not None):
+                # Final goal: only save velocity matrix of a method.
+                adata.uns["velocity_graph"] = velocity_graph
+                adata.uns["velocity_graph_neg"] = velocity_graph_neg
+                adata.uns["neighbors"] = {}
+                adata.obsp["distances"] = neighbors["distances"]
+                adata.obsp["connectivities"] = neighbors["connectivities"]
+            else:
+                # recompute neighbors and velocity graph may waste time
+                scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
+                scv.tl.velocity_graph(adata)  # add transition graph by velocity
+
+            logger.debug("add raw velocity embedding to fadata")
+            scv.tl.velocity_embedding(adata, basis=basis[2:])
+            velocity_embedding = adata.obsm[velocity_basis]
         self.raw_wrapper_dict.update({velocity_basis: velocity_embedding})
 
         # compute milestone embedding based clustered cell embedding
@@ -1046,17 +1052,33 @@ class FateAnnData(ad.AnnData):
             # use paga based graph connectivity
             scv.tl.paga(adata, groups=cluster)
             df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-            df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
+            # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
+            milestone_network = (
+                df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
+            )
+            milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
+            milestone_network["directed"] = True
+        elif milestone_network_strategy == "low_dim_paga":
+            # paga based on expression embedding and velocity embedding
+            new_adata = sc.AnnData(X=adata.obsm[basis], obs=adata.obs, obsm=adata.obsm, obsp=adata.obsp, uns=adata.uns)
+            new_adata.layers["spliced"] = adata.obsm[basis]
+            new_adata.layers["velocity"] = velocity_embedding
+            new_adata.layers["unspliced"] = adata.obsm[basis]
+            # recomput velocity graph based on low-dim velocity and embedding
+            scv.tl.velocity_graph(new_adata)
+            scv.tl.paga(new_adata, groups="clusters")  # recompute paga
+            df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
+            # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
             milestone_network = (
                 df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
             )
             milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
             milestone_network["directed"] = True
         else:
-            # TODO: use velocity similarity method
-            threshold = 0.5
+            # TODO: use velocity consine similarity method, need fix
+            threshold = 0.2
             cluster_list = adata.obs[cluster].cat.categories.to_list()
-            cluster_connection_df = pd.DataFrame(0.0, index=cluster_list, column=cluster_list)
+            cluster_connection_df = pd.DataFrame(0.0, index=cluster_list, columns=cluster_list)
             for source_cluster in cluster_list:
                 source_cell_velocity = velocity_embedding[np.where(self.obs[cluster] == source_cluster)[0]]
                 source_cell_velocity = source_cell_velocity / (np.linalg.norm(source_cell_velocity, axis=1, keepdims=True) + 1e-6)
@@ -1066,11 +1088,13 @@ class FateAnnData(ad.AnnData):
                     cluster_velocity = milestone_emb.loc[target_cluster].values - milestone_emb.loc[source_cluster].values
                     cluster_velocity = cluster_velocity / (np.linalg.norm(cluster_velocity) + 1e-6)
                     # cosine similarity between each cell's velocity and the inter-cluster direction
-                    # normalized vector dot calculation is equal to cosin  similarity calculation.
-                    cosine_sims = np.dot(cluster_velocity, source_cell_velocity)
+                    # normalized vector dot calculation is equal to cosin similarity calculation.
+                    cosine_sims = (source_cell_velocity @ cluster_velocity).mean()
                     # TODO: weighted
                     cluster_connection_df.loc[source_cluster, target_cluster] = cosine_sims
             logger.debug(f"cluster_connection_df:\n{cluster_connection_df.round(2)}")
+            milestone_network = cluster_connection_df.stack().reset_index()
+            milestone_network.columns = ["from", "to", "score"]
             milestone_network = milestone_network[milestone_network["score"] > threshold].copy()
             milestone_network["length"] = 1.0
             milestone_network["directed"] = True
