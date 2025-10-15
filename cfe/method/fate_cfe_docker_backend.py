@@ -45,11 +45,13 @@ class CFEDockerBackend(DockerBackend):
         """save adata h5ad , prior information and parameters json file in tmp_wd dir
 
         Args:
-            fadata (AnnData): _description_
+            adata (AnnData): _description_
             parameters (dict): prior information dict
             tmp_wd (str): tmp working dir for docker mount and saving h5ad.h5, json file
         """
-        adata.write(filename=f"{tmp_wd}/adata.h5ad")
+        adata_filename = f"{tmp_wd}/adata.h5ad"
+        adata.uns["filename"] = "/data/adata.h5ad"  # save filename in uns for function use in docker
+        adata.write(filename=adata_filename)
 
         with open(f"{tmp_wd}/parameters.json", "w") as f:
             json.dump(parameters, f)
@@ -75,17 +77,23 @@ class CFEDockerBackend(DockerBackend):
             detach=True,
         )  # all are saved in "/data" dir and sync to master
 
+        # real time stat and log list
         stats_list = []
 
         def collect_stats():
-            for stat in container.stats(stream=True):
-                s = str(stat.decode())[:-1]  # remove '\n'
-                stats_list.append(s)
+            for stat in container.stats(stream=True, decode=True):
+                stats_list.append(stat)
 
         stats_thread = threading.Thread(target=collect_stats, daemon=True)
         stats_thread.start()
 
-        # real time log
+        def collect_logs():
+            for line in container.logs(stream=True, follow=True, stdout=True, stderr=True):
+                logger.debug(line.decode("utf-8").strip())
+
+        log_thread = threading.Thread(target=collect_logs, daemon=True)
+        log_thread.start()
+
         container.wait()  # wait until docker finish
         end_time = time.time()
         container.stop()

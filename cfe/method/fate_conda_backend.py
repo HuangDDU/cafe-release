@@ -47,9 +47,11 @@ class CondaBackend(Backend):
         # load function to get parameter
         self._load_function(self.function_name)
 
-    def preprocess(self, fadata: AnnData, parameters: dict, tmp_wd: str) -> None:
+    def preprocess(self, adata: AnnData, parameters: dict, tmp_wd: str) -> None:
         """save adata h5ad, prior information and parameters json file in tmp_wd dir"""
-        fadata.write(filename=f"{tmp_wd}/adata.h5ad")
+        adata_filename = f"{tmp_wd}/adata.h5ad"
+        adata.uns["filename"] = adata_filename  # save filename in uns for function use
+        adata.write(filename=adata_filename)
 
         with open(f"{tmp_wd}/parameters.json", "w") as f:
             json.dump(parameters, f)

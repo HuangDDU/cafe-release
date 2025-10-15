@@ -30,7 +30,19 @@ def dynamo(
     dynamics_kwargs: dict = {},
     cell_velocities_kwargs: dict = {},
 ):
-    """Dynamo: Mapping Transcriptomic Vector Fields of Single Cells"""
+    """Dynamo: Mapping Transcriptomic Vector Fields of Single Cells
+
+    Args:
+        adata (ad.AnnData): AnnData object.
+        repreprocess (bool, optional): Whether to repreprocess the anndata object.
+        repreprocess_kwargs (dict, optional): Parameter dict for repreprocess pipeline with dynamo style.
+        dynamics_kwargs (dict, optional): Parameter dict for cell dynamics high dimensional velocity calculation, refer to [dyn.tl.dynamics](https://dynamo-release.readthedocs.io/en/latest/api/reference/dynamo.tl.dynamics.html#dynamo.tl.dynamics).
+        cell_velocities_kwargs (dict, optional): Parameter dict for cell low dimensional velocity calculation, refer to [dynamo.tl.cell_velocities](https://dynamo-release.readthedocs.io/en/latest/api/reference/dynamo.tl.cell_velocities.html#dynamo.tl.cell_velocities).
+
+    Returns:
+        dict: trajectory dict with keys about velocity
+
+    """
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="dynamo", **repreprocess_kwargs)

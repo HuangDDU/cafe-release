@@ -8,9 +8,9 @@ import cfe
 from .method_testcase import method_testcase
 
 
-class TestCFscVelo:
+class TestCFDynamo:
     def setup_method(self):
-        self.method_name = "scvelo"
+        self.method_name = "dynamo"
 
         adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")
         fadata = cfe.data.FateAnnData.from_anndata(adata)

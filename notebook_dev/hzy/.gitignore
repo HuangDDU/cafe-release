@@ -1,2 +1,10 @@
 img
 cytotrace2_results
+
+# pyrovelocity middle file
+mlruns
+models
+reports
+
+# celldancer middle file
+cellDancer*

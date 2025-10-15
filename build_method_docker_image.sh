@@ -55,5 +55,13 @@ echo "Docker image:${image_name} test successfully."
 # 	-v ./method_docker_input:/data \
 # 	--workdir /code \
 # 	--entrypoint bash \
-# 	huangzhaoyang/veloae:0.0.1
-	
+# 	huangzhaoyang/unitvelo:0.0.1
+
+# method_name="unitvelo"
+# image_name="huangzhaoyang/${method_name}:0.0.1"
+# docker run \
+# 	--rm \
+# 	-v ./method_docker_input:/data \
+# 	--workdir /code \
+# 	${image_name} \
+# 	python /code/run.py --function_name ${method_name} --adata_path /data/adata.h5ad --parameters /data/parameters_${method_name}.json --output_filename ./output.pkl

@@ -31,7 +31,7 @@ def scvelo(
     Args:
         adata (ad.AnnData): AnnData object
         repreprocess (bool, optional): Whether to repreprocess the anndata object.
-        repreprocess_kwargs (dict, optional):  Parameter dict for repreprocess pipeline.
+        repreprocess_kwargs (dict, optional): Parameter dict for repreprocess pipeline.
         velocity_kwargs (dict, optional): Parameter dict for velocity calculation, refer to [scvelo.tl.velocity](https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity.html).
         velocity_graph_kwargs (dict, optional): Parameter dict for velocity graph calculation, refer to [scvelo.tl.velocity_embedding](https://scvelo.readthedocs.io/en/stable/scvelo.tl.velocity_embedding.html).
 

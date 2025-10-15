@@ -5,27 +5,27 @@ import scanpy as sc
 
 from .method_testcase import method_testcase
 
-if_test_raw = False  # change to True when run in 'veloae' conda environment
+if_test_raw = False  # change to True when run in 'celldancer' conda environment
 
 
 @pytest.mark.run_method
-class TestCFVeloAE:
+class TestCFCellDancer:
     def setup_method(self):
-        self.method_name = "veloae"
+        self.method_name = "celldancer"
         self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")
         self.parameters = {}
 
     # Test raw trajectory dict
-    # conda activate veloae
-    # pytest -s --tb=long test_cf_sctc.py
-    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'veloae'")
+    # conda activate celldancer
+    # pytest -s --tb=long test_cf_celldancer.py
+    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'celldancer'")
     def test_raw(self):
         import sys
 
         sys.path.append("../../../cfe/method/function")  # prepare relative package file
-        from cf_veloae import veloae
+        from cf_celldancer import celldancer
 
-        trajectory_dict = veloae(self.adata, **self.parameters)
+        trajectory_dict = celldancer(self.adata, **self.parameters)
         assert trajectory_dict["wrapper_type"] == "velocity"
 
     # Test three backends

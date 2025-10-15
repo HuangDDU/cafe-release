@@ -23,7 +23,7 @@ def phylovelo(
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """PhyloVelo: Phylogeny-based transcriptomic velocity of single cells"""
+    """PhyloVelo: Phylogeny-based transcriptomic velocity of single cells. Unavailable"""
     # TODO: need lineage tracing data, skip it. ref: https://github.com/kunwang34/PhyloVelo/issues/5
     # ref: https://phylovelo.readthedocs.io/en/latest/notebook/getting_start.html
     # 1. preprocess

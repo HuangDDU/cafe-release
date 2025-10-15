@@ -22,12 +22,21 @@ except ImportError:
 )
 def pyrovelocity(
     adata: ad.AnnData,
-    repreprocess: bool = True,  # unused
-    # repreprocess_kwargs: dict = {},
+    configuration_kwargs: dict = {},
 ):
-    """PyroVelocity: probabilistic modeling of RNA velocity"""
+    """PyroVelocity: probabilistic modeling of RNA velocity
+
+    Args:
+        adata (ad.AnnData): AnnData object.
+        configuration_kwargs (dict, optional): Configuration dict for pyrovelocity pipeline, refer to [pancrease template](https://github.com/pinellolab/pyrovelocity/blob/v0.4.5/src/pyrovelocity/workflows/main_configuration.py).
+
+    Returns:
+        dict: trajectory dict with keys about velocity
+    """
+
     #  ref: https://docs.pyrovelocity.net/templates/user_example/user_example
     #  pyrovelocity workflow add.
+    # https://github.com/pinellolab/pyrovelocity/blob/v0.4.5/src/pyrovelocity/workflows/main_configuration.py
     import tempfile
 
     import mlflow
@@ -45,20 +54,41 @@ def pyrovelocity(
     with tempfile.TemporaryDirectory() as tmp_wd:
         #
         data_set_name = "tmp"
-        adata_filename = f"{tmp_wd}/{data_set_name}.h5ad"
-        sc.write(adata_filename, adata)
+        # adata_filename = f"{tmp_wd}/{data_set_name}.h5ad"
+        # sc.write(adata_filename, adata)
+        if "filename" in adata.uns:
+            adata_filename = adata.uns["filename"]
+        else:
+            # for docker test: save adata for latter unitvelo pipeline
+            adata_filename = "adata.h5ad"
+            adata.write(adata_filename)
+            print("save adata for unitvelo pipeline:", adata_filename)
+        data_set_name = adata_filename.split("/")[-1]
+        data_external_path = adata_filename.replace(data_set_name, "")
+        data_set_name = data_set_name.replace(".h5ad", "")
 
-        # configuration object
+        # configuration object construction based on pancrease template
+        # input, preprocessed and output filename
         templete_configuration.download_dataset.data_set_name = data_set_name
-        templete_configuration.download_dataset.data_external_path = tmp_wd
+        templete_configuration.download_dataset.data_external_path = data_external_path
         templete_configuration.download_dataset.source = ""
-
         templete_configuration.preprocess_data.data_set_name = data_set_name
         templete_configuration.preprocess_data.adata = adata_filename
-
         templete_configuration.training_configuration_1.data_set_name = data_set_name
         templete_configuration.training_configuration_1.adata = f"{tmp_wd}/{data_set_name}_processed.h5ad"
+        # other configuration
         templete_configuration.training_configuration_1.max_epochs = 200
+        for category, category_configuration_dict in configuration_kwargs.items():
+            category_configuration_object = getattr(templete_configuration, category)
+            if category_configuration_object is None:
+                print(f"Warning: no category '{category}' in template configuration")
+                continue
+            else:
+                for k, v in category_configuration_dict.items():
+                    if hasattr(category_configuration_object, k):
+                        setattr(category_configuration_object, k, v)
+                    else:
+                        print(f"Warning: no parameter '{k}' in configuration category '{category}'")
 
         # data
         data = download_data(download_dataset_args=templete_configuration.download_dataset)
@@ -89,8 +119,8 @@ def pyrovelocity(
     trajectory_dict = {
         "wrapper_type": "velocity",
         "velocity": adata.layers["velocity_pyro"],
-        "velocity_graph": adata.uns["velocity_graph"],
-        "velocity_graph_neg": adata.uns["velocity_graph_neg"],
+        "velocity_graph": adata.uns["velocity_pyro_graph"],
+        "velocity_graph_neg": adata.uns["velocity_pyro_graph_neg"],
         "neighbors": {"distances": adata.obsp["distances"], "connectivities": adata.obsp["connectivities"]},
         "obs_index": adata.obs.index,
         "var_index": adata.var.index,

@@ -5,27 +5,27 @@ import scanpy as sc
 
 from .method_testcase import method_testcase
 
-if_test_raw = False  # change to True when run in 'veloae' conda environment
+if_test_raw = False  # change to True when run in 'pyrovelocity' conda environment
 
 
 @pytest.mark.run_method
-class TestCFVeloAE:
+class TestCFPyrovelocity:
     def setup_method(self):
-        self.method_name = "veloae"
+        self.method_name = "pyrovelocity"
         self.adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/../../data/pancrease_scvelo_500_fadata.h5ad")
         self.parameters = {}
 
     # Test raw trajectory dict
-    # conda activate veloae
-    # pytest -s --tb=long test_cf_sctc.py
-    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'veloae'")
+    # conda activate pyrovelocity
+    # pytest -s --tb=long test_cf_pyrovelocity.py
+    @pytest.mark.skipif(not if_test_raw, reason="skip raw test, because it should be in conda environment 'pyrovelocity'")
     def test_raw(self):
         import sys
 
         sys.path.append("../../../cfe/method/function")  # prepare relative package file
-        from cf_veloae import veloae
+        from cf_pyrovelocity import pyrovelocity
 
-        trajectory_dict = veloae(self.adata, **self.parameters)
+        trajectory_dict = pyrovelocity(self.adata, **self.parameters)
         assert trajectory_dict["wrapper_type"] == "velocity"
 
     # Test three backends

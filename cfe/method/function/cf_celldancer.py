@@ -23,7 +23,17 @@ def celldancer(
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
 ):
-    """CellDancer: Estimating Cell-dependent RNA Velocity"""
+    """CellDancer: Estimating Cell-dependent RNA Velocity
+
+    Args:
+        adata (ad.AnnData): AnnData object
+        repreprocess (bool, optional): Whether to repreprocess the anndata object.
+        repreprocess_kwargs (dict, optional): Parameter dict for repreprocess pipeline.
+
+    Returns:
+        dict: trajectory dict with keys about velocity, only velocity_embedding is available
+    """
+
     import celldancer as cd
 
     # 1. preprocess
@@ -32,7 +42,7 @@ def celldancer(
 
     # 2. execute method
     # transfer adata to cellDancer format
-    cellDancer_df = cellDancer_df = cd.utilities.adata_to_df_with_embed(
+    cellDancer_df = cd.utilities.adata_to_df_with_embed(
         adata,
         us_para=["Mu", "Ms"],
         cell_type_para="clusters",

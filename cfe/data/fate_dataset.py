@@ -154,6 +154,7 @@ def read_pancrease(
     fadata.layers["counts"] = fadata.layers["spliced"]
     fadata.obs["raw_index"] = fadata.obs.index
     fadata.obs.index = [f"cell_{i:03d}" for i in range(fadata.shape[0])]
+    fadata.uns["filename"] = filename  # for methods that need filename rather than 'AnnData' object, such as pyrovelocity, unitvelo
 
     # automatically extracted prior information: {'cluster': 'clusters', 'basis': 'X_umap'}
     # add prior information mannully,
