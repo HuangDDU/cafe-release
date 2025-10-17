@@ -1,16 +1,24 @@
-from typing import List, Union, Optional,Dict, Callable
+from typing import Callable, Dict, List, Optional, Union
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
 
 from cfe.data import FateAnnData
-from cfe.metric.topology_metric import calc_isomorphic
 from cfe.metric._topology_metric.metric_flip import calculate_edge_flip
 from cfe.metric._topology_metric.metric_him import calculate_him
+from cfe.metric.cluster_metric import (
+    calculate_mapping_branches,
+    calculate_mapping_milestones,
+)
 from cfe.metric.metric_correlation import calculate_correlation
-from cfe.metric.cluster_metric import calculate_mapping_milestones, calculate_mapping_branches
+from cfe.metric.metric_featureimp import (  # fi_ranger_rf_tiny,
+    calculate_featureimp_cor,
+    fi_ranger_rf_lite,
+)
 from cfe.metric.metric_position_predict import calculate_position_predict
-from cfe.metric.metric_featureimp import fi_ranger_rf_lite,fi_ranger_rf_tiny, calculate_featureimp_cor
+
+# from cfe.metric.topology_metric import calc_isomorphic
 
 
 def calculate_metrics(
@@ -20,7 +28,7 @@ def calculate_metrics(
     simplify: bool = True,
     metrics: Optional[List[str]] = None,
     expression_source: str = "expression",
-    fi_method: Dict[str, Callable] = None
+    fi_method: Dict[str, Callable] = None,
 ) -> pd.DataFrame:
     """
     计算一组指标（严格使用你指定的指标名），比较 ref_model vs 多个预测模型。
@@ -38,14 +46,23 @@ def calculate_metrics(
     # 默认严格指标集合（按你要求）
     if metrics is None:
         metrics = [
-            "isomorphic", "edge_flip", "him", "correlation",
-            "F1_branches", "F1_milestones",
-            "rf_mse", "rf_nmse", "rf_rsq",
-            "lm_nmse", "lm_mse", "lm_rsq",
-            "featureimp_cor", "featureimp_wcor",
+            "isomorphic",
+            "edge_flip",
+            "him",
+            "correlation",
+            "F1_branches",
+            "F1_milestones",
+            "rf_mse",
+            "rf_nmse",
+            "rf_rsq",
+            "lm_nmse",
+            "lm_mse",
+            "lm_rsq",
+            "featureimp_cor",
+            "featureimp_wcor",
         ]
 
-    #获得存在的模型名
+    # 获得存在的模型名
     hist = fadata.uns.get("cfe", {}).get("trajectory_history_dict", {})
     # 检查参考模型是否存在
     if ref_model not in hist:
@@ -108,22 +125,26 @@ def calculate_metrics(
                     if net_ref is None or net_pred is None or net_ref.shape[0] == 0 or net_pred.shape[0] == 0:
                         vals["isomorphic"] = np.nan
                     else:
-                        G_ref = nx.from_pandas_edgelist(net_ref.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph)
-                        G_pred = nx.from_pandas_edgelist(net_pred.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph)
+                        G_ref = nx.from_pandas_edgelist(
+                            net_ref.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph
+                        )
+                        G_pred = nx.from_pandas_edgelist(
+                            net_pred.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph
+                        )
                         vals["isomorphic"] = 1.0 if nx.is_isomorphic(G_ref, G_pred) else 0.0
 
                 elif metric == "edge_flip":
                     if net_ref is None or net_pred is None:
                         vals["edge_flip"] = np.nan
                     else:
-                        #网络做了提前的简化，这里的symplify参数强制为False（默认值）
+                        # 网络做了提前的简化，这里的symplify参数强制为False（默认值）
                         vals["edge_flip"] = float(calculate_edge_flip(net_ref, net_pred, return_type="score"))
 
                 elif metric == "him":
                     if net_ref is None or net_pred is None:
                         vals["him"] = np.nan
                     else:
-                        #网络做了提前的简化，这里的symplify参数强制为False（默认值）
+                        # 网络做了提前的简化，这里的symplify参数强制为False（默认值）
                         vals["him"] = float(calculate_him(net_ref, net_pred))
 
                 elif metric == "correlation":
@@ -179,9 +200,9 @@ def calculate_metrics(
                                 fadata,
                                 ref_model=ref_model,
                                 pred_model=pred,
-                                expression_source=expression_source,   # 根据你的数据改成实际的 key
-                                fi_method=fi_method     # 使用默认轻量 RF，或者传你自定义的 fi_method
-                        )
+                                expression_source=expression_source,  # 根据你的数据改成实际的 key
+                                fi_method=fi_method,  # 使用默认轻量 RF，或者传你自定义的 fi_method
+                            )
                         # 可能返回 np.nan，需要容错转换
                         vals["featureimp_cor"] = float(_featureimp_cache.get("featureimp_cor", np.nan))
                         vals["featureimp_wcor"] = float(_featureimp_cache.get("featureimp_wcor", np.nan))
