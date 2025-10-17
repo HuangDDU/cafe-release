@@ -4,7 +4,7 @@ import pytest
 
 from cfe.data import FateAnnData
 from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.metric.metric_featureimp_v3 import (
+from cfe.metric.metric_featureimp import (
     calculate_feature_importances,
     calculate_featureimp_cor,
     calculate_featureimp_enrichment,

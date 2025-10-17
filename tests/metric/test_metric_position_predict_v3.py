@@ -4,7 +4,7 @@ import pytest
 
 from cfe.data import FateAnnData
 from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.metric.metric_position_predict_v3 import calculate_position_predict
+from cfe.metric.metric_position_predict import calculate_position_predict
 
 # from cfe.util.expand_matrix import expand_matrix
 
