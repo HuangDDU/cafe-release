@@ -1,149 +1,210 @@
-# from .topology_metric import calc_isomorphic, calculate_edge_flip
-# from .cluster_metric_v2 import calculate_mapping_branches, calculate_mapping_milestones
-# from cfe.metric._topology_metric.metric_him import calculate_him
-# from cfe.metric.metric_correlation_v2 import calculate_correlation
-# from cfe.metric.metric_position_predict_v2 import calculate_position_predict
-# from cfe.metric.metric_featureimp_v2 import  calculate_overall_feature_importance,calculate_featureimp_cor,calculate_featureimp_enrichment
+from typing import List, Union, Optional,Dict, Callable
+import numpy as np
+import pandas as pd
+import networkx as nx
 
-# def calculate_metrics(
-#         fadata,
-#         now_model=None,
-#         ref_model=None,
-#         simplify=True,
-#         metrics=["isomorphic", "edge_flip"]
-# ):
-#     summary_dict = {}
-
-#     if simplify:
-#         net1 = fadata.simplify_trajectory(ref_model)["milestone_network"]
-#         net2 = fadata.simplify_trajectory(now_model)["milestone_network"]
-#     else:
-#         net1 = fadata.trajectory_history_dict[ref_model]["milestone_wrapper"]["milestone_network"]
-#         net2 = fadata.trajectory_history_dict[now_model]["milestone_wrapper"]["milestone_network"]
-
-#     #metric correlation
-#     if "correlation" in metrics:
-#         summary_dict["correlation"]=calculate_correlation()
-
-#     # topology metric
-#     if "isomorphic" in metrics:
-#         summary_dict["isomorphic"] = calc_isomorphic(net1, net2)
-#     if "edge_flip" in metrics:
-#         summary_dict["edge_flip"] = calculate_edge_flip(net1, net2)
-#     if "him" in metrics:
-#         summary_dict["him"] = calculate_him(net1, net2)
-
-#     #position_predict metric
-#     if any(x in metrics for x in ["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"]):
-#         pass
-
-#     #featureimp metric
-#     if any(x in metrics for x in ["featureimp_cor", "featureimp_wcor"]):
-#         pass
-
-#     if any(x in metrics for x in ["featureimp_ks", "featureimp_wilcox"]):
-#         pass
-
-#     # cluster metric
-#     if "F1_branch" in metrics:
-#         summary_dict["F1_branch"] = calculate_mapping_branches()
-#     if "F1_milestone" in metrics:
-#         summary_dict["F1_milestone"] = calculate_mapping_milestones()
-
+from cfe.data import FateAnnData
+from cfe.metric.topology_metric import calc_isomorphic
+from cfe.metric._topology_metric.metric_flip import calculate_edge_flip
 from cfe.metric._topology_metric.metric_him import calculate_him
-from cfe.metric.metric_correlation_v2 import calculate_correlation
-from cfe.metric.metric_featureimp_v2 import (  # calculate_overall_feature_importance,
-    calculate_featureimp_cor,
-    calculate_featureimp_enrichment,
-)
-from cfe.metric.metric_position_predict_v2 import calculate_position_predict
-
-from .cluster_metric_v2 import calculate_mapping_branches, calculate_mapping_milestones
-
-#     return summary_dict
-from .topology_metric import calc_isomorphic, calculate_edge_flip
+from cfe.metric.metric_correlation import calculate_correlation
+from cfe.metric.cluster_metric import calculate_mapping_milestones, calculate_mapping_branches
+from cfe.metric.metric_position_predict import calculate_position_predict
+from cfe.metric.metric_featureimp import fi_ranger_rf_lite,fi_ranger_rf_tiny, calculate_featureimp_cor
 
 
-def calculate_metrics(fadata, now_model: str, ref_model: str, simplify: bool = True, metrics: list[str] = ["isomorphic", "edge_flip"]) -> dict:
+def calculate_metrics(
+    fadata: FateAnnData,
+    now_model: Union[str, List[str]] = "all",
+    ref_model: str = "ref",
+    simplify: bool = True,
+    metrics: Optional[List[str]] = None,
+    expression_source: str = "expression",
+    fi_method: Dict[str, Callable] = None
+) -> pd.DataFrame:
     """
-    汇总多种轨迹对比指标。
+    计算一组指标（严格使用你指定的指标名），比较 ref_model vs 多个预测模型。
 
-    Args:
-        fadata: FateAnnData，包含多条模型的 trajectory_history_dict。
-        now_model: 当前（预测）模型的 key。
-        ref_model: 参考模型的 key。
-        simplify: 是否先调用 simplify_trajectory 简化网络。
-        metrics: 要计算的指标列表。
+    默认 metrics（严格按你给出的名字）:
+      ["isomorphic","edge_flip","him","correlation","F1_branches","F1_milestones",
+       "rf_mse","rf_nmse","rf_rsq","lm_nmse","lm_mse","lm_rsq","featureimp_cor","featureimp_wcor"]
 
-    Returns:
-        dict: 各指标的标量结果。
+    返回 DataFrame：index 为预测模型名，columns 对应 metrics（若某些指标无效则为 NaN）。
+
     """
-    summary: dict[str, float] = {}
+    if fi_method is None:
+        fi_method = fi_ranger_rf_lite()
 
-    # 1. 拿到两个里程碑网络（简化或原始）
-    if simplify:
-        net1 = fadata.simplify_trajectory(ref_model)["milestone_network"]
-        net2 = fadata.simplify_trajectory(now_model)["milestone_network"]
+    # 默认严格指标集合（按你要求）
+    if metrics is None:
+        metrics = [
+            "isomorphic", "edge_flip", "him", "correlation",
+            "F1_branches", "F1_milestones",
+            "rf_mse", "rf_nmse", "rf_rsq",
+            "lm_nmse", "lm_mse", "lm_rsq",
+            "featureimp_cor", "featureimp_wcor",
+        ]
+
+    #获得存在的模型名
+    hist = fadata.uns.get("cfe", {}).get("trajectory_history_dict", {})
+    # 检查参考模型是否存在
+    if ref_model not in hist:
+        raise ValueError(f"参考模型 '{ref_model}' 不在 fadata.uns['cfe']['trajectory_history_dict'] 中。可用模型：{list(hist.keys())}")
+
+    available_models = list(hist.keys())
+
+    # 构建预测模型名
+    if isinstance(now_model, list):
+        pred_models = now_model
+    elif isinstance(now_model, str) and now_model == "all":
+        pred_models = [m for m in available_models if m != ref_model]
     else:
-        net1 = fadata.trajectory_history_dict[ref_model]["milestone_wrapper"]["milestone_network"]
-        net2 = fadata.trajectory_history_dict[now_model]["milestone_wrapper"]["milestone_network"]
-    # if simplify:
-    #     simp_ref = fadata.simplify_trajectory(ref_model)
-    #     net1 = simp_ref.milestone_network
-    #     simp_now = fadata.simplify_trajectory(now_model)
-    #     net2 = simp_now.milestone_network
-    # else:
-    #     hist = fadata.trajectory_history_dict
-    #     net1 = hist[ref_model]["milestone_wrapper"].milestone_network
-    #     net2 = hist[now_model]["milestone_wrapper"].milestone_network
+        pred_models = [now_model]
 
-    # 2. 拓扑指标
-    if "isomorphic" in metrics:
-        summary["isomorphic"] = calc_isomorphic(net1, net2)
-    if "edge_flip" in metrics:
-        summary["edge_flip"] = calculate_edge_flip(net1, net2)
-    if "him" in metrics:
-        summary["him"] = calculate_him(net1, net2)
+    # 过滤掉不存在的模型
+    pred_models = [m for m in pred_models if m in hist]
+    if len(pred_models) == 0:
+        return pd.DataFrame(columns=metrics, index=[])
 
-    # 3. 相关性指标
-    if "correlation" in metrics:
-        corr_res = calculate_correlation(fadata, ref_model=ref_model, pred_model=now_model)
-        # calculate_correlation 返回 dict，取其中的 'correlation' 值
-        summary["correlation"] = corr_res.get("correlation", 0.0)
+    rows = []
+    idx = []
 
-    # 4. 位置预测指标
-    pos_keys = ["rf_mse", "rf_rsq", "rf_nmse", "lm_mse", "lm_rsq", "lm_nmse"]
-    if any(k in metrics for k in pos_keys):
-        pos_res = calculate_position_predict(fadata, ref_model=ref_model, pred_model=now_model, metrics=metrics)
-        # 只取用户指定的那些指标
-        for k in pos_keys:
-            if k in metrics and k in pos_res:
-                summary[k] = pos_res[k]
+    # 辅助函数：获取里程碑网络（简化或原始）
+    def _get_milestone_network(model_name: str, do_simplify: bool):
+        try:
+            if do_simplify:
+                # 简化后的里程碑网络
+                mw_simpl = fadata.simplify_trajectory(model_name)
+                return mw_simpl.milestone_network
+            else:
+                md = hist.get(model_name, {})
+                mw = md.get("milestone_wrapper")
+                if mw is None:
+                    return None
+                if isinstance(mw, dict):
+                    # 可能是个 dict，取其中的 milestone_network
+                    mn = mw.get("milestone_network")
+                    if mn is None:
+                        return None
+                    return pd.DataFrame(mn)
+                else:
+                    return mw.milestone_network
+        except Exception:
+            return None
 
-    # 5. 特征重要性指标
-    # 5.1 整体相关性
-    fi_cor_keys = ["featureimp_cor", "featureimp_wcor"]
-    if any(k in metrics for k in fi_cor_keys):
-        fic_res = calculate_featureimp_cor(fadata, ref_model=ref_model, pred_model=now_model)
-        for k in fi_cor_keys:
-            if k in metrics:
-                summary[k] = fic_res.get(k, 0.0)
+    for pred in pred_models:
+        _featureimp_cache = None  # 缓存特征重要性结果，避免重复计算
+        idx.append(pred)
+        vals = {m: np.nan for m in metrics}  # 初始化所有 requested metrics 为 NaN
 
-    # 5.2 富集检验
-    fi_enr_keys = ["featureimp_ks", "featureimp_wilcox"]
-    if any(k in metrics for k in fi_enr_keys):
-        fie_res = calculate_featureimp_enrichment(fadata, ref_model=ref_model, pred_model=now_model)
-        for k in fi_enr_keys:
-            if k in metrics:
-                summary[k] = fie_res.get(k, 0.0)
+        # 获取两个里程碑网络
+        net_ref = _get_milestone_network(ref_model, simplify)
+        net_pred = _get_milestone_network(pred, simplify)
 
-    # 6. 分组映射指标（Cluster metrics）
-    if "F1_branch" in metrics:
-        cm = calculate_mapping_branches(fadata, simplify=simplify, ref_model=ref_model, pred_model=now_model)
-        # calculate_mapping_branches 返回带后缀 "_branches" 的 F1
-        summary["F1_branch"] = cm.get("F1_branches", 0.0)
-    if "F1_milestone" in metrics:
-        cm2 = calculate_mapping_milestones(fadata, simplify=simplify, ref_model=ref_model, pred_model=now_model)
-        summary["F1_milestone"] = cm2.get("F1_milestones", 0.0)
+        # 对每个指定的指标名进行映射计算（捕获异常并保留 NaN）
+        for metric in metrics:
+            try:
+                if metric == "isomorphic":
+                    if net_ref is None or net_pred is None or net_ref.shape[0] == 0 or net_pred.shape[0] == 0:
+                        vals["isomorphic"] = np.nan
+                    else:
+                        G_ref = nx.from_pandas_edgelist(net_ref.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph)
+                        G_pred = nx.from_pandas_edgelist(net_pred.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph)
+                        vals["isomorphic"] = 1.0 if nx.is_isomorphic(G_ref, G_pred) else 0.0
 
-    return summary
+                elif metric == "edge_flip":
+                    if net_ref is None or net_pred is None:
+                        vals["edge_flip"] = np.nan
+                    else:
+                        #网络做了提前的简化，这里的symplify参数强制为False（默认值）
+                        vals["edge_flip"] = float(calculate_edge_flip(net_ref, net_pred, return_type="score"))
+
+                elif metric == "him":
+                    if net_ref is None or net_pred is None:
+                        vals["him"] = np.nan
+                    else:
+                        #网络做了提前的简化，这里的symplify参数强制为False（默认值）
+                        vals["him"] = float(calculate_him(net_ref, net_pred))
+
+                elif metric == "correlation":
+                    # 取其返回 dict 中的 'correlation'
+                    try:
+                        cm = calculate_correlation(fadata, ref_model=ref_model, pred_model=pred)
+                        vals["correlation"] = float(cm.get("correlation", np.nan))
+                    except Exception:
+                        vals["correlation"] = np.nan
+
+                elif metric == "F1_milestones":
+                    try:
+                        mm = calculate_mapping_milestones(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
+                        # mm 返回 {'recovery_milestones', 'relevance_milestones', 'F1_milestones'}
+                        vals["F1_milestones"] = float(mm.get("F1_milestones", np.nan))
+                    except Exception:
+                        vals["F1_milestones"] = np.nan
+
+                elif metric == "F1_branches":
+                    try:
+                        mb = calculate_mapping_branches(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
+                        vals["F1_branches"] = float(mb.get("F1_branches", np.nan))
+                    except Exception:
+                        vals["F1_branches"] = np.nan
+
+                elif metric in ("rf_mse", "rf_nmse", "rf_rsq", "lm_mse", "lm_rsq", "lm_nmse"):
+                    # 用一次 calculate_position_predict 得到所有位置预测指标
+                    try:
+                        pp = calculate_position_predict(fadata, ref_model=ref_model, pred_model=pred)
+                        summary = pp.get("summary", {})
+                        # rf
+                        if "rf_mse" in summary:
+                            vals["rf_mse"] = float(summary.get("rf_mse", np.nan))
+                        if "rf_rsq" in summary:
+                            vals["rf_rsq"] = float(summary.get("rf_rsq", np.nan))
+                        if "rf_nmse" in summary:
+                            vals["rf_nmse"] = float(summary.get("rf_nmse", np.nan))
+                        # lm
+                        if "lm_mse" in summary:
+                            vals["lm_mse"] = float(summary.get("lm_mse", np.nan))
+                        if "lm_rsq" in summary:
+                            vals["lm_rsq"] = float(summary.get("lm_rsq", np.nan))
+                        if "lm_nmse" in summary:
+                            vals["lm_nmse"] = float(summary.get("lm_nmse", np.nan))
+                    except Exception:
+                        # 保持这些键为 NaN（已初始化）
+                        pass
+
+                elif metric in ("featureimp_cor", "featureimp_wcor"):
+                    try:
+                        if _featureimp_cache is None:
+                            _featureimp_cache = calculate_featureimp_cor(
+                                fadata,
+                                ref_model=ref_model,
+                                pred_model=pred,
+                                expression_source=expression_source,   # 根据你的数据改成实际的 key
+                                fi_method=fi_method     # 使用默认轻量 RF，或者传你自定义的 fi_method
+                        )
+                        # 可能返回 np.nan，需要容错转换
+                        vals["featureimp_cor"] = float(_featureimp_cache.get("featureimp_cor", np.nan))
+                        vals["featureimp_wcor"] = float(_featureimp_cache.get("featureimp_wcor", np.nan))
+                    except Exception:
+                        vals["featureimp_cor"] = np.nan
+                        vals["featureimp_wcor"] = np.nan
+
+                else:
+                    # 未知严格指标名 —— 保持 NaN
+                    vals[metric] = np.nan
+
+            except Exception:
+                # 任何子计算失败，不抛出，留下 NaN
+                vals[metric] = np.nan
+
+        rows.append(vals)
+
+    # 构造 DataFrame，确保列按传入 metrics 顺序（如果某些列没有出现在 vals 中，就仍然以传入的 metrics 列显示并填 NaN）
+    df = pd.DataFrame(rows, index=idx)
+    # 确保列存在且顺序一致（如果某些 requested metric 列不存在就补上 NaN）
+    for m in metrics:
+        if m not in df.columns:
+            df[m] = np.nan
+    df = df[metrics]
+
+    return df

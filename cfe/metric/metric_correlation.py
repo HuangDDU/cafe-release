@@ -1,5 +1,6 @@
 import sys
 import time
+from typing import Dict
 
 import numpy as np
 from scipy.stats import spearmanr
@@ -7,83 +8,78 @@ from scipy.stats import spearmanr
 from cfe.data import FateAnnData
 
 
-def calc_correlation(fadata_ref: FateAnnData, fadata_pred: FateAnnData) -> dict:
+def calculate_correlation(fadata: FateAnnData, ref_model: str = "ref", pred_model: str = "default") -> Dict[str, float]:
     """
-    计算 FateAnnData 数据集与预测模型之间的地理距离相关性。
-
-    要求 fadata_ref 和 fadata_pred 均已通过 add_trajectory() 添加轨迹信息，
-    并调用 add_waypoints() 得到 waypoint_wrapper。
+    计算两条已添加 waypoint 的轨迹（ref_model vs pred_model）之间的地理距离 Spearman 相关性。
+    两个模型和它们对应的 waypoint_wrapper 都存储在同一个 FateAnnData.uns['cfe']['trajectory_history_dict'] 中。
 
     Args:
-        fadata_ref: 参考轨迹数据 (FateAnnData)
-        fadata_pred: 预测轨迹数据 (FateAnnData)
+        fadata: 已经对多条轨迹都调用过 add_trajectory() 和 add_waypoints() 的 FateAnnData。
+        ref_model: 参考模型的 key（trajectory_history_dict 中的字典键）。
+        pred_model: 预测模型的 key。
 
     Returns:
-        dict: 包含 'correlation'、'time_waypoint_geodesic_ref'、'time_waypoint_geodesic_pred' 和 'time_correlation'
+        metrics: {
+            'correlation': float,
+            'time_waypoint_geodesic_ref': float,
+            'time_waypoint_geodesic_pred': float,
+            'time_correlation': float
+        }
+        若任一模型不存在或未生成 waypoint_wrapper，则直接返回 {'correlation': 0.0}。
     """
-    metrics = {}
-    # 验证数据结构
-    """
-    此处出自pydynverse
-    #TODO:这里的逻辑可能需要补齐（不过暂时不管）
-    if not is_wrapper_with_waypoint_cells(dataset):
-        raise ValueError("Dataset must contain waypoint cells")
-    if prediction is not None and not is_wrapper_with_waypoint_cells(prediction):
-        raise ValueError("Prediction model must contain waypoint cells")
-    """
-    if fadata_pred is None:
-        return {"correlation": 0.0}
+    metrics: Dict[str, float] = {"correlation": 0.0}
 
-    # 确保预测中的细胞都在参考数据中
-    ref_cell_ids = list(fadata_ref.obs.index)
-    pred_cell_ids = list(fadata_pred.obs.index)
-    if not all(cell in ref_cell_ids for cell in pred_cell_ids):
-        missing = set(pred_cell_ids) - set(ref_cell_ids)
-        raise ValueError(f"Prediction contains unknown cells: {missing}")
+    # 1. 取出所有历史轨迹
+    hist = fadata.uns.get("cfe", {}).get("trajectory_history_dict", {})
+    if ref_model not in hist or pred_model not in hist:
+        return metrics
 
-    # 统一细胞顺序：采用参考数据的排序
-    sorted_cells = sorted(ref_cell_ids)
-    fadata_ref.obs = fadata_ref.obs.loc[sorted_cells]
-    fadata_pred.obs = fadata_pred.obs.loc[sorted_cells]
+    wp_ref = hist[ref_model].get("waypoint_wrapper")
+    wp_pred = hist[pred_model].get("waypoint_wrapper")
+    if wp_ref is None or wp_pred is None:
+        raise ValueError(f"Both models must have waypoint_wrapper; " f"did you call add_waypoints() for '{ref_model}' and '{pred_model}'?")
 
-    # 检查是否已添加 waypoint_wrapper
-    if not fadata_ref.is_wrapped_with_waypoints or not fadata_pred.is_wrapped_with_waypoints:
-        raise ValueError("Both FateAnnData objects must have been wrapped with waypoints (call add_waypoints()).")
+    # 2. 计算参考模型的 geodesic 距离并计时
+    t0 = time.time()
+    ref_dist_df = wp_ref._calculate_geodesic_distances()
+    metrics["time_waypoint_geodesic_ref"] = time.time() - t0
 
-    # 获取 waypoint_wrapper（当前模型默认使用 "default"）
-    wp_ref = fadata_ref.waypoint_wrapper
-    wp_pred = fadata_pred.waypoint_wrapper
+    # 3. 计算预测模型的 geodesic 距离并计时
+    t1 = time.time()
+    pred_dist_df = wp_pred._calculate_geodesic_distances()
+    metrics["time_waypoint_geodesic_pred"] = time.time() - t1
 
-    # 计算地理距离矩阵（调用 waypoint_wrapper 内部方法 _calculate_geodesic_distances）
-    start_time = time.time()
-    ref_dist = wp_ref._calculate_geodesic_distances()  # DataFrame：索引为 waypoint_id，列为 cell_id
-    metrics["time_waypoint_geodesic_ref"] = time.time() - start_time
+    # 4. 对齐：取两张表共有的 waypoint 行、所有细胞列
+    common_wps = sorted(set(ref_dist_df.index) & set(pred_dist_df.index))
+    if not common_wps:
+        # 没有公共 waypoints，直接返回 0
+        return metrics
 
-    start_time = time.time()
-    pred_dist = wp_pred._calculate_geodesic_distances()
-    metrics["time_waypoint_geodesic_pred"] = time.time() - start_time
+    cells = sorted(fadata.obs.index.tolist())
+    try:
+        ref_arr = ref_dist_df.loc[common_wps, cells].to_numpy(dtype=np.float64)
+        pred_arr = pred_dist_df.loc[common_wps, cells].to_numpy(dtype=np.float64)
+    except KeyError as e:
+        raise RuntimeError(f"细胞 ID 对齐失败：" f"{e}. 请确保 obs.index 与 waypoint_distances 的列标签一致。")
 
-    # 将无限值替换为最大浮点数
-    max_float = sys.float_info.max
+    # 5. 替换无穷大/NaN 为最大浮点数
+    maxf = sys.float_info.max
+    ref_arr[np.isinf(ref_arr) | np.isnan(ref_arr)] = maxf
+    pred_arr[np.isinf(pred_arr) | np.isnan(pred_arr)] = maxf
 
-    def replace_inf(df, max_float):
-        return df.replace([np.inf, -np.inf], max_float).to_numpy(dtype=np.float64)
-
-    ref_arr = replace_inf(ref_dist, max_float)
-    pred_arr = replace_inf(pred_dist, max_float)
-
-    # 检查矩阵尺寸是否一致
+    # 6. 维度一致性检查
     if ref_arr.shape != pred_arr.shape:
-        raise RuntimeError(f"Distance matrix shape mismatch: {ref_arr.shape} vs {pred_arr.shape}")
+        raise RuntimeError(f"距离矩阵维度不匹配：" f"ref {ref_arr.shape} vs pred {pred_arr.shape}")
 
-    # 计算 Spearman 相关系数
-    start_time = time.time()
+    # 7. 计算 Spearman 相关并计时
+    t2 = time.time()
+    # 如果全部元素都相同，则相关性设为 0
     if np.unique(ref_arr).size == 1 or np.unique(pred_arr).size == 1:
         corr = 0.0
     else:
         corr, _ = spearmanr(ref_arr.flatten(), pred_arr.flatten())
-        corr = max(corr, 0.0)
+        corr = max(corr, 0.0)  # 不要负值
     metrics["correlation"] = corr
-    metrics["time_correlation"] = time.time() - start_time
+    metrics["time_correlation"] = time.time() - t2
 
     return metrics

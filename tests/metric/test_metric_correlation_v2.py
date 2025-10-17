@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from cfe.data import FateAnnData
-from cfe.metric.metric_correlation_v2 import calculate_correlation
+from cfe.metric.metric_correlation import calculate_correlation
 
 
 @pytest.fixture
