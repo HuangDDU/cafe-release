@@ -1,20 +1,21 @@
-from collections.abc import Mapping
-from types import MappingProxyType
-from typing import Any
+# from collections.abc import Mapping
+# from types import MappingProxyType
+# from typing import Any
 
-import h5py
+# import h5py
 import pandas as pd
-from anndata._io.specs.registry import (  # global I/O registry
-    _REGISTRY,
-    IOSpec,
-    Reader,
-    Writer,
-)
-from anndata._types import GroupStorageType
 
 from .._logging import logger
 from ..util import random_time_string
 from .fate_wrapper import FateWrapper
+
+# from anndata._io.specs.registry import (  # global I/O registry
+#     _REGISTRY,
+#     IOSpec,
+#     Reader,
+#     Writer,
+# )
+# from anndata._types import GroupStorageType
 
 
 class MilestoneWrapper(FateWrapper):
@@ -199,46 +200,46 @@ class MilestoneWrapper(FateWrapper):
 
 # TODO: read and write h5ad automatically. However, it will be error if the h5ad file is loaded in a new environment without cef moudle loaded.
 # attributes need to be read and written
-attribute_name_list = [
-    "milestone_network",
-    "cell_id_list",
-    "divergence_regions",
-    "milestone_percentages",
-    "progressions",
-    "name",
-]
+# attribute_name_list = [
+#     "milestone_network",
+#     "cell_id_list",
+#     "divergence_regions",
+#     "milestone_percentages",
+#     "progressions",
+#     "name",
+# ]
 
 
-@_REGISTRY.register_write(dest_type=h5py.Group, src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
-def write_milestone_wrapper(
-    f: GroupStorageType,
-    k: str,
-    milestone_wrapper: MilestoneWrapper,
-    *,
-    _writer: Writer,
-    dataset_kwargs: Mapping[str, Any] = MappingProxyType({}),
-):
-    # create h5 key and save for MilestoneWrapper and WaypointWrapper
-    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py write_anndata
-    # print(f"write_milestone_wrapper")
-    g = f.require_group(k)
-    for attribute_name in attribute_name_list:
-        attribute = getattr(milestone_wrapper, attribute_name, None)
-        if attribute is not None:
-            _writer.write_elem(g, attribute_name, attribute, dataset_kwargs=dataset_kwargs)
+# @_REGISTRY.register_write(dest_type=h5py.Group, src_type=MilestoneWrapper, spec=IOSpec("MilestoneWrapper", "0.1.0"))
+# def write_milestone_wrapper(
+#     f: GroupStorageType,
+#     k: str,
+#     milestone_wrapper: MilestoneWrapper,
+#     *,
+#     _writer: Writer,
+#     dataset_kwargs: Mapping[str, Any] = MappingProxyType({}),
+# ):
+#     # create h5 key and save for MilestoneWrapper and WaypointWrapper
+#     # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py write_anndata
+#     # print(f"write_milestone_wrapper")
+#     g = f.require_group(k)
+#     for attribute_name in attribute_name_list:
+#         attribute = getattr(milestone_wrapper, attribute_name, None)
+#         if attribute is not None:
+#             _writer.write_elem(g, attribute_name, attribute, dataset_kwargs=dataset_kwargs)
 
 
-@_REGISTRY.register_read(h5py.Group, IOSpec("MilestoneWrapper", "0.1.0"))
-def read_milestone_wrapper(elem: GroupStorageType, *, _reader: Reader):
-    # read and create MilestoneWrapper object
-    # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
-    print("read_milestone_wrapper")
-    d = {}
-    for attribute_name in attribute_name_list:
-        if attribute_name in elem:
-            d[attribute_name] = _reader.read_elem(elem[attribute_name])
-    # TODO: create object by __new__ function, add attribute mannualy
-    mw = MilestoneWrapper.__new__(MilestoneWrapper)
-    for k, v in d.items():
-        setattr(mw, k, v)
-    return mw
+# @_REGISTRY.register_read(h5py.Group, IOSpec("MilestoneWrapper", "0.1.0"))
+# def read_milestone_wrapper(elem: GroupStorageType, *, _reader: Reader):
+#     # read and create MilestoneWrapper object
+#     # ref：https://github.com/scverse/anndata/blob/main/src/anndata/_io/specs/methods.py read_anndata
+#     print("read_milestone_wrapper")
+#     d = {}
+#     for attribute_name in attribute_name_list:
+#         if attribute_name in elem:
+#             d[attribute_name] = _reader.read_elem(elem[attribute_name])
+#     # TODO: create object by __new__ function, add attribute mannualy
+#     mw = MilestoneWrapper.__new__(MilestoneWrapper)
+#     for k, v in d.items():
+#         setattr(mw, k, v)
+#     return mw

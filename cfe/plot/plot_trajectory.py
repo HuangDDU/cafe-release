@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -13,10 +15,11 @@ from .add_color import add_milestone_cell_color, add_milestone_color
 
 def plot_trajectory(
     fadata: FateAnnData,
-    model_name: str = None,
-    color: str | list = None,
+    model_name: str | Sequence[str] | None = None,
+    color: str | Sequence[str] | None = None,
     basis: str = None,
     curve: bool = True,
+    layout_by_row: str = "color",
     milestone_color: str | list = None,
     color_trajectory: str = None,
     size_milestones: int = 30,
@@ -36,135 +39,157 @@ def plot_trajectory(
         color_trajectory (str, optional): trajectory color.
     """
 
-    if basis is None:
-        basis = fadata.prior_information.get("basis")
-        logger.debug(f"extract '{basis}' from prior infomation as parameter 'basis' ")
+    if model_name is None:
+        model_name = fadata.model_name
     if color is None:
         color = fadata.prior_information.get("cluster")
         logger.debug(f"extract '{color}' from prior infomation as parameter 'color' ")
+    if basis is None:
+        basis = fadata.prior_information.get("basis")
+        logger.debug(f"extract '{basis}' from prior infomation as parameter 'basis' ")
 
-    logger.debug("plot_trajectory")
-    milestone_wrapper = fadata.get_milestone_wrapper(model_name)
-    if (color == "milestone") or ((isinstance(color, list)) and ("milestone" in color)):
-        # add milestone mixed color
-        milestone_id_list = milestone_wrapper["id_list"]
-        milestone_percentages = milestone_wrapper["milestone_percentages"]
-        milestone_color_list = add_milestone_color(len(milestone_id_list))
-        milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
-        milestone_wrapper.color_list = [mcolors.to_hex(mc) for mc in milestone_color_list]  # add color for CXG visualization
-        fadata.uns["milestone_color_dict"] = milestone_color_dict
-        cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
-        fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
-        fadata.uns["milestone_colors"] = cell_color_df.loc[fadata.obs.index].values
+    model_name_list = [model_name] if isinstance(model_name, str) else model_name
+    color_list = [color] if isinstance(color, str) else color
 
-    # base cell embedding
-    ax_list = sc.pl.embedding(fadata, color=color, basis=basis, **sc_pl_embedding_kwargs, show=False)
+    if len(model_name_list) == 1:
+        layout_by_row = "model"  # only one model as row
+    if len(color_list) == 1:
+        layout_by_row = "color"  # only one color as row
 
-    # trajectory embedding
-    trajectory_embedding = fadata.get_trajectory_embedding(basis, model_name)  # trajectory embedding for specific basis
-    if trajectory_embedding is None:
-        logger.debug(f"calculate new trajectory embedding for model_name:{model_name}, basis:{basis}.")
-        # new trajectory embedding, project and save
-        # project waypoint to embedding space
-        cell_positions = pd.DataFrame(data=fadata.obsm[basis][:, :2], columns=["comp_1", "comp_2"])
-        cell_positions["cell_id"] = fadata.obs.index
-        waypoint_projection = project_waypoints(fadata, cell_positions, model_name)
+    # create subplots
+    if layout_by_row == "model":
+        row_list, col_list = model_name_list, color_list
+    elif layout_by_row == "color":
+        row_list, col_list = color_list, model_name_list
+    n_rows = len(row_list)
+    n_cols = len(col_list)
+    figsize = sc_pl_embedding_kwargs.pop("figsize", (7 * n_cols, 5 * n_rows))  # replace sc plt figsize
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
 
-        # plot waypoint to show trajectory
-        wp_segments = waypoint_projection["segments"]  # projection to trajectory
-        milestone_positions = wp_segments[wp_segments["milestone_id"].apply(lambda x: x is not None)]  # only save waypoint on milestone
-
-        # save trajectory embedding which is related to cell embbeding
-        fadata.set_trajectory_embedding(wp_segments, milestone_positions, basis, model_name)
-
-    else:
-        # old trajectory embedding, read from fadata
-        milestone_positions = trajectory_embedding["milestone_positions"]
-        wp_segments = trajectory_embedding["wp_segments"]
-
-    # temporal dataframe csv file for cellxgene visualization
-    # milestone_positions.to_csv(f"tmp_milestone_positions.csv")
-    # wp_segments.to_csv(f"tmp_wp_segments.csv")
-    # print("Successfully write 'tmp_milestone_positions.csv' and 'tmp_wp_segments.csv' for cellxgene visualization")
-
-    # plot waypoint curve
-    ax_list = ax_list if isinstance(ax_list, list) else [ax_list]
-    color = color if isinstance(color, list) else [color]
-    for i in range(len(color)):
-        ax = ax_list[i]
-        c = color[i]
-        if c == "milestone":
-            ax.legend().remove()  # remove legend for color with milestone , but it waste time for show and remove
-
-        directed = milestone_wrapper["milestone_network"]["directed"].any()
-        if curve:
-            # draw milestone
-            ax.scatter(milestone_positions["comp_1"], milestone_positions["comp_2"], c="black", s=size_milestones)  # waypoint scatter
-
-            # connect waypoint scatter points into a curve
-            for g in wp_segments["group"].unique():
-                wp_segments_g = wp_segments[wp_segments["group"] == g]
-                ax.plot(wp_segments_g["comp_1"], wp_segments_g["comp_2"], c="black", linewidth=size_transitions)
-
-            # plot arrow at the midpoint of edge.
-            if directed:
-
-                def get_arrow_df(group):
-                    group = group.sort_values(by="percentage")
-                    start = group.iloc[0]
-                    end = group.iloc[-1]
-                    # scale vector to aimed norm length for smooth curve
-                    dx = end["comp_1"] - start["comp_1"]
-                    dy = end["comp_2"] - start["comp_2"]
-                    target_norm = 0.01
-                    scale = target_norm / np.linalg.norm([dx, dy])
-                    dx = scale * dx
-                    dy = scale * dy
-                    s = pd.Series({"x": start["comp_1"], "y": start["comp_2"], "dx": dx, "dy": dy})
-                    return s
-
-                arrow_df = wp_segments[wp_segments["arrow"]].groupby("group").apply(get_arrow_df)
-                ax.quiver(arrow_df["x"], arrow_df["y"], arrow_df["dx"], arrow_df["dy"])
-            if color_trajectory is None:
-                # TODO: add color to trajectory
-                pass
-            else:
-                pass
+    # multiple model and color support
+    for i, model_name in enumerate(model_name_list):
+        # trajectory embedding extraction or calculation
+        trajectory_embedding = fadata.get_trajectory_embedding(basis, model_name)  # trajectory embedding for specific basis
+        if trajectory_embedding is None:
+            logger.debug(f"calculate new trajectory embedding for model_name:{model_name}, basis:{basis}.")
+            # new trajectory embedding, project and save
+            # project waypoint to embedding space
+            cell_positions = pd.DataFrame(data=fadata.obsm[basis][:, :2], columns=["comp_1", "comp_2"])
+            cell_positions["cell_id"] = fadata.obs.index
+            waypoint_projection = project_waypoints(fadata, cell_positions, model_name)
+            # plot waypoint to show trajectory
+            wp_segments = waypoint_projection["segments"]  # projection to trajectory
+            milestone_positions = wp_segments[wp_segments["milestone_id"].apply(lambda x: x is not None)]  # only save waypoint on milestone
+            # save trajectory embedding which is related to cell embbeding
+            fadata.set_trajectory_embedding(wp_segments, milestone_positions, basis, model_name)
         else:
-            # directly use NetworkX to draw milestone network
-            G = nx.from_pandas_edgelist(
-                milestone_wrapper["milestone_network"],
-                source="from",
-                target="to",
-                create_using=nx.DiGraph if directed else nx.Graph,
-            )
+            # old trajectory embedding, read from fadata
+            milestone_positions = trajectory_embedding["milestone_positions"]
+            wp_segments = trajectory_embedding["wp_segments"]
+        # temporal dataframe csv file for cellxgene visualization
+        # milestone_positions.to_csv(f"tmp_milestone_positions.csv")
+        # wp_segments.to_csv(f"tmp_wp_segments.csv")
+        # print("Successfully write 'tmp_milestone_positions.csv' and 'tmp_wp_segments.csv' for cellxgene visualization")
 
-            # get milestone positions
-            def get_milestone(row):
-                f, t = row["group"].split("---")
-                if row["percentage"] == 0:
-                    return f
+        for j, color in enumerate(color_list):
+            if layout_by_row == "model":
+                ax = axes[i, j]  # row is model_name, col is color
+            else:
+                ax = axes[j, i]  # row is color, col is model_name
+            logger.debug("plot_trajectory")
+            milestone_wrapper = fadata.get_milestone_wrapper(model_name)
+            if (color == "milestone") or ((isinstance(color, list)) and ("milestone" in color)):
+                # add milestone mixed color
+                milestone_id_list = milestone_wrapper["id_list"]
+                milestone_percentages = milestone_wrapper["milestone_percentages"]
+                milestone_color_list = add_milestone_color(len(milestone_id_list))
+                milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
+                milestone_wrapper.color_list = [mcolors.to_hex(mc) for mc in milestone_color_list]  # add color for CXG visualization
+                fadata.uns["milestone_color_dict"] = milestone_color_dict
+                cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
+                fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
+                fadata.uns["milestone_colors"] = cell_color_df.loc[fadata.obs.index].values
+
+            # base scanpy embedding scatter plot
+            sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
+            sc.pl.embedding(fadata, color=color, basis=basis, ax=ax, show=False, **sc_pl_embedding_kwargs)  # base cell embedding
+
+            # legend remove
+            if color == "milestone" or (layout_by_row == "color" and i < len(model_name) - 1):
+                # milestone colors are too many, remove legend to save space
+                # when color is row, only show legend for the last model
+                ax.legend().remove()  # remove legend for color with milestone, but it waste time for show and remove
+
+            # milestone and waypoint trajectory plot
+            directed = milestone_wrapper["milestone_network"]["directed"].any()
+            if curve:
+                # draw milestone
+                ax.scatter(milestone_positions["comp_1"], milestone_positions["comp_2"], c="black", s=size_milestones)  # waypoint scatter
+
+                # connect waypoint scatter points into a curve
+                for g in wp_segments["group"].unique():
+                    wp_segments_g = wp_segments[wp_segments["group"] == g]
+                    ax.plot(wp_segments_g["comp_1"], wp_segments_g["comp_2"], c="black", linewidth=size_transitions)
+
+                # plot arrow at the midpoint of edge.
+                if directed:
+
+                    def get_arrow_df(group):
+                        group = group.sort_values(by="percentage")
+                        start = group.iloc[0]
+                        end = group.iloc[-1]
+                        # scale vector to aimed norm length for smooth curve
+                        dx = end["comp_1"] - start["comp_1"]
+                        dy = end["comp_2"] - start["comp_2"]
+                        target_norm = 0.01
+                        scale = target_norm / np.linalg.norm([dx, dy])
+                        dx = scale * dx
+                        dy = scale * dy
+                        s = pd.Series({"x": start["comp_1"], "y": start["comp_2"], "dx": dx, "dy": dy})
+                        return s
+
+                    arrow_df = wp_segments[wp_segments["arrow"]].groupby("group").apply(get_arrow_df)
+                    ax.quiver(arrow_df["x"], arrow_df["y"], arrow_df["dx"], arrow_df["dy"])
+                if color_trajectory is None:
+                    # TODO: add color to trajectory
+                    pass
                 else:
-                    return t
+                    pass
+            else:
+                # directly use NetworkX to draw milestone network
+                G = nx.from_pandas_edgelist(
+                    milestone_wrapper["milestone_network"],
+                    source="from",
+                    target="to",
+                    create_using=nx.DiGraph if directed else nx.Graph,
+                )
 
-            milestone_positions.apply(lambda row: get_milestone, axis=1)
-            milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
-            milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
-            pos = dict(zip(milestone_positions["milestone_id"], milestone_positions[["comp_1", "comp_2"]].values))
-            milestone_color_dict = fadata.uns["milestone_color_dict"]
+                # get milestone positions
+                def get_milestone(row):
+                    f, t = row["group"].split("---")
+                    if row["percentage"] == 0:
+                        return f
+                    else:
+                        return t
 
-            nx.draw_networkx(
-                G=G,
-                pos=pos,
-                node_color=[milestone_color_dict[node] for node in G.nodes],
-                width=3,
-                arrowsize=15,
-                linewidths=3,
-                edgecolors="black",
-                ax=ax,
-            )
+                milestone_positions.apply(lambda row: get_milestone, axis=1)
+                milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
+                milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
+                pos = dict(zip(milestone_positions["milestone_id"], milestone_positions[["comp_1", "comp_2"]].values))
+                milestone_color_dict = fadata.uns["milestone_color_dict"]
 
-            # TODO: legend  setting
+                nx.draw_networkx(
+                    G=G,
+                    pos=pos,
+                    node_color=[milestone_color_dict[node] for node in G.nodes],
+                    width=3,
+                    arrowsize=15,
+                    linewidths=3,
+                    edgecolors="black",
+                    ax=ax,
+                )
+
+                # TODO: legend  setting
 
     if save is not None:
         plt.savefig(save)

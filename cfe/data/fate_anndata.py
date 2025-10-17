@@ -1,6 +1,8 @@
-import anndata as ad
-
 # import h5py
+import os
+import pickle
+
+import anndata as ad
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -23,9 +25,13 @@ class FateAnnData(ad.AnnData):
         Args:
             name (str, optional): name of the FateAnnData object.
         """
-        # logger.debug("FateAnnData __init__")
-        self.id = random_time_string(name)
         super().__init__(*args, **kwargs)
+
+        id = self.uns.get("id")
+        if id is None:
+            id = random_time_string(name)
+            self.uns["id"] = id
+        self.id = id
 
         # try to get the stored FateAnnData information
         cfe_dict = self.uns.get("cfe", {})
@@ -92,12 +98,31 @@ class FateAnnData(ad.AnnData):
             self.cfe_dict["trajectory_history_dict"][self.model_name] = {"waypoint_wrapper": value}
 
     def get_trajectory_dict(self, model_name=None):
+        model_name_list = self.get_all_model_name(parse=False)
         if model_name is None:
             model_name = self.model_name
+        elif model_name in model_name_list:
+            pass
+        else:
+            # try match the parsed and raw trajectory ID
+            parsed_model_name_list = self.get_all_model_name(parse=True)
+            parsed2raw = dict(zip(parsed_model_name_list, model_name_list))
+            if model_name in parsed2raw.keys():
+                raw_model_name = parsed2raw[model_name]
+                logger.debug(f"match pased:'{model_name}' to raw:'{raw_model_name}'")
+                model_name = raw_model_name
+
         if model_name not in self.trajectory_history_dict:
-            raise ValueError(f"model '{model_name}' not found in trajectory_history_dict")
+            logger.debug(f"model '{model_name}' not found in trajectory_history_dict")
+            return None
+
         trajectory_dict = self.trajectory_history_dict[model_name]
         return trajectory_dict
+
+    def set_trajectory_dict(self, trajectory_dict: dict, model_name=None):
+        if model_name is None:
+            model_name = self.model_name
+        self.trajectory_history_dict[model_name] = trajectory_dict
 
     def get_milestone_wrapper(self, model_name=None):
         return self.get_trajectory_dict(model_name)["milestone_wrapper"]
@@ -252,15 +277,19 @@ class FateAnnData(ad.AnnData):
         self.cfe_dict["model_name"] = model_name
         self.trajectory_history_dict[self.model_name] = {}
 
-    def get_all_model_name(self, parse=True):
+    def get_parsed_model_name(self, model_name: str = None):
         from ..util import parse_random_time_string
 
+        if model_name is None:
+            model_name = self.model_name
+        return parse_random_time_string(model_name)
+
+    def get_all_model_name(self, parse=True):
         model_name_list = list(self.trajectory_history_dict.keys())
         if self.model_name not in self.trajectory_history_dict:
             model_name_list = [self.model_name] + model_name_list
         if parse:
-            # parse model_name from random_time_string
-            model_name_list = [parse_random_time_string(i) for i in model_name_list]
+            model_name_list = [self.get_parsed_model_name(i) for i in model_name_list]
         return model_name_list
 
     def add_resource_usage(self, resource_usage: dict) -> None:
@@ -1351,29 +1380,86 @@ class FateAnnData(ad.AnnData):
         self.uns["cfe"] = self.cfe_dict
 
     def write_h5ad(self, filename):
-        # TODO: write minmal h5ad file for conda or docker run.
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
-        # transfer MilestoneWrapper and WaypointWrapper to dict in .uns["cfe"]["history_dict"]
-        for k in self.trajectory_history_dict:
-            logger.debug(f"transfer trajectory history: '{k}' to dict")
-            trajectory_history = self.trajectory_history_dict[k]
+        def serialize_trajectory_dict(self, model_name=None, delete_raw_wrapper_dict=True):
+            # serialize trajectory for h5ad save
+            logger.debug(f"serialize trajectory dict: '{model_name}'")
+            trajectory_dict = self.get_trajectory_dict(model_name).copy()
             # transfer milestone object to dict
-            milestone_wrapper = trajectory_history.get("milestone_wrapper", None)
-            if (milestone_wrapper is not None) and (not isinstance(milestone_wrapper, dict)):
-                trajectory_history["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
+            milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
+            if milestone_wrapper is not None:
+                trajectory_dict["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
             # transfer waypoint object to dict
-            waypoint_wrapper = trajectory_history.get("waypoint_wrapper", None)
-            if (waypoint_wrapper is not None) and (not isinstance(waypoint_wrapper, dict)):
+            waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
+            if waypoint_wrapper is not None:
                 if hasattr(waypoint_wrapper, "milestone_wrapper"):
                     # MilestoneWrapper object need to be remove from attribute
                     delattr(waypoint_wrapper, "milestone_wrapper")
                 waypoint_wrapper.waypoints = waypoint_wrapper.waypoints.replace(
                     {None: ""}
                 )  # fill the None value with empty string in milestone_id column
-                trajectory_history["waypoint_wrapper"] = waypoint_wrapper.__dict__
-            self.trajectory_history_dict[k] = trajectory_history
-        self.update_uns_cfe()
+                trajectory_dict["waypoint_wrapper"] = waypoint_wrapper.__dict__
+            # raw_wrapper_dict is complex, skip it
+            if "raw_wrapper_dict" in trajectory_dict:
+                logger.debug(f"delete raw_wrapper_dict in serialized trajectory dict: '{model_name}'")
+                trajectory_dict["raw_wrapper_dict"] = {}
+            return trajectory_dict
+
+        raw_all_trajectory_dict = self.trajectory_history_dict.copy()
+        for k in self.get_all_model_name(parse=False):
+            std = serialize_trajectory_dict(self, k)
+            self.set_trajectory_dict(std, k)
         super().write(filename)
+        logger.debug(f"write h5ad to '{filename}'")
+        self.trajectory_history_dict = raw_all_trajectory_dict  # recover raw trajectory dict
+        logger.debug("recovery all raw trajectory dict")
+
+    def write_trajectory_dict(self, dirname=None, model_name_list=None):
+        # save all trajectory, one trajectory is a pkl file: .cfe/trajectory_history/{self.id}/{model_name}.pkl
+        if dirname is None:
+            dirname = f".cfe/trajectory_history/{self.id}"
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        if model_name_list is None:
+            # default save all trajectory
+            model_name_list = self.get_all_model_name(parse=False)
+        else:
+            # TODO: check if the trajectory is compatible with the fadata object
+            pass
+
+        for model_name in model_name_list:
+            model_filename = f"{dirname}/{model_name}.pkl"
+            logger.debug(f"write trajectory '{model_name}' to '{model_filename}'")
+            trajectory_dict = self.get_trajectory_dict(model_name)  # check compatibility
+            with open(model_filename, "wb") as f:
+                pickle.dump(trajectory_dict, f)
+
+    def load_trajectory_dict(self, dirname=None, model_name_list=None):
+        if dirname is None:
+            dirname = f".cfe/trajectory_history/{self.id}"
+        if not os.path.exists(dirname):
+            raise Exception(f"directory '{dirname}' not found!")
+
+        if model_name_list is None:
+            # default load all trajectory in the dir
+            model_name_list = [i.replace(".pkl", "") for i in os.listdir(dirname)]
+        else:
+            # TODO: Check if the trajectory is compatible with the data
+            pass
+
+        for model_name in model_name_list:
+            if self.get_trajectory_dict(model_name) is not None:
+                logger.debug(f"trajectory '{model_name}' already exists in the fadata object, skip loading")
+                continue
+            model_filename = f"{dirname}/{model_name}.pkl"
+            logger.debug(f"load trajectory '{model_name}' from '{model_filename}'")
+            with open(model_filename, "rb") as f:
+                trajectory_dict = pickle.load(f)
+            self.set_trajectory_dict(trajectory_dict, model_name)
+
+    pass
+    # TODO: 增量保存与读取
 
     def launch_cellxgene(self, tmp_filename=".tmp.h5ad", trajectory=False, port=5005, conda_env="cfe"):  # if show trajectory
         import os
@@ -1445,24 +1531,34 @@ def read_h5ad(*args, **kwargs):
     """
     adata = sc.read_h5ad(*args, **kwargs)
     fadata = FateAnnData.from_anndata(adata)
-    # parse milestone_wrapper and waypoint_wrapper in trajectory_history_dict
-    for trajectory_name, trajectory_history in fadata.trajectory_history_dict.items():
+
+    def unserialize_trajectory_dict(fadata, model_name=None, recovery_raw_wrapper_dict=False):
+        logger.debug(f"unserialize trajectory dict: '{model_name}'")
+        trajectory_dict = fadata.get_trajectory_dict(model_name).copy()
         # parse milestone_wrapper
-        milestone_wrapper = trajectory_history.get("milestone_wrapper", None)
+        milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
         if isinstance(milestone_wrapper, dict):
             # use object.__new__ to avoid __init__ function
-            logger.debug(f"parse 'MilestoneWrapper' object for {trajectory_name}")
+            logger.debug(f"parse 'MilestoneWrapper' object for {model_name}")
             milestone_wrapper_obj = object.__new__(MilestoneWrapper)
             for k, v in milestone_wrapper.items():
                 milestone_wrapper_obj[k] = v
-            trajectory_history["milestone_wrapper"] = milestone_wrapper_obj
+            trajectory_dict["milestone_wrapper"] = milestone_wrapper_obj
         # parse waypoint_wrapper
-        waypoint_wrapper = trajectory_history.get("waypoint_wrapper", None)
+        waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
         if (waypoint_wrapper is not None) and isinstance(waypoint_wrapper, dict):
-            logger.debug(f"parse 'WaypointWrapper' object for {trajectory_name}")
+            logger.debug(f"parse 'WaypointWrapper' object for {model_name}")
             waypoint_wrapper_obj = object.__new__(WaypointWrapper)
             for k, v in waypoint_wrapper.items():
                 waypoint_wrapper_obj[k] = v
-            trajectory_history["waypoint_wrapper"] = waypoint_wrapper_obj
+            trajectory_dict["waypoint_wrapper"] = waypoint_wrapper_obj
+        # raw_wrapper_dict is complex, skip it
+        if recovery_raw_wrapper_dict and "raw_wrapper_dict" in trajectory_dict:
+            logger.debug(f"skip recovery raw_wrapper_dict in serialized trajectory dict: '{model_name}'")
+        return trajectory_dict
+
+    for k in fadata.get_all_model_name(parse=False):
+        utd = unserialize_trajectory_dict(fadata, k)
+        fadata.set_trajectory_dict(utd, k)
 
     return fadata

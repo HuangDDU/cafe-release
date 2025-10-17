@@ -25,5 +25,5 @@ def parse_random_time_string(str):
         else:
             return ""
     else:
-        logger.warning(f"'{str}' is not a valid random_time_string, don't need parse")
+        logger.debug(f"'{str}' is not a valid random_time_string, don't need parse")
         return str

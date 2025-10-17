@@ -141,6 +141,7 @@ def read_pancrease(
 
     adata = sc.read_h5ad(filename)
     adata = subsample(adata, **kwargs)
+    adata.uns["id"] = "pancreas"  # TODO: different subsample result have same name, need fixed
 
     # use csc matrix to replace for accelerate dynverse docker running.
     if not sp.isspmatrix_csc(adata.X):

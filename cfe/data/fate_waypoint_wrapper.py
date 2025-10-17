@@ -308,7 +308,7 @@ class WaypointWrapper(FateWrapper):
         return out.loc[waypoint_id_list, cell_id_list].astype(float)
 
 
-save_attribute_list = ["name"]
+# save_attribute_list = ["name"]
 
 
 # @_REGISTRY.register_write(dest_type=h5py.Group, src_type=WaypointWrapper, spec=IOSpec("WaypointWrapper", "0.1.0"))
