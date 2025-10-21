@@ -1,4 +1,4 @@
-import json
+# import json
 import re
 
 import pandas as pd
@@ -41,7 +41,8 @@ def parse_bash_resource_usage_string(usage_string: str) -> dict:
 def parse_docker_resource_usage_string_list(usage_string_list: list) -> dict:
     usage_dict_list = []
     for usage_string in usage_string_list:
-        usage_string_dict = json.loads(usage_string)
+        # usage_string_dict = json.loads(usage_string)
+        usage_string_dict = usage_string
         memory = usage_string_dict["memory_stats"].get("usage", 0)
         memory = memory / 1024 / 1024  # MB
         memory = round(memory, 2)

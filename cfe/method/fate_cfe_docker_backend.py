@@ -146,5 +146,9 @@ class CFEDockerBackend(DockerBackend):
 
             fadata.add_trajectory_by_type(trajectory_dict)
 
+            # add resource usage if benchmark_resource is True
+            if "resource_usage" in trajectory_dict:
+                fadata.add_resource_usage(trajectory_dict["resource_usage"])
+
     def __str__(self):
         return f"CFE Docker Backend: {self.function_name} in docker image '{self.image_id}'"

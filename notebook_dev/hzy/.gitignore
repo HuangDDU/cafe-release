@@ -1,4 +1,7 @@
 img
+*.pdf
+
+# cytotrace2 middle file
 cytotrace2_results
 
 # pyrovelocity middle file
