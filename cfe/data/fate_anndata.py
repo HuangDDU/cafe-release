@@ -300,20 +300,20 @@ class FateAnnData(ad.AnnData):
         """
         if self.model_name not in self.trajectory_history_dict:
             self.trajectory_history_dict[self.model_name] = {}
-        self.trajectory_history_dict[self.model_name]["resource_usage"] = resource_usage
+        self.get_trajectory_dict(self.model_name)["resource_usage"] = resource_usage
 
     def get_resource_usage(self, model_name: str = None) -> dict:
         """Get resource usage for a specific model."""
         if model_name is None:
             model_name = self.model_name
-        return self.cfe_dict["trajectory_history_dict"][model_name]["raw_wrapper_dict"].get("resource_usage", {})
+        return self.get_trajectory_dict(model_name).get("resource_usage", {})
 
-    def get_all_resource_usage(self):
-        """Get resource usage for all models."""
-        resource_usage_dict = {}
-        for model_name in self.trajectory_history_dict:
-            resource_usage_dict[model_name] = self.get_resource_usage(model_name)
-        return resource_usage_dict
+    # def get_all_resource_usage(self):
+    #     """Get resource usage for all models."""
+    #     resource_usage_dict = {}
+    #     for model_name in self.trajectory_history_dict:
+    #         resource_usage_dict[model_name] = self.get_resource_usage(model_name)
+    #     return resource_usage_dict
 
     def add_trajectory(
         self,

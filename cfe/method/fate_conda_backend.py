@@ -67,7 +67,8 @@ class CondaBackend(Backend):
         """
         trajectory_dict = {}
 
-        parse_args_script = "/home/huang/PyCode/scRNA/CellFateExplorer/CellFateExplorer/cfe/method/function/parse_args.py"
+        # TODO:
+        parse_args_script = f"{os.path.dirname(__file__)}/function/parse_args.py"
 
         # construct command
         cmd = f"python {parse_args_script} --function_name={self.function_name} --adata_path={tmp_wd}/adata.h5ad --parameters={tmp_wd}/parameters.json --output_filename={tmp_wd}/output.pkl"

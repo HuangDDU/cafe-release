@@ -18,6 +18,8 @@ from cfe.metric.metric_featureimp import (  # fi_ranger_rf_tiny,
 )
 from cfe.metric.metric_position_predict import calculate_position_predict
 
+from .._logging import logger
+
 # from cfe.metric.topology_metric import calc_isomorphic
 
 
@@ -119,9 +121,20 @@ def calculate_metrics(
         net_pred = _get_milestone_network(pred, simplify)
 
         # 对每个指定的指标名进行映射计算（捕获异常并保留 NaN）
+        resource_usage = fadata.get_resource_usage(model_name=pred)  # extract time and memory usage
+        vals["cpu"] = resource_usage.get("cpu", np.nan)
+        vals["memory"] = resource_usage.get("memory", np.nan)
+        vals["time"] = resource_usage.get("time", np.nan)
+
         for metric in metrics:
             try:
-                if metric == "isomorphic":
+                # TODO: add linear pseudotime correlation, velocity correlation...
+                # TODO:
+                if metric == "pseudotime":
+                    pass
+                elif metric == "velocity":
+                    pass
+                elif metric == "isomorphic":
                     if net_ref is None or net_pred is None or net_ref.shape[0] == 0 or net_pred.shape[0] == 0:
                         vals["isomorphic"] = np.nan
                     else:
@@ -209,13 +222,15 @@ def calculate_metrics(
                     except Exception:
                         vals["featureimp_cor"] = np.nan
                         vals["featureimp_wcor"] = np.nan
+                # else:
+                #     # 未知严格指标名 —— 保持 NaN
+                #     vals[metric] = np.nan
 
-                else:
-                    # 未知严格指标名 —— 保持 NaN
-                    vals[metric] = np.nan
-
-            except Exception:
+            # TODO: 这里的Exception和内部的Exception的含义不一样吗？
+            except Exception as e:
                 # 任何子计算失败，不抛出，留下 NaN
+                logger.warning(f"metric '{metric}' calculation failed for trajectory '{ref_model}(ref)' vs '{pred}(pred)'")
+                logger.warning(f"Exception: {e}")
                 vals[metric] = np.nan
 
         rows.append(vals)
