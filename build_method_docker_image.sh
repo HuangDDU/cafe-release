@@ -10,12 +10,14 @@ source_decorator_file="cfe/method/function/method_decorator.py"
 source_preprocess_file="cfe/method/function/preprocess_pipeline.py"
 source_method_file="cfe/method/function/cf_${method_name}.py"
 source_dockerfile="cfe/method/Dockerfile/${method_name}.dockerfile"
+source_pip_requirement="cfe/method/requirement/${method_name}.txt"
 
 destination_parse_file="${destination_dir}/run.py"
 destination_decorator_file="${destination_dir}/method_decorator.py"
 destination_preprocess_file="${destination_dir}/preprocess_pipeline.py"
 destination_method_file="${destination_dir}/cf_${method_name}.py"
 destination_dockerfile="${destination_dir}/Dockerfile"
+destination_pip_requirement="${destination_dir}/requirement.${method_name}.txt"
 
 mkdir -p "${destination_dir}"
 
@@ -25,6 +27,7 @@ cp "${source_decorator_file}" "${destination_decorator_file}"
 cp "${source_preprocess_file}" "${destination_preprocess_file}"
 cp "${source_method_file}" "${destination_method_file}"
 cp "${source_dockerfile}" "${destination_dockerfile}"
+cp "${source_pip_requirement}" "${destination_pip_requirement}"
 echo "Files have been copied and renamed successfully."
 
 # # extract version
@@ -49,14 +52,8 @@ echo "Docker image:${image_name} test successfully."
 # echo "Docker image:${image_name} push successfully."
 
 # for debug: 
-# enter into the docker image to check file
-# docker run \
-# 	-it \
-# 	-v ./method_docker_input:/data \
-# 	--workdir /code \
-# 	--entrypoint bash \
-# 	huangzhaoyang/unitvelo:0.0.1
 
+# run command mannually
 # method_name="unitvelo"
 # image_name="huangzhaoyang/${method_name}:0.0.1"
 # docker run \
@@ -65,3 +62,11 @@ echo "Docker image:${image_name} test successfully."
 # 	--workdir /code \
 # 	${image_name} \
 # 	python /code/run.py --function_name ${method_name} --adata_path /data/adata.h5ad --parameters /data/parameters_${method_name}.json --output_filename ./output.pkl
+
+# enter into the docker image to check file
+# docker run \
+# 	-it \
+# 	-v ./method_docker_input:/data \
+# 	--workdir /code \
+# 	--entrypoint bash \
+# 	${image_name}

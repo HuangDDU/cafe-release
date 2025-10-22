@@ -1,0 +1,13 @@
+name: stavia
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+  - defaults
+dependencies:
+  - python=3.10.14
+  - pip:
+      - pyvia==0.2.1
+      - scipy==1.11.4
+      - dask==2024.8.2
+prefix: /root/miniconda3/envs/stavia

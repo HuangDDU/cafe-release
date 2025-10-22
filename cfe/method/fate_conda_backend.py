@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import threading
 
+import yaml
 from anndata import AnnData
 
 from .._logging import logger, print_output
@@ -22,22 +23,12 @@ class CondaBackend(Backend):
         self.conda_name = conda_name
         self.load_backend()
 
-    def test_conda_env(self):
-        # TODO: test if conda environment is available
-        return True
-
-    def install_conda_env(self):
-        # TODO: new user should create environment firstly by correspoding conda environment yml file
-
-        pass
-
     def load_backend(self):
         if self.test_conda_env() is False:
             self.install_conda_env()
 
-        result = subprocess.run(
-            ["conda", "run", "-n", self.conda_name, "python", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10
-        )
+        cmd = f"conda run -n {self.conda_name} python --version"
+        result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
         if result.returncode != 0:
             logger.error(f"Conda environment '{self.conda_name}' not available: {result.stderr.strip()}")
             raise RuntimeError(f"Conda environment '{self.conda_name}' not available.")
@@ -80,9 +71,9 @@ class CondaBackend(Backend):
         # execuate command
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         # remove unimportant warning log
-        stderr_lines = []
-        threading.Thread(target=print_output(logger.info), args=(process.stdout, "[stdout]"), daemon=True).start()
-        threading.Thread(target=print_output(logger.debug, stderr_lines), args=(process.stderr, "[stderr]"), daemon=True).start()
+        stderr_lines = []  # to capture stderr for latter resource usage parsing
+        threading.Thread(target=print_output(logger.debug), args=(process.stdout, "[conda-excute-stdout]"), daemon=True).start()
+        threading.Thread(target=print_output(logger.warning, stderr_lines), args=(process.stderr, "[conda-excute-stderr]"), daemon=True).start()
         # wait for process
         process.wait()
 
@@ -148,3 +139,128 @@ class CondaBackend(Backend):
 
     def __str__(self):
         return f"CondaBackend: {self.function_name} in conda env '{self.conda_name}'"
+
+    def test_conda_env(self):
+        """test if conda environment is available"""
+        try:
+            result = subprocess.run(["conda", "env", "list"], capture_output=True, text=True, check=True, timeout=10)
+            # The output contains a list of environments, one per line.
+            # The name is usually the first word on the line.
+            # We should ignore comment lines starting with '#'
+            lines = result.stdout.splitlines()
+            for line in lines:
+                if line.startswith("#"):
+                    continue
+                # Split the line by whitespace and get the first element
+                parts = line.split()
+                if parts and parts[0] == self.conda_name:
+                    logger.debug(f"Conda environment '{self.conda_name}' found.")
+                    return True
+
+            logger.warning(f"Conda environment '{self.conda_name}' not found.")
+            return False
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+            # FileNotFoundError if 'conda' command is not found
+            # CalledProcessError if 'conda env list' returns a non-zero exit code
+            logger.warning(f"Could not check for conda environments (is conda installed and in PATH?): {e}")
+            return False
+
+    def install_conda_env(self, max_waiting_time=600):
+        """create environment by correspoding conda environment yml file"""
+        env_file_path = os.path.join(os.path.dirname(__file__), "environment", f"{self.conda_name}.yaml")
+
+        if not os.path.exists(env_file_path):
+            logger.error(f"Conda environment yaml file not found at: {env_file_path}")
+            raise FileNotFoundError(f"Conda environment yaml file not found for '{self.conda_name}'")
+
+        logger.info(f"Creating conda environment '{self.conda_name}' from file: {env_file_path}")
+        cmd = f"conda env create -f {env_file_path}"
+
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Using threading to capture output in real-time
+        stdout_thread = threading.Thread(target=print_output(logger.debug), args=(process.stdout, "[conda-create-stdout]"), daemon=True)
+        stderr_thread = threading.Thread(target=print_output(logger.warning), args=(process.stderr, "[conda-create-stderr]"), daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
+
+        process.wait()  # Wait for the subprocess to finish
+
+        if process.returncode != 0:
+            logger.error(f"failed to create conda environment '{self.conda_name}'.")
+            # The stderr is already logged by the thread
+            error_message = f"""
+                Failed to create conda environment '{self.conda_name}'. Check logs for details.
+                Try to manually create it using following command:
+                '{cmd}'
+            """
+            raise RuntimeError(error_message)
+        else:
+            logger.info(f"successfully created conda environment '{self.conda_name}'.")
+
+    def export_conda_env(self, export_dir: str = None):
+        # export conda environment to yml file  in 'environment'
+        if self.conda_name == "cfe":
+            logger.info("cfe conda env, no need to generate dockerfile.")
+            return
+
+        if export_dir is None:
+            export_dir = f"{os.path.dirname(__file__)}/environment"
+        export_filename = f"{export_dir}/{self.conda_name}.yaml"
+        cmd = f"conda env export -n {self.conda_name} --no-builds > {export_filename}"
+
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process.wait()  # very quick command, don't need reading log
+
+        if os.path.exists(export_filename):
+            logger.info(f"successfully export conda environment '{self.conda_name}' to '{export_filename}'")
+        else:
+            logger.error(f"failed to export conda environment '{self.conda_name}'.")
+        # TODO: only need save key packages manually, delete build info and other unimportant info
+
+    def generate_dockerfile(self, conda_env_dir: str = None, pip_requirement_dir: str = None, docker_env_dir: str = None) -> None:
+        if self.conda_name == "cfe":
+            logger.info("cfe conda env, no need to generate dockerfile.")
+            return
+
+        #  read from conda yaml file and generate dockerfile automatically
+        if conda_env_dir is None:
+            conda_env_dir = os.path.join(os.path.dirname(__file__), "environment")
+        if pip_requirement_dir is None:
+            pip_requirement_dir = os.path.join(os.path.dirname(__file__), "requirement")
+        if docker_env_dir is None:
+            docker_env_dir = os.path.join(os.path.dirname(__file__), "Dockerfile")
+        conda_env_filename = f"{conda_env_dir}/{self.function_name}.yaml"
+        pip_requirement_filename = f"{pip_requirement_dir}/{self.function_name}.txt"
+        docker_env_filename = f"{docker_env_dir}/{self.function_name}.dockerfile"
+
+        with open(conda_env_filename, "r") as f:
+            conda_env_dict = yaml.safe_load(f)
+
+        # extract python version and pip packages
+        python_version = "3.10.15"  # Default version
+        for dep in conda_env_dict["dependencies"]:
+            if isinstance(dep, str) and dep.startswith("python="):
+                # Extract major.minor version, e.g., from 'python=3.10.18'
+                python_version = dep.split("=")[1]
+                logger.debug(f"detected python version: {python_version}")
+            elif isinstance(dep, dict) and "pip" in dep.keys():
+                pip_deps = dep["pip"]
+                with open(f"{pip_requirement_filename}", "w") as f:
+                    f.writelines([i + "\n" for i in pip_deps])
+                    logger.debug(f"write pip requirements to '{pip_requirement_filename}'")
+        # check git is needed
+        # generate dockerfile from template
+        with open(f"{docker_env_dir}/template.dockerfile", "r") as f:
+            dockerfile_template = f.read()
+        dockerfile_template = dockerfile_template.replace("$python_version", python_version)
+        # dockerfile_template = dockerfile_template.replace("$pip_requirement_filename", pip_requirement_filename)
+        dockerfile_template = dockerfile_template.replace("$method_name", self.function_name)
+        with open(docker_env_filename, "w") as f:
+            f.write(dockerfile_template)
+            logger.info(f"write dockerfile base template.dockerfile to '{docker_env_filename}'")
+        # if torch or tensorflow in packages, use choosing corresponding cuda base image carefully
+
+    def build_docker_image(self) -> None:
+        # TODO: build docker image from generated dockerfile
+        pass
