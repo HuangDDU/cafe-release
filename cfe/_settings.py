@@ -7,6 +7,9 @@ from ._logging import logger
 
 class CellFateExplorerConfig:
     def __init__(self):
+        # data settings
+        self.data_dir = "."
+
         # backend settings
         # ["python_function", "cfe_docker", "dynverse_docker", "conda"]
         self.backend = "conda"

@@ -56,7 +56,7 @@ class CFEDockerBackend(DockerBackend):
         with open(f"{tmp_wd}/parameters.json", "w") as f:
             json.dump(parameters, f)
 
-    def execute(self, tmp_wd: str, benchmark_resource: bool) -> dict:
+    def execute(self, tmp_wd: str, benchmark_resource: bool = False, use_gpu: bool = True) -> dict:
         """CFE Docker run, save dict.pkl in tmp_wd dir, return trajectory_dict
 
         Args:
@@ -67,6 +67,12 @@ class CFEDockerBackend(DockerBackend):
         """
         trajectory_dict = {}
 
+        device_requests = None
+        if use_gpu:
+            logger.info("GPU access requested for the container.")
+            # This is equivalent to `docker run --gpus all`
+            device_requests = [docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])]
+
         client = docker.from_env()
         start_time = time.time()
         container = client.containers.run(
@@ -74,6 +80,7 @@ class CFEDockerBackend(DockerBackend):
             command=f"python run.py --function_name {self.function_name}",  # input and output path are fixed
             volumes=[f"{tmp_wd}:/data"],
             working_dir="/code",
+            device_requests=device_requests,  # add gpu access
             detach=True,
         )  # all are saved in "/data" dir and sync to master
 

@@ -2,6 +2,8 @@ FROM python:$python_version
 
 ARG CellFateExplorer
 
+# git installation if needed
+
 ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 COPY requirement.$method_name.txt /code/requirement.$method_name.txt
 RUN pip install -r /code/requirement.$method_name.txt

@@ -29,7 +29,7 @@ def stavia(
     data_basis: str = "X_pca",
     ncomps: int = 30,
     via_kwargs: dict = {},
-    prune_milestone: bool = True,  # whether to prune the milestone network
+    prune_milestone: bool = False,  # whether to prune the milestone network, TOOD: need fix, some key milestone may be lost
 ):
     """StaVia: spatially and temporally aware cartography with higher-order random walks for cell atlases
     Returns:

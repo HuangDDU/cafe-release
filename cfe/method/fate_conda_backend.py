@@ -239,6 +239,8 @@ class CondaBackend(Backend):
 
         # extract python version and pip packages
         python_version = "3.10.15"  # Default version
+        git_needed = False
+        gpu_needed = False
         for dep in conda_env_dict["dependencies"]:
             if isinstance(dep, str) and dep.startswith("python="):
                 # Extract major.minor version, e.g., from 'python=3.10.18'
@@ -249,17 +251,25 @@ class CondaBackend(Backend):
                 with open(f"{pip_requirement_filename}", "w") as f:
                     f.writelines([i + "\n" for i in pip_deps])
                     logger.debug(f"write pip requirements to '{pip_requirement_filename}'")
-        # check git is needed
+                if any(i.startswith("git+") for i in pip_deps):
+                    git_needed = True
+                if any("torch" in i or "tensorflow" in i for i in pip_deps):
+                    gpu_needed = True
+
         # generate dockerfile from template
         with open(f"{docker_env_dir}/template.dockerfile", "r") as f:
             dockerfile_template = f.read()
         dockerfile_template = dockerfile_template.replace("$python_version", python_version)
-        # dockerfile_template = dockerfile_template.replace("$pip_requirement_filename", pip_requirement_filename)
         dockerfile_template = dockerfile_template.replace("$method_name", self.function_name)
+        if git_needed:
+            dockerfile_template = dockerfile_template.replace("# git installation if needed", "RUN apt-get update && apt-get install -y git")
         with open(docker_env_filename, "w") as f:
             f.write(dockerfile_template)
             logger.info(f"write dockerfile base template.dockerfile to '{docker_env_filename}'")
-        # if torch or tensorflow in packages, use choosing corresponding cuda base image carefully
+
+        #  if torch or tensorflow in packages, use choosing corresponding cuda base image carefully
+        if gpu_needed:
+            logger.warning("GPU packages detected, please ensure to choose appropriate CUDA base image in the generated Dockerfile.")
 
     def build_docker_image(self) -> None:
         # TODO: build docker image from generated dockerfile

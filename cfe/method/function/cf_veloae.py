@@ -97,6 +97,7 @@ def veloae(
     np.random.seed(args.seed)
     torch.backends.cudnn.deterministic = True
     device = torch.device(args.device if args.device.startswith("cuda") and torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
     # 2. execute scvelo stochastic model result
     # use scvelo stochastic model result

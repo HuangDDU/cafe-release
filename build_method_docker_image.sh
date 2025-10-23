@@ -44,6 +44,7 @@ docker run \
 	--rm \
 	-v ./method_docker_input:/data \
 	--workdir /code \
+	--gpus all \
 	${image_name} \
 	python /code/run.py --function_name ${method_name} --adata_path /data/adata.h5ad --parameters /data/parameters_${method_name}.json --output_filename ./output.pkl
 echo "Docker image:${image_name} test successfully."

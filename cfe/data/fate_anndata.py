@@ -709,6 +709,7 @@ class FateAnnData(ad.AnnData):
         mn_ft = milestone_network[["from", "to"]]
         both_direction = pd.concat([mn_ft.assign(label=mn_ft["from"], percentage=0), mn_ft.assign(label=mn_ft["to"], percentage=1)])
 
+        # TODO: fix for alone milestone 'stavia'
         progressions = (
             pd.DataFrame({"cell_id": self.obs.index, "label": cluster_list})
             .merge(both_direction, on="label")
