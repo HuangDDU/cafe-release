@@ -68,8 +68,12 @@ class CondaBackend(Backend):
         cmd = f"conda run -n {self.conda_name} --no-capture-output {cmd}"  # use conda environment to run
         logger.info(f"cmd: {cmd}")
 
+        # Set environment variable for matplotlib to use a non-GUI backend
+        env = os.environ.copy()
+        env["MPLBACKEND"] = "Agg"
+
         # execuate command
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
         # remove unimportant warning log
         stderr_lines = []  # to capture stderr for latter resource usage parsing
         threading.Thread(target=print_output(logger.debug), args=(process.stdout, "[conda-excute-stdout]"), daemon=True).start()
