@@ -8,7 +8,7 @@ from ._logging import logger
 class CellFateExplorerConfig:
     def __init__(self):
         # data settings
-        self.data_dir = "."
+        self.data_dir = "/root/PyCode/scRNA/data"
 
         # backend settings
         # ["python_function", "cfe_docker", "dynverse_docker", "conda"]
