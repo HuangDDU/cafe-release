@@ -1301,17 +1301,29 @@ class FateAnnData(ad.AnnData):
                 create_using=nx.DiGraph if is_directed else nx.Graph,
             )
             m_spl_dict = nx.shortest_path_length(G, source=start_milestone, weight="length")
-            m_spl_df = pd.DataFrame([m_spl_dict]).T
-            m_spl_df.columns = ["distance"]
+            unconnected_milestone_list = list(set(G.nodes) - set(m_spl_dict.keys()))
+            if unconnected_milestone_list:
+                logger.warning(f"unconnected milestones found: {unconnected_milestone_list}")
+                m_spl_dict.update({i: None for i in unconnected_milestone_list})  # fix for milestone that is not connected to start_milestone
+            m_spl_df = pd.DataFrame.from_dict(m_spl_dict, orient="index", columns=["distance"])
 
-            # calculate cell distance from start milestone
+            # calculate cell distance from start milestone,
+            def calculate_cell_pseudotime(cell_group):
+                distances = m_spl_df.loc[cell_group["milestone_id"], "distance"]
+                if distances.isnull().any():
+                    return np.nan
+                percentages = cell_group["percentage"].values
+                return (distances * percentages).sum()
+
             milestone_percentages = milestone_wrapper.milestone_percentages
-            pseudotime = (
-                milestone_percentages.groupby("cell_id")
-                .apply(lambda x: (m_spl_df["distance"].loc[x["milestone_id"]].mul(x["percentage"].tolist())).sum())
-                .loc[self.obs.index]
-                .tolist()
-            )
+            pseudotime = milestone_percentages.groupby("cell_id").apply(calculate_cell_pseudotime).loc[self.obs.index]
+            # set unconnected cell pseudotime to random value between 0 and 1
+            nan_mask = pseudotime.isnull()
+            num_nans = nan_mask.sum()
+            if num_nans > 0:
+                logger.debug(f"Filling {num_nans} NaN pseudotime values with random numbers between 0 and 1.")
+                random_values = np.random.rand(num_nans)
+                pseudotime.loc[nan_mask] = random_values
 
             # save pseudotime
             logger.debug(f"save pseudotime to trajectory dict with key: `{pseudotime_key}`")

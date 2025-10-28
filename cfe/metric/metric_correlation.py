@@ -8,7 +8,12 @@ from scipy.stats import spearmanr
 from cfe.data import FateAnnData
 
 
-def calculate_correlation(fadata: FateAnnData, ref_model: str = "ref", pred_model: str = "default") -> Dict[str, float]:
+def calculate_correlation(
+    fadata: FateAnnData,
+    ref_model: str = "ref",
+    pred_model: str = "default",
+    return_type: str = "score",
+) -> float | Dict[str, float]:
     """
     计算两条已添加 waypoint 的轨迹（ref_model vs pred_model）之间的地理距离 Spearman 相关性。
     两个模型和它们对应的 waypoint_wrapper 都存储在同一个 FateAnnData.uns['cfe']['trajectory_history_dict'] 中。
@@ -34,8 +39,8 @@ def calculate_correlation(fadata: FateAnnData, ref_model: str = "ref", pred_mode
     if ref_model not in hist or pred_model not in hist:
         return metrics
 
-    wp_ref = hist[ref_model].get("waypoint_wrapper")
-    wp_pred = hist[pred_model].get("waypoint_wrapper")
+    wp_ref = fadata.get_waypoint_wrapper(ref_model)
+    wp_pred = fadata.get_waypoint_wrapper(pred_model)
     if wp_ref is None or wp_pred is None:
         raise ValueError(f"Both models must have waypoint_wrapper; " f"did you call add_waypoints() for '{ref_model}' and '{pred_model}'?")
 
@@ -82,4 +87,7 @@ def calculate_correlation(fadata: FateAnnData, ref_model: str = "ref", pred_mode
     metrics["correlation"] = corr
     metrics["time_correlation"] = time.time() - t2
 
-    return metrics
+    if return_type == "score":
+        return corr
+    else:
+        return metrics

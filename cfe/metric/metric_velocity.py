@@ -183,6 +183,8 @@ def calculate_velocity_metrics(
     if "indices" not in neighbor_dict:
         logger.debug("extract knn indices to 'adata.uns['neighbors']['indices']' for metric calculation")
         n_neighbors = neighbor_dict["params"]["n_neighbors"]
+        if isinstance(n_neighbors, np.ndarray):
+            n_neighbors = n_neighbors.item()
         distances = fadata.obsp["distances"]  # csr matrix
         neighbor_dict["indices"] = distances.indices.reshape(-1, n_neighbors - 1)
 
@@ -203,6 +205,6 @@ def calculate_velocity_metrics(
             ic_coh = ic_coh[1]
 
     return {
-        "CBDir": crs_bdr_crc,
-        "ICVCoh": ic_coh,
+        "velocity_cbdir": crs_bdr_crc,
+        "velocity_icvcoh": ic_coh,
     }

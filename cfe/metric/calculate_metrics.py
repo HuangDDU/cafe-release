@@ -1,34 +1,28 @@
 from typing import Callable, Dict, List, Optional, Union
 
-import networkx as nx
 import numpy as np
 import pandas as pd
 
-from cfe.data import FateAnnData
-from cfe.metric._topology_metric.metric_flip import calculate_edge_flip
-from cfe.metric._topology_metric.metric_him import calculate_him
-from cfe.metric.cluster_metric import (
-    calculate_mapping_branches,
-    calculate_mapping_milestones,
-)
-from cfe.metric.metric_correlation import calculate_correlation
-from cfe.metric.metric_featureimp import (  # fi_ranger_rf_tiny,
-    calculate_featureimp_cor,
-    fi_ranger_rf_lite,
-)
-from cfe.metric.metric_position_predict import calculate_position_predict
-
 from .._logging import logger
-
-# from cfe.metric.topology_metric import calc_isomorphic
+from ..data import FateAnnData
+from . import (
+    metric_cluster,
+    metric_correlation,
+    metric_featureimp,
+    metric_position_predict,
+    metric_pseudotime,
+    metric_topology,
+    metric_velocity,
+)
 
 
 def calculate_metrics(
     fadata: FateAnnData,
-    now_model: Union[str, List[str]] = "all",
+    now_models: Union[str, List[str]] = "all",
     ref_model: str = "ref",
     simplify: bool = True,
     metrics: Optional[List[str]] = None,
+    cluster_edges: Optional[List[tuple]] = None,  # for velocity metric
     expression_source: str = "expression",
     fi_method: Dict[str, Callable] = None,
 ) -> pd.DataFrame:
@@ -43,11 +37,14 @@ def calculate_metrics(
 
     """
     if fi_method is None:
-        fi_method = fi_ranger_rf_lite()
+        fi_method = metric_featureimp.fi_ranger_rf_lite()
 
     # 默认严格指标集合（按你要求）
     if metrics is None:
         metrics = [
+            "pseudotime_correlation",
+            "velocity_cbdir",
+            "velocity_icvcoh",
             "isomorphic",
             "edge_flip",
             "him",
@@ -73,12 +70,12 @@ def calculate_metrics(
     available_models = list(hist.keys())
 
     # 构建预测模型名
-    if isinstance(now_model, list):
-        pred_models = now_model
-    elif isinstance(now_model, str) and now_model == "all":
+    if isinstance(now_models, list):
+        pred_models = now_models
+    elif isinstance(now_models, str) and now_models == "all":
         pred_models = [m for m in available_models if m != ref_model]
     else:
-        pred_models = [now_model]
+        pred_models = [now_models]
 
     # 过滤掉不存在的模型
     pred_models = [m for m in pred_models if m in hist]
@@ -111,124 +108,68 @@ def calculate_metrics(
         except Exception:
             return None
 
+    net_ref = _get_milestone_network(ref_model, simplify)  # common ref net
+
+    if ("velocity_cbdir" in metrics) and (cluster_edges is None):
+        logger.warning("velocity metric calculation need parameter 'cluster_edges', skip it.")
+        metrics = metrics.remove("velocity_cbdir")
+
+    if (("velocity_cbdir" in metrics) or ("velocity_icvcoh" in metrics)) and ("neighbors" not in fadata.uns):
+        logger.info("neighbors not found in fadata.uns, computing neighbors for velocity metric calculation.")
+        import scvelo as scv
+
+        scv.pp.filter_and_normalize(fadata, n_top_genes=2000)
+        scv.pp.moments(fadata, n_pcs=30, n_neighbors=30)
+        # TODO: fix for reconstruct FateAnnData
+
     for pred in pred_models:
-        _featureimp_cache = None  # 缓存特征重要性结果，避免重复计算
         idx.append(pred)
         vals = {m: np.nan for m in metrics}  # 初始化所有 requested metrics 为 NaN
-
-        # 获取两个里程碑网络
-        net_ref = _get_milestone_network(ref_model, simplify)
         net_pred = _get_milestone_network(pred, simplify)
 
-        # 对每个指定的指标名进行映射计算（捕获异常并保留 NaN）
-        resource_usage = fadata.get_resource_usage(model_name=pred)  # extract time and memory usage
-        vals["cpu"] = resource_usage.get("cpu", np.nan)
-        vals["memory"] = resource_usage.get("memory", np.nan)
-        vals["time"] = resource_usage.get("time", np.nan)
+        # 缓存机制，避免重复计算
+        _velocity_cache = None
+        _position_cache = None
+        _featureimp_cache = None
 
         for metric in metrics:
             try:
-                # TODO: add linear pseudotime correlation, velocity correlation...
-                # TODO:
-                if metric == "pseudotime":
-                    pass
-                elif metric == "velocity":
-                    pass
+                if metric == "pseudotime_correlation":
+                    val = metric_pseudotime.calculate_pseudotime_correlation(fadata, ref_model=ref_model, pred_model=pred)
+                elif metric == "velocity_cbdir" or metric == "velocity_icvcoh":
+                    if _velocity_cache is None:
+                        _velocity_cache = metric_velocity.calculate_velocity_metrics(
+                            fadata, cluster_edges=cluster_edges, model_name=pred
+                        )  # dont't need ref model
+                    val = _velocity_cache[metric]
                 elif metric == "isomorphic":
-                    if net_ref is None or net_pred is None or net_ref.shape[0] == 0 or net_pred.shape[0] == 0:
-                        vals["isomorphic"] = np.nan
-                    else:
-                        G_ref = nx.from_pandas_edgelist(
-                            net_ref.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph
-                        )
-                        G_pred = nx.from_pandas_edgelist(
-                            net_pred.rename(columns={"length": "weight"}), source="from", target="to", create_using=nx.Graph
-                        )
-                        vals["isomorphic"] = 1.0 if nx.is_isomorphic(G_ref, G_pred) else 0.0
-
+                    val = metric_topology.calculate_isomorphic(net_ref, net_pred)
                 elif metric == "edge_flip":
-                    if net_ref is None or net_pred is None:
-                        vals["edge_flip"] = np.nan
-                    else:
-                        # 网络做了提前的简化，这里的symplify参数强制为False（默认值）
-                        vals["edge_flip"] = float(calculate_edge_flip(net_ref, net_pred, return_type="score"))
-
+                    val = metric_topology.calculate_edge_flip(net_ref, net_pred, simplify=False)
                 elif metric == "him":
-                    if net_ref is None or net_pred is None:
-                        vals["him"] = np.nan
-                    else:
-                        # 网络做了提前的简化，这里的symplify参数强制为False（默认值）
-                        vals["him"] = float(calculate_him(net_ref, net_pred))
-
+                    val = metric_topology.calculate_him(net_ref, net_pred, simplify=False)
                 elif metric == "correlation":
-                    # 取其返回 dict 中的 'correlation'
-                    try:
-                        cm = calculate_correlation(fadata, ref_model=ref_model, pred_model=pred)
-                        vals["correlation"] = float(cm.get("correlation", np.nan))
-                    except Exception:
-                        vals["correlation"] = np.nan
-
+                    val = metric_correlation.calculate_correlation(fadata, ref_model=ref_model, pred_model=pred)
                 elif metric == "F1_milestones":
-                    try:
-                        mm = calculate_mapping_milestones(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
-                        # mm 返回 {'recovery_milestones', 'relevance_milestones', 'F1_milestones'}
-                        vals["F1_milestones"] = float(mm.get("F1_milestones", np.nan))
-                    except Exception:
-                        vals["F1_milestones"] = np.nan
-
+                    val = metric_cluster.calculate_mapping_milestones(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
                 elif metric == "F1_branches":
-                    try:
-                        mb = calculate_mapping_branches(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
-                        vals["F1_branches"] = float(mb.get("F1_branches", np.nan))
-                    except Exception:
-                        vals["F1_branches"] = np.nan
-
+                    val = metric_cluster.calculate_mapping_branches(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
                 elif metric in ("rf_mse", "rf_nmse", "rf_rsq", "lm_mse", "lm_rsq", "lm_nmse"):
-                    # 用一次 calculate_position_predict 得到所有位置预测指标
-                    try:
-                        pp = calculate_position_predict(fadata, ref_model=ref_model, pred_model=pred)
-                        summary = pp.get("summary", {})
-                        # rf
-                        if "rf_mse" in summary:
-                            vals["rf_mse"] = float(summary.get("rf_mse", np.nan))
-                        if "rf_rsq" in summary:
-                            vals["rf_rsq"] = float(summary.get("rf_rsq", np.nan))
-                        if "rf_nmse" in summary:
-                            vals["rf_nmse"] = float(summary.get("rf_nmse", np.nan))
-                        # lm
-                        if "lm_mse" in summary:
-                            vals["lm_mse"] = float(summary.get("lm_mse", np.nan))
-                        if "lm_rsq" in summary:
-                            vals["lm_rsq"] = float(summary.get("lm_rsq", np.nan))
-                        if "lm_nmse" in summary:
-                            vals["lm_nmse"] = float(summary.get("lm_nmse", np.nan))
-                    except Exception:
-                        # 保持这些键为 NaN（已初始化）
-                        pass
-
+                    if _position_cache is None:
+                        _position_cache = metric_position_predict.calculate_position_predict(fadata, ref_model=ref_model, pred_model=pred)
+                    val = _position_cache["summary"][metric]
                 elif metric in ("featureimp_cor", "featureimp_wcor"):
-                    try:
-                        if _featureimp_cache is None:
-                            _featureimp_cache = calculate_featureimp_cor(
-                                fadata,
-                                ref_model=ref_model,
-                                pred_model=pred,
-                                expression_source=expression_source,  # 根据你的数据改成实际的 key
-                                fi_method=fi_method,  # 使用默认轻量 RF，或者传你自定义的 fi_method
-                            )
-                        # 可能返回 np.nan，需要容错转换
-                        vals["featureimp_cor"] = float(_featureimp_cache.get("featureimp_cor", np.nan))
-                        vals["featureimp_wcor"] = float(_featureimp_cache.get("featureimp_wcor", np.nan))
-                    except Exception:
-                        vals["featureimp_cor"] = np.nan
-                        vals["featureimp_wcor"] = np.nan
-                # else:
-                #     # 未知严格指标名 —— 保持 NaN
-                #     vals[metric] = np.nan
-
-            # TODO: 这里的Exception和内部的Exception的含义不一样吗？
+                    if _featureimp_cache is None:
+                        _featureimp_cache = metric_featureimp.calculate_featureimp_cor(
+                            fadata,
+                            ref_model=ref_model,
+                            pred_model=pred,
+                            expression_source=expression_source,  # 根据你的数据改成实际的 key
+                            fi_method=fi_method,  # 使用默认轻量 RF，或者传你自定义的 fi_method
+                        )
+                    val = _featureimp_cache[metric]
+                vals[metric] = val
             except Exception as e:
-                # 任何子计算失败，不抛出，留下 NaN
                 logger.warning(f"metric '{metric}' calculation failed for trajectory '{ref_model}(ref)' vs '{pred}(pred)'")
                 logger.warning(f"Exception: {e}")
                 vals[metric] = np.nan

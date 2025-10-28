@@ -4,7 +4,7 @@ import pytest
 
 from cfe.data import FateAnnData
 from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.metric.cluster_metric import calculate_mapping_milestones
+from cfe.metric.metric_cluster import calculate_mapping_milestones
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def sample_fadata():
 
 def test_calculate_mapping_milestones(sample_fadata):
     # 计算里程碑映射（不简化）
-    result = calculate_mapping_milestones(sample_fadata, simplify=False, ref_model="ref", pred_model="pred")
+    result = calculate_mapping_milestones(sample_fadata, simplify=False, ref_model="ref", pred_model="pred", return_type="all")
     # 预期值
     expected_recovery = 8 / 9
     expected_relevance = 3 / 4

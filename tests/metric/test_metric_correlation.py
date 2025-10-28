@@ -50,10 +50,9 @@ def sample_fadata():
     return fadata
 
 
-# @pytest.mark.skip(reason="TODO: fix")
 def test_calculate_correlation_identical(sample_fadata):
     # 参考与预测相同时，相关性应为 1.0
-    metrics = calculate_correlation(sample_fadata, ref_model="ref", pred_model="pred")
+    metrics = calculate_correlation(sample_fadata, ref_model="ref", pred_model="pred", return_type="all")
     assert np.isclose(metrics["correlation"], 1.0)
     # 时间指标应存在且为浮点数
     assert isinstance(metrics["time_waypoint_geodesic_ref"], float)

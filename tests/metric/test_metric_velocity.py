@@ -1,9 +1,11 @@
 import numpy as np
 import pytest
 from scipy.sparse import csr_matrix
-from test_cluster_metric import sample_fadata_ref as fadata  # import dataset as
 
 import cfe
+from tests.metric.test_metric_cluster import (
+    sample_fadata_ref as fadata,  # import dataset as
+)
 
 fadata = fadata
 

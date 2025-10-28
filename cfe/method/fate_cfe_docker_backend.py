@@ -27,11 +27,12 @@ class CFEDockerBackend(DockerBackend):
 
         self.function_name = function_name
         self.image_id = image_id
-        self.load_backend()  # implemented in DockerBackend
+        self.use_gpu = True
+        self.load_backend()
 
     def load_backend(self):
         self._load_image()
-        self._load_function(self.function_name)
+        self._load_function(self.function_name)  # TODO: test if use gpu
 
     def __call__(self, adata: AnnData, rewrite: bool = True, **parameters):
         """simplified version for self.run"""
@@ -56,7 +57,7 @@ class CFEDockerBackend(DockerBackend):
         with open(f"{tmp_wd}/parameters.json", "w") as f:
             json.dump(parameters, f)
 
-    def execute(self, tmp_wd: str, benchmark_resource: bool = False, use_gpu: bool = True) -> dict:
+    def execute(self, tmp_wd: str, benchmark_resource: bool = False) -> dict:
         """CFE Docker run, save dict.pkl in tmp_wd dir, return trajectory_dict
 
         Args:
@@ -68,8 +69,8 @@ class CFEDockerBackend(DockerBackend):
         trajectory_dict = {}
 
         device_requests = None
-        if use_gpu:
-            logger.info("GPU access requested for the container.")
+        if self.use_gpu:
+            # logger.info("GPU access requested for the container.")
             # This is equivalent to `docker run --gpus all`
             device_requests = [docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])]
 

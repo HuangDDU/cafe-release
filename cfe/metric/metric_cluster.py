@@ -89,13 +89,19 @@ def calculate_mapping(
     return {"recovery": recovery, "relevance": relevance, "F1": f1}
 
 
-def calculate_mapping_milestones(fadata: FateAnnData, **kwargs) -> dict:
+def calculate_mapping_milestones(fadata: FateAnnData, return_type: str = "score", **kwargs) -> dict:
     """计算里程碑分组映射指标"""
     m = calculate_mapping(fadata, grouping="milestones", **kwargs)
-    return {f"{k}_milestones": v for k, v in m.items()}
+    if return_type == "score":
+        return m["F1"]
+    else:
+        return {f"{k}_milestones": v for k, v in m.items()}
 
 
-def calculate_mapping_branches(fadata: FateAnnData, **kwargs) -> dict:
+def calculate_mapping_branches(fadata: FateAnnData, return_type: str = "score", **kwargs) -> dict:
     """计算分支分组映射指标"""
     m = calculate_mapping(fadata, grouping="branches", **kwargs)
-    return {f"{k}_branches": v for k, v in m.items()}
+    if return_type == "score":
+        return m["F1"]
+    else:
+        return {f"{k}_branches": v for k, v in m.items()}

@@ -1,4 +1,7 @@
 metric_id	plotmath	latex	html	long_name	category	type	perfect	worst	symmetric
+pseudotime_correlation				Pseudotime correlation	psedutoime	cross	1	-1	
+velocity_cbdir				Cross-boundary direction correctness	velcocity		1	-1	
+velocity_icvcoh				In-cluster coherence 	velocity		1	-1	
 correlation	cor[dist]	\mathit{cor}_{\textrm{dist}}	cor<sub>dist</sub>	Geodesic distance correlation	cell positions	specific	1	0	TRUE
 rf_mse	MSE[rf]	\mathit{MSE}_{\textit{rf}}	MSE<sub>rf</sub>	Random Forest MSE	neighbourhood	specific	0	0.3	FALSE
 rf_nmse	NMSE[rf]	\mathit{NMSE}_{\textit{rf}}	NMSE<sub>rf</sub>	Random Forest Normalised MSE	neighbourhood	specific	1	0	FALSE

@@ -2,12 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import cfe
-import cfe.metric
-from cfe.metric._topology_metric.metric_him import (
+from cfe.metric._metric_topology.metric_him import get_matched_adjacencies, him_distance
+from cfe.metric.metric_topology import (
+    calculate_edge_flip,
     calculate_him,
-    get_matched_adjacencies,
-    him_distance,
+    calculate_isomorphic,
 )
 
 
@@ -28,11 +27,10 @@ def test_metric_isomorphic():
         ],
         columns=["from", "to", "length", "direction"],
     )
-    assert cfe.metric.calc_isomorphic(net1, net1) == 1
-    assert cfe.metric.calc_isomorphic(net1, net2) == 0
+    assert calculate_isomorphic(net1, net1) == 1
+    assert calculate_isomorphic(net1, net2) == 0
 
 
-@pytest.mark.skip(reason="TODO: fix")
 def test_metric_flip_linear_bifurcation():
     # 对比线性拓扑和分支拓扑
     linear = pd.DataFrame(
@@ -52,8 +50,8 @@ def test_metric_flip_linear_bifurcation():
         columns=["from", "to", "length", "directed"],
     )
 
-    unsimplified_score = cfe.metric.calc_edge_flip(linear, bifurcatiion, simplify=False)
-    simplified_score = cfe.metric.calc_edge_flip(linear, bifurcatiion, simplify=True)
+    unsimplified_score = calculate_edge_flip(linear, bifurcatiion, simplify=False)
+    simplified_score = calculate_edge_flip(linear, bifurcatiion, simplify=True)
 
     expected_unsimplified_score = 1 - 2 / 4
     expected_simplified_score = 0
@@ -62,7 +60,6 @@ def test_metric_flip_linear_bifurcation():
     assert simplified_score == expected_simplified_score
 
 
-@pytest.mark.skip(reason="TODO: fix")
 def test_metric_flip_bifurcatiion_star():
     # 对比分支拓扑和星型拓扑
     bifurcatiion = pd.DataFrame(
@@ -85,8 +82,8 @@ def test_metric_flip_bifurcatiion_star():
         ],
         columns=["from", "to", "length", "directed"],
     )
-    unsimplified_score = cfe.metric.calc_edge_flip(bifurcatiion, star, simplify=False)
-    simplified_score = cfe.metric.calc_edge_flip(bifurcatiion, star, simplify=True)
+    unsimplified_score = calculate_edge_flip(bifurcatiion, star, simplify=False)
+    simplified_score = calculate_edge_flip(bifurcatiion, star, simplify=True)
 
     expected_unsimplified_score = 1 - 4 / 8
     expected_simplified_score = expected_unsimplified_score  # 这里不会发生简化，所以分数不变
@@ -95,7 +92,7 @@ def test_metric_flip_bifurcatiion_star():
     assert simplified_score == expected_simplified_score
 
 
-def test_metric_him():
+def test_metric_him_easy1():
     # 构造树形网络 net1
     # 树结构：根节点 "A"，下面三个分支 "B", "C", "D"；每个分支再扩展两个子节点
     net1_edges = [
@@ -140,6 +137,8 @@ def test_metric_him():
     assert sim > 0.9
     assert d < 0.1
 
+
+def test_metric_him_easy2():
     # 构造树形网络 net3
     # 使用与上面类似的树状结构
     net3_edges = [
@@ -182,6 +181,8 @@ def test_metric_him():
     assert d > 0.2
     assert sim < 0.8
 
+
+def test_metric_him_hard1():
     # 相似复杂网络测试
     # 构造 net5（含分支、环及交叉边）
     net5 = pd.DataFrame(
@@ -212,6 +213,8 @@ def test_metric_him():
     assert d > 0.05
     assert sim < 1.0
 
+
+def test_metric_him_hard2():
     # （simplify=False）
     # 构造 net7（较复杂网络，保留所有原始细节）
     net7 = pd.DataFrame(
