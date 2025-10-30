@@ -22,6 +22,8 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1016/j.cell.2021.12.045",
     github_url="https://github.com/aristoteleo/dynamo-release",
+    use_gpu=False,
+    cpu_parallelization=True,
 )
 def dynamo(
     adata: ad.AnnData,

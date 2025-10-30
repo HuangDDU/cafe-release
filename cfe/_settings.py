@@ -17,6 +17,9 @@ class CellFateExplorerConfig:
         # warning
         self.filter_warning = True
 
+        # save external data after trajectory inference, may waste time and disk space
+        self.save_external_data = False
+
         # plot settings
         self.plot_format = "pdf"
         self.sns_palette = "Set3"

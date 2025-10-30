@@ -137,7 +137,7 @@ class FateAnnData(ad.AnnData):
         self.get_trajectory_dict(model_name)["waypoint_wrapper"] = waypoint_wrapper
 
     def get_raw_wrapper_dict(self, model_name=None):
-        return self.get_trajectory_dict(model_name)["raw_wrapper_dict"]
+        return self.get_trajectory_dict(model_name).get("raw_wrapper_dict", {})
 
     @classmethod
     def read_dynverse_simulation_data(
@@ -337,7 +337,7 @@ class FateAnnData(ad.AnnData):
         milestone_wrapper = MilestoneWrapper(
             milestone_network=milestone_network,
             milestone_id_list=milestone_id_list,
-            cell_id_list=self.obs.index,
+            cell_id_list=self.obs.index,  # TODO: fix for cells filtered by inner preprocessing
             divergence_regions=divergence_regions,
             milestone_percentages=milestone_percentages,
             progressions=progressions,
@@ -1238,7 +1238,7 @@ class FateAnnData(ad.AnnData):
             model_name = self.model_name
         if basis is None:
             basis = self.prior_information.get("basis")
-        trajectory_embedding = self.trajectory_history_dict[model_name]["trajectory_embedding"]
+        trajectory_embedding = self.get_trajectory_dict(model_name)["trajectory_embedding"]
         return trajectory_embedding.get(basis, None)
 
     def set_trajectory_embedding(self, wp_segments, milestone_positions, basis=None, model_name=None):
@@ -1246,7 +1246,7 @@ class FateAnnData(ad.AnnData):
             model_name = self.model_name
         if basis is None:
             basis = self.prior_information.get("basis")
-        self.trajectory_history_dict[model_name]["trajectory_embedding"][basis] = {
+        self.get_trajectory_dict(model_name)["trajectory_embedding"][basis] = {
             "wp_segments": wp_segments.replace({None: ""}),
             "milestone_positions": milestone_positions,
         }
@@ -1471,8 +1471,16 @@ class FateAnnData(ad.AnnData):
                 trajectory_dict = pickle.load(f)
             self.set_trajectory_dict(trajectory_dict, model_name)
 
-    pass
-    # TODO: 增量保存与读取
+    def recovery_external_data(self, model_name=None):
+        external_data = self.get_raw_wrapper_dict(model_name).get("external_data")
+        if external_data is None:
+            logger.warning("no external data found in raw_wrapper_dict, return self")
+            return self
+        else:
+            from ..util.anndata_attribute import recovery_external_data
+
+            new_adata = recovery_external_data(self, external_data)
+            return new_adata
 
     def launch_cellxgene(self, tmp_filename=".tmp.h5ad", trajectory=False, port=5005, conda_env="cfe"):  # if show trajectory
         import os

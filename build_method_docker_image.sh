@@ -55,14 +55,14 @@ echo "Docker image:${image_name} test successfully."
 # for debug: 
 
 # run command mannually
-# method_name="unitvelo"
+# method_name="dynamo"
 # image_name="huangzhaoyang/${method_name}:0.0.1"
 # docker run \
 # 	--rm \
 # 	-v ./method_docker_input:/data \
 # 	--workdir /code \
 # 	${image_name} \
-# 	python /code/run.py --function_name ${method_name} --adata_path /data/adata.h5ad --parameters /data/parameters_${method_name}.json --output_filename ./output.pkl
+# 	python /code/run.py --function_name ${method_name} --adata_path /data/adata.h5ad --parameters /data/parameters_${method_name}.json --output_filename ./output.pkl --save_h5ad ./output.h5ad
 
 # enter into the docker image to check file
 # docker run \

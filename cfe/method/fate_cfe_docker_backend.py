@@ -6,11 +6,16 @@ import threading
 import time
 
 import docker
+import scanpy as sc
 from anndata import AnnData
 
 from .._logging import logger
+from .._settings import settings
 from ..data import FateAnnData
-from ..util import parse_docker_resource_usage_string_list
+from ..util import (
+    extract_external_data_dict_directly,
+    parse_docker_resource_usage_string_list,
+)
 from .fate_backend import DockerBackend
 
 
@@ -53,6 +58,8 @@ class CFEDockerBackend(DockerBackend):
         adata_filename = f"{tmp_wd}/adata.h5ad"
         adata.uns["filename"] = "/data/adata.h5ad"  # save filename in uns for function use in docker
         adata.write(filename=adata_filename)
+        if settings.save_external_data:
+            self.adata = adata  # need to save for comparison later
 
         with open(f"{tmp_wd}/parameters.json", "w") as f:
             json.dump(parameters, f)
@@ -76,9 +83,14 @@ class CFEDockerBackend(DockerBackend):
 
         client = docker.from_env()
         start_time = time.time()
+        cmd = f"python run.py --function_name {self.function_name}"
+        if settings.save_external_data:
+            pass
+            # TODO: need update docker version, run.py file
+            # cmd += f" --save_h5ad {tmp_wd}/output.h5ad"
         container = client.containers.run(
             image=self.image_id,
-            command=f"python run.py --function_name {self.function_name}",  # input and output path are fixed
+            command=cmd,
             volumes=[f"{tmp_wd}:/data"],
             working_dir="/code",
             device_requests=device_requests,  # add gpu access
@@ -97,7 +109,7 @@ class CFEDockerBackend(DockerBackend):
 
         def collect_logs():
             for line in container.logs(stream=True, follow=True, stdout=True, stderr=True):
-                logger.debug(line.decode("utf-8").strip())
+                logger.debug(f"[cfe docker]{line.decode('utf-8').strip()}")
 
         log_thread = threading.Thread(target=collect_logs, daemon=True)
         log_thread.start()
@@ -113,8 +125,18 @@ class CFEDockerBackend(DockerBackend):
             logger.error("Docker Error!!!")
         else:
             logger.debug("Docker Finish")
-            with open(f"{tmp_wd}/output.pkl", "rb") as f:
+            with open(output_pkl_filename, "rb") as f:
                 trajectory_dict = pickle.load(f)
+            if settings.save_external_data:
+                output_adata_filename = f"{tmp_wd}/output.h5ad"
+                if os.path.exists(output_adata_filename):
+                    adata_new = sc.read_h5ad(output_adata_filename)
+                    trajectory_dict["external_data"] = extract_external_data_dict_directly(self.adata, adata_new)
+                    logger.debug("save external data from adata after conda execution")
+                else:
+                    # TODO: for some old version docker image without external data saving, need update
+                    logger.warning("don't save external data from adata after conda execution")
+
             if benchmark_resource:
                 usage_dict = parse_docker_resource_usage_string_list(stats_list)
                 usage_dict["time"] = end_time - start_time  # mannuly add time

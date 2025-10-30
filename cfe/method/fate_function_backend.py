@@ -1,5 +1,7 @@
 from .._logging import logger
+from .._settings import settings
 from ..data import FateAnnData
+from ..util.anndata_attribute import AnndataAttribute
 from .fate_backend import Backend
 
 
@@ -29,11 +31,14 @@ class FunctionBackend(Backend):
             parameters (dict):  the  parameters for trajectory inference method
         """
         parameters = self._get_parameters(fadata, parameters)
-
         adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
-
-        trajectory_dict = self.function(adata, **parameters)
-
+        if settings.save_external_data:
+            # register primary attributes, then extract external data after trajectory inference
+            anndata_attribute = AnndataAttribute(adata)
+            trajectory_dict = self.function(adata, **parameters)
+            trajectory_dict["external_data"] = anndata_attribute.extract_external_data_dict(adata)
+        else:
+            trajectory_dict = self.function(adata, **parameters)
         fadata.add_trajectory_by_type(trajectory_dict)
 
     # TOOD: consider if __call__ is needed

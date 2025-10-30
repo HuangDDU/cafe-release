@@ -1,3 +1,4 @@
+from .anndata_attribute import AnndataAttribute, extract_external_data_dict_directly
 from .available_metadata import get_available_method_df
 from .context import temporary_obsm_key
 from .parse_benchmark import (
@@ -15,4 +16,6 @@ __all__ = [
     "parse_bash_resource_usage_string",
     "parse_docker_resource_usage_string_list",
     "temporary_obsm_key",
+    "AnndataAttribute",
+    "extract_external_data_dict_directly",
 ]
