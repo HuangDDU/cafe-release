@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 import pandas as pd
 
-from .._logging import logger
+from .._logging import logger, set_log_file
 from .._settings import settings
 from ..data.fate_anndata import FateAnnData
 from ..util import random_time_string
@@ -125,10 +125,17 @@ class FateMethod:
             backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
             self.choose_backend(self.backend_name)
             self.id = random_time_string(f"{self.method_name}-{self.backend}")
+        if settings.seperate_log_file:
+            set_log_file(f".cfe/{fadata.id}-{self.id}.log")
         if rewrite:
             fadata.add_model_name(self.id)
+
         self.method_backend.run(fadata, parameters)
+
+        if settings.seperate_log_file:
+            set_log_file()  # reset to default log file
         logger.info(f"method infer trajectory successfully: {self.method_backend}")
+        logger.debug(f"milestone_network: \n {fadata.get_milestone_wrapper().milestone_network}")
 
     def __call__(self, fadata, parameters, **kwargs):
         self.infer_trajectory(fadata, parameters, **kwargs)

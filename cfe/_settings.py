@@ -13,6 +13,7 @@ class CellFateExplorerConfig:
         # backend settings
         # ["python_function", "cfe_docker", "dynverse_docker", "conda"]
         self.backend = "conda"
+        self.seperate_log_file = True  # set seperate log file for each backend run
 
         # warning
         self.filter_warning = True
