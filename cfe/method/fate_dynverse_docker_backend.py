@@ -149,20 +149,22 @@ class DynverseDockerBackend(DockerBackend):
             detach=True,
         )
 
+        # real time stat and log list
         stats_list = []
 
         def collect_stats():
-            for stat in container.stats(stream=True):
-                s = str(stat.decode())[:-1]  # remove '\n'
-                stats_list.append(s)
+            for stat in container.stats(stream=True, decode=True):
+                stats_list.append(stat)
 
         stats_thread = threading.Thread(target=collect_stats, daemon=True)
         stats_thread.start()
 
-        # real time log
-        for log in container.logs(stream=True):
-            log_line = log.decode("utf-8").strip()
-            logger.info(f"[Docker] {log_line}")
+        def collect_logs():
+            for line in container.logs(stream=True, follow=True, stdout=True, stderr=True):
+                logger.debug(f"[dynverse docker]{line.decode('utf-8').strip()}")
+
+        log_thread = threading.Thread(target=collect_logs, daemon=True)
+        log_thread.start()
 
         container.wait()  # wait until docker finish
         end_time = time.time()
@@ -209,8 +211,10 @@ class DynverseDockerBackend(DockerBackend):
         benchmark_resource = self._check_benchmark_resource(parameters)
 
         # only parse definition file for dynverse docker
-        inputs = self._extract_inputs(fadata, self.definition.get_inputs_df())  # extract main input
-        priors = self._extract_prior_information(fadata, self.definition.get_inputs_df())  # extract prior information
+        input_df = self.definition.get_inputs_df()
+        logger.debug(f"definition input_df: {input_df}")
+        inputs = self._extract_inputs(fadata, input_df)  # extract main input, expression matrix
+        priors = self._extract_prior_information(fadata, input_df)  # extract prior information
         parameters = self.definition.get_parameters(parameters)
 
         with tempfile.TemporaryDirectory() as tmp_wd:
@@ -247,9 +251,10 @@ class DynverseDockerBackend(DockerBackend):
         # extract model input expression matrix
         input_ids = inputs_df["input_id"][inputs_df["type"] == "expression"].tolist()
         inputs = {}
-        for expression_id in input_ids:
-            # inputs[expression_id] = get_expression(dataset, expression_id)
-            inputs[expression_id] = fadata.layers[expression_id]
+        if "counts" in input_ids:
+            inputs["counts"] = fadata.layers["counts"]
+        if "expression" in input_ids:
+            inputs["expression"] = fadata.X
         # main expression matrix, for example, Component1 and Slingshot need "expression", while monocle_ddrtree need "counts"
         inputs["expression_id"] = input_ids[0]
         # add cell and gene ids
@@ -307,7 +312,7 @@ class DynverseDockerBackend(DockerBackend):
         if "cluster" in cfe_priors:
             groups_id = fadata.obs[cfe_priors["cluster"]].tolist()
             priors["groups_id"] = groups_id
-            logger.debug(f"extract .obs['{cfe_priors['cluster']}']({len(groups_id)}) in as prior information `groups_id` key for dynverse ")
+            # logger.debug(f"extract .obs['{cfe_priors['cluster']}']({len(groups_id)}) in as prior information `groups_id` key for dynverse ")
 
         priors_key_set = set(priors.keys())
 
@@ -315,7 +320,7 @@ class DynverseDockerBackend(DockerBackend):
         required_prior_ids = inputs_df["input_id"][inputs_df["required"] & (inputs_df["type"] == "prior_information")].tolist()
         required_prior_ids_set = set(required_prior_ids)
         if not (required_prior_ids_set <= priors_key_set):
-            # all required priors are needed, if not , raise error
+            # all required priors are necessary, if not, raise error
             missing_priors = required_prior_ids_set - priors_key_set
             msg = f"""
                 ! Prior information {','.join(missing_priors)} is missing from dataset {fadata.id} but is required by the method. \n
@@ -324,12 +329,13 @@ class DynverseDockerBackend(DockerBackend):
             """
             raise Exception(msg)
         required_prior = {k: priors[k] for k in required_prior_ids}
+        logger.debug(f"extract required priors: {required_prior.keys()}")
 
         # check optional priors
         optional_prior_ids = inputs_df["input_id"][(~inputs_df["required"]) & (inputs_df["type"] == "prior_information")].tolist()
         optional_prior_ids_set = set(optional_prior_ids)
         if not (optional_prior_ids_set <= priors_key_set):
-            # all required priors are not needed, enven if not all are provided, only warning
+            # all optional priors are not necessary, enven if not all are provided, only warning
             missing_priors = list(optional_prior_ids_set - priors_key_set)
             msg = f"""
                 Prior information {','.join(missing_priors)} is optional, but missing from dataset {fadata.id}. \n
@@ -337,6 +343,7 @@ class DynverseDockerBackend(DockerBackend):
             """
             logger.warning(msg)
         optional_prior = {k: priors[k] for k in list(optional_prior_ids_set & priors_key_set)}  # remove irrelevant keys
+        logger.debug(f"extract optional prior: {optional_prior.keys()}")
 
         priors = required_prior | optional_prior
 

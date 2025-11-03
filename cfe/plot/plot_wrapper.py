@@ -15,7 +15,10 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
     if wrapper_type is None:
         # extract wrapper type from fadata
         wrapper_type = fadata.wrapper_type
+        trajectory_dict = fadata.get_trajectory_dict(model_name)
+        wrapper_type = trajectory_dict["raw_wrapper_dict"]["wrapper_type"]
         logger.info(f"find wrapper type: {wrapper_type}")
+
     if wrapper_type == "directed":
         plot_directed(fadata)
     elif wrapper_type == "linear":
@@ -75,29 +78,24 @@ def plot_graph(fadata):
     pass
 
 
-def plot_velocity(
-    fadata,
-    basis=None,
-    model_name: str = None,
-):
-    import scvelo as scv
-
+def plot_velocity(fadata, basis=None, model_name: str = None, style="scvelo", mode="stream"):
     if basis is None:
         basis = fadata.prior_information.get("basis")
     velocity_basis = f"velocity_{basis[2:]}"
     velocity_embedding = fadata.get_raw_wrapper_dict(model_name).get(velocity_basis)
 
     with temporary_obsm_key(fadata, velocity_basis, velocity_embedding):
-        scv.pl.velocity_embedding_stream(fadata, basis=basis[2:])
+        if style == "scvelo":
+            import scvelo as scv
 
-    # use velocity matrix in high dimensional space to recompute low dimensional velocity.
-    # cell_index = rwd["cell_index"]
-    # gene_index = rwd["gene_index"]
-    # neighbors = rwd["neighbors"]
-    # adata = fadata[cell_index, gene_index]
-    # adata.layers["velocity"] = fadata.raw_wrapper_dict["velocity"]
-    # adata.uns["neighbors"] = neighbors
-    # scv.tl.velocity_graph(adata)
-    # scv.pl.velocity_embedding_stream(adata, basis="umap", n_neighbors=min(neighbors["params"]["n_neighbors"], adata.shape[0]))
-    # directly use velocity_adata
-    # velocity_adata = rwd["velocity_adata"]
+            if mode == "stream":
+                scv.pl.velocity_embedding_stream(fadata, basis=basis[2:])
+            elif mode == "grid":
+                scv.pl.velocity_embedding_grid(fadata, basis=basis[2:])
+            else:
+                scv.pl.velocity_embedding(fadata, basis=basis[2:])
+        else:
+            # TODO: dynamo style
+            import dynamo as dyn
+
+            dyn.pl.streamline_plot(fadata, basis=basis[2:])

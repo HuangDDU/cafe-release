@@ -126,7 +126,7 @@ class FateMethod:
             self.choose_backend(self.backend_name)
             self.id = random_time_string(f"{self.method_name}-{self.backend}")
         if settings.seperate_log_file:
-            set_log_file(f".cfe/{fadata.id}-{self.id}.log")
+            set_log_file(f".cfe/{fadata.id}/log/{self.id}.log")
         if rewrite:
             fadata.add_model_name(self.id)
 

@@ -43,7 +43,7 @@ def scvelo_preprocess_pipeline(
     min_shared_counts: int = 20,
     n_top_genes: int = 2000,
     n_pcs: int = 30,
-    n_neighbors: int = 15,
+    n_neighbors: int = 30,
 ):
     """standard scvelo preprocess pipeline"""
     import scvelo as scv

@@ -24,19 +24,31 @@ def plot_trajectory(
     color_trajectory: str = None,
     size_milestones: int = 30,
     size_transitions: int = 2,
+    waypoint_wrapper_kwargs: dict = {},
+    recompute_trajectory_embedding: bool = False,
     save: str = None,
     **sc_pl_embedding_kwargs,
 ) -> None:
     """Plot cell embedding and trajectory with different color for now model by fadata.model_name
-
-     ref: pydynverse/plot/plot_dimred.plot_dimred
+    ref: pydynverse/plot/plot_dimred.plot_dimred
 
     Args:
         fadata (FateAnnData): FateAnnData object with trajectory.
-        basis (str, optional): embedding name in .obsm. key.
+        model_name (str | Sequence[str] | None, optional): model name(s).
+        color (str | Sequence[str] | None, optional): Color(s), default extracted from prior information.
+        basis (str, optional): embedding basis.
+        curve (bool, optional): whether to plot a curve.
+        layout_by_row (str, optional): layout by row.
+        milestone_color (str | list, optional): milestone color(s) to use for plotting.
+        color_trajectory (str, optional): trajectory color.
         size_milestones (int, optional): milestone point size.
         size_transitions (int, optional): waypoint on trajectory curve size.
-        color_trajectory (str, optional): trajectory color.
+        waypoint_wrapper_kwargs (dict, optional): additional keyword arguments for waypoint wrapper.
+        recompute_trajectory_embedding (bool, optional): whether to recompute trajectory embedding.
+        save (str, optional): Path to save the plot.
+
+    Returns:
+        None
     """
 
     if model_name is None:
@@ -70,13 +82,13 @@ def plot_trajectory(
     for i, model_name in enumerate(model_name_list):
         # trajectory embedding extraction or calculation
         trajectory_embedding = fadata.get_trajectory_embedding(basis, model_name)  # trajectory embedding for specific basis
-        if trajectory_embedding is None:
+        if recompute_trajectory_embedding or trajectory_embedding is None:
             logger.debug(f"calculate new trajectory embedding for model_name:{model_name}, basis:{basis}.")
             # new trajectory embedding, project and save
             # project waypoint to embedding space
             cell_positions = pd.DataFrame(data=fadata.obsm[basis][:, :2], columns=["comp_1", "comp_2"])
             cell_positions["cell_id"] = fadata.obs.index
-            waypoint_projection = project_waypoints(fadata, cell_positions, model_name)
+            waypoint_projection = project_waypoints(fadata, cell_positions, waypoint_wrapper_kwargs, model_name)
             # plot waypoint to show trajectory
             wp_segments = waypoint_projection["segments"]  # projection to trajectory
             milestone_positions = wp_segments[wp_segments["milestone_id"].apply(lambda x: x is not None)]  # only save waypoint on milestone
@@ -108,7 +120,10 @@ def plot_trajectory(
                 fadata.uns["milestone_color_dict"] = milestone_color_dict
                 cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
                 fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
-                fadata.uns["milestone_colors"] = cell_color_df.loc[fadata.obs.index].values
+                missing_cell_color = "#808080"
+                if cell_color_df.shape[0] != fadata.n_obs:
+                    logger.warning(f"milestone cell color length not equal to cell number! set missing color as '{missing_cell_color}'.")
+                fadata.uns["milestone_colors"] = [cell_color_df.loc[i] if i in cell_color_df.index else missing_cell_color for i in fadata.obs.index]
 
             # base scanpy embedding scatter plot
             sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
@@ -196,7 +211,13 @@ def plot_trajectory(
     return ax
 
 
-def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, model_name: str = None, trajectory_projection_sd: float = None) -> dict:
+def project_waypoints(
+    fadata: FateAnnData,
+    cell_positions: pd.DataFrame,
+    waypoint_wrapper_kwargs: dict = {},
+    model_name: str = None,
+    trajectory_projection_sd: float = None,
+) -> dict:
     """projectory waypoint into embbeding space
 
     ref: pydynverse/plot/project_waypoints.project_waypoints_coloured
@@ -213,7 +234,7 @@ def project_waypoints(fadata: FateAnnData, cell_positions: pd.DataFrame, model_n
     # select waypoint
     logger.debug("add waypoints")
     milestone_wrapper = fadata.get_milestone_wrapper(model_name)
-    fadata.add_waypoints(milestone_wrapper, model_name)
+    fadata.add_waypoints(milestone_wrapper, model_name, waypoint_wrapper_kwargs)
     waypoints = fadata.get_waypoint_wrapper(model_name)
     logger.debug(f"add waypoints shape is {waypoints['waypoint_geodesic_distances'].shape} for '{model_name}', finished!")
 

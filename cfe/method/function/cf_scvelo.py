@@ -18,6 +18,8 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1038/s41587-020-0591-3",
     github_url="https://github.com/theislab/scvelo",
+    use_gpu=False,
+    cpu_parallelization=True,
 )
 def scvelo(
     adata: ad.AnnData,

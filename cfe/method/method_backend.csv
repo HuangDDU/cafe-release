@@ -35,3 +35,6 @@ ti_topslam,,,,dynverse/ti_topslam:v0.9.9.01
 ti_waterfall,,,,dynverse/ti_waterfall:v0.9.9.01
 ti_elpilinear,,,,dynverse/ti_elpilinear:v0.9.9.01
 ti_forks,,,,dynverse/ti_forks:v0.9.9.01
+ti_celltree_maptpx,,,,dynverse/ti_celltree_maptpx:v2.0.0
+ti_slice,,,,dynverse/ti_slice:v2.0.0
+ti_raceid_stemid,,,,dynverse/ti_raceid_stemid:v2.0.0

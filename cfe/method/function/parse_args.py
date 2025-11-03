@@ -24,6 +24,10 @@ def parse_args():
 
 
 def main():
+    import sys
+
+    print(f"python interpreter path: {sys.executable}")
+
     # parse args from command line
     function_name, adata_path, parameters, output_filename, save_h5ad = parse_args()
 

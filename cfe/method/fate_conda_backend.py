@@ -65,7 +65,7 @@ class CondaBackend(Backend):
         parse_args_script = f"{os.path.dirname(__file__)}/function/parse_args.py"
 
         # construct command
-        cmd = f"""
+        cmd = f"""\
         python {parse_args_script} \
             --function_name={self.function_name} \
             --adata_path={tmp_wd}/adata.h5ad \
@@ -74,11 +74,10 @@ class CondaBackend(Backend):
         """
         if settings.save_external_data:
             cmd += f" --save_h5ad={tmp_wd}/output.h5ad"
-
+        cmd = f"conda run -n {self.conda_name} --no-capture-output {cmd}"  # use conda environment to run
         if benchmark_resource:
             cmd = f"/usr/bin/time -v {cmd}"
-        cmd = f"conda run -n {self.conda_name} --no-capture-output {cmd}"  # use conda environment to run
-        logger.info(f"cmd: {cmd}")
+        logger.debug(f"cmd: {cmd}")
 
         # Set environment variable for matplotlib to use a non-GUI backend
         env = os.environ.copy()
@@ -89,7 +88,7 @@ class CondaBackend(Backend):
         # remove unimportant warning log
         stderr_lines = []  # to capture stderr for latter resource usage parsing
         threading.Thread(target=print_output(logger.debug), args=(process.stdout, "[conda-excute-stdout]"), daemon=True).start()
-        threading.Thread(target=print_output(logger.warning, stderr_lines), args=(process.stderr, "[conda-excute-stderr]"), daemon=True).start()
+        threading.Thread(target=print_output(logger.debug, stderr_lines), args=(process.stderr, "[conda-excute-stderr]"), daemon=True).start()
         # wait for process
         process.wait()
 

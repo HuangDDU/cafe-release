@@ -457,14 +457,14 @@ class FateAnnData(ad.AnnData):
                 new_cluster_list=trajectory_dict.get("new_cluster_list", None),
             )
 
-    def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None) -> None:
+    def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None, waypoint_wrapper_kwargs: dict = {}) -> None:
         """Create WaypointWrapper object"""
         logger.debug("FateAnnData add_waypoints")
 
         milestone_wrapper = (
             milestone_wrapper if milestone_wrapper is not None else self.get_milestone_wrapper(model_name)
         )  # waypoint is based on milestone
-        waypoint_wrapper = WaypointWrapper(milestone_wrapper)
+        waypoint_wrapper = WaypointWrapper(milestone_wrapper, **waypoint_wrapper_kwargs)
         # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] #
         # self.waypoint_wrapper = waypoint_wrapper
         # self.cfe_dict["waypoint_wrapper"] = waypoint_wrapper
@@ -476,6 +476,7 @@ class FateAnnData(ad.AnnData):
         self.set_waypoint_wrapper(waypoint_wrapper, model_name)
 
     def __getitem__(self, key):
+        # TODO: it will waste resource for preprocessing, because there are many slice operation
         sub_adata = super().__getitem__(key)
         sub_fadata = self.from_anndata(sub_adata)
         # TODO: add sub operation for all other attributes, such as prior_information, milestone_wrapper, wayppoint_wrapper, etc.
@@ -1129,7 +1130,6 @@ class FateAnnData(ad.AnnData):
             milestone_network["length"] = 1.0
             milestone_network["directed"] = True
         # TODO: other strategy LAP
-        logger.debug(f"milestone_network:{milestone_network}")
 
         self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
 
@@ -1428,9 +1428,9 @@ class FateAnnData(ad.AnnData):
         logger.debug("recovery all raw trajectory dict")
 
     def write_trajectory_dict(self, dirname=None, model_name_list=None):
-        # save all trajectory, one trajectory is a pkl file: .cfe/trajectory_history/{self.id}/{model_name}.pkl
+        # save all trajectory, one trajectory is a pkl file: .cfe/{self.id}/trajectory_history/{model_name}.pkl
         if dirname is None:
-            dirname = f".cfe/trajectory_history/{self.id}"
+            dirname = f".cfe/{self.id}/trajectory_history"
         if not os.path.exists(dirname):
             os.makedirs(dirname)
 
@@ -1448,15 +1448,25 @@ class FateAnnData(ad.AnnData):
             with open(model_filename, "wb") as f:
                 pickle.dump(trajectory_dict, f)
 
-    def load_trajectory_dict(self, dirname=None, model_name_list=None):
+    def load_trajectory_dict(self, dirname: str = None, model_name_list: list[str] = None, backend: str = None):
         if dirname is None:
-            dirname = f".cfe/trajectory_history/{self.id}"
+            dirname = f".cfe/{self.id}/trajectory_history"
         if not os.path.exists(dirname):
             raise Exception(f"directory '{dirname}' not found!")
 
         if model_name_list is None:
             # default load all trajectory in the dir
             model_name_list = [i.replace(".pkl", "") for i in os.listdir(dirname)]
+            if backend is not None:
+                # filter by backend
+                filtered_model_name_list = []
+                for model_name in model_name_list:
+                    if model_name == "ref":
+                        continue
+                    now_backend = model_name.split("__")[1].split("-")[1]
+                    if now_backend == backend:
+                        filtered_model_name_list.append(model_name)
+                model_name_list = filtered_model_name_list
         else:
             # TODO: Check if the trajectory is compatible with the data
             pass
