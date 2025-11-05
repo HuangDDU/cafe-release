@@ -19,13 +19,14 @@ from .fate_backend import Backend
 class CondaBackend(Backend):
     """Specific implementation of abstract Backend class using Python functions."""
 
-    def __init__(self, function_name="comp1", conda_name="cfe"):
-        logger.debug("CondaBackend __init__")
+    def __init__(self, function_name="comp1", conda_name="cfe", id=""):
         self.function_name = function_name
         self.conda_name = conda_name
+        self.id = id
         self.load_backend()
 
     def load_backend(self):
+        logger.debug("load conda backend")
         if self.test_conda_env() is False:
             self.install_conda_env()
 
@@ -35,7 +36,7 @@ class CondaBackend(Backend):
             logger.error(f"Conda environment '{self.conda_name}' not available: {result.stderr.strip()}")
             raise RuntimeError(f"Conda environment '{self.conda_name}' not available.")
         else:
-            logger.debug(f"Conda environment '{self.conda_name}' is available: {result.stdout.strip()}")
+            logger.debug(f"Conda environment '{self.conda_name}' is available: {result.stdout.strip()}", indent_level=2)
 
         # load function to get parameter
         self._load_function(self.function_name)
@@ -45,7 +46,7 @@ class CondaBackend(Backend):
         adata_filename = f"{tmp_wd}/adata.h5ad"
         adata.uns["filename"] = adata_filename  # save filename in uns for function use
         adata.write(filename=adata_filename)
-        if settings.save_external_data:
+        if settings.save_external_data or settings.save_h5ad:
             self.adata = adata  # need to save for comparison later
 
         with open(f"{tmp_wd}/parameters.json", "w") as f:
@@ -71,12 +72,13 @@ class CondaBackend(Backend):
             --adata_path={tmp_wd}/adata.h5ad \
             --parameters={tmp_wd}/parameters.json \
             --output_filename={tmp_wd}/output.pkl \
-        """
-        if settings.save_external_data:
+        """  # tmp_wd is working dir
+        if settings.save_external_data or settings.save_h5ad:
             cmd += f" --save_h5ad={tmp_wd}/output.h5ad"
         cmd = f"conda run -n {self.conda_name} --no-capture-output {cmd}"  # use conda environment to run
         if benchmark_resource:
             cmd = f"/usr/bin/time -v {cmd}"
+        cmd = f"cd {tmp_wd} && {cmd}"  # set working dir, remove middle output files
         logger.debug(f"cmd: {cmd}")
 
         # Set environment variable for matplotlib to use a non-GUI backend
@@ -105,6 +107,11 @@ class CondaBackend(Backend):
                 adata_new = sc.read_h5ad(f"{tmp_wd}/output.h5ad")  # read back adata if needed
                 trajectory_dict["external_data"] = extract_external_data_dict_directly(self.adata, adata_new)
                 logger.debug("save external data from adata after conda execution")
+            if settings.save_h5ad:
+                # save entire adata object in specific file.
+                import shutil
+
+                shutil.copyfile(f"{tmp_wd}/output.h5ad", f".cfe/{self.adata.uns['id']}/h5ad/{self.id}.h5ad")
             if benchmark_resource:
                 # read usage string and transfer to dict
                 usage_string = "".join(stderr_lines)
@@ -125,6 +132,7 @@ class CondaBackend(Backend):
 
         # prepare data and parameters
         adata = fadata.to_anndata(delete_trajectory=True)  # avoid other trajectory IO
+        adata.uns["id"] = fadata.id
         parameters = self._get_parameters(fadata, parameters)
 
         # execute method, save input and output file in tmp dir
@@ -173,7 +181,7 @@ class CondaBackend(Backend):
                 # Split the line by whitespace and get the first element
                 parts = line.split()
                 if parts and parts[0] == self.conda_name:
-                    logger.debug(f"Conda environment '{self.conda_name}' found.")
+                    # logger.debug(f"Conda environment '{self.conda_name}' found.", indent_level=2)
                     return True
 
             logger.warning(f"Conda environment '{self.conda_name}' not found.")

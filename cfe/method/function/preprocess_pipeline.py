@@ -58,18 +58,12 @@ def dynamo_preprocess_pipeline(
     preprocessor_kwargs: dict = {},
     recipe: str = "monocle",
     reduceDimension_kwargs: dict = {},
-    # n_top_genes: int = 1000,
-    # fg_kwargs: dict = {'shared_count': 20},
-    # n_pca_components: int = 30,
 ):
     """standard dynamo preprocess pipeline"""
-    import dynamo as dyn
+    # import dynamo as dyn
     from dynamo.preprocessing import Preprocessor
 
     preprocessor = Preprocessor(**preprocessor_kwargs)
-    preprocessor.preprocess_adata(adata, recipe="monocle")
-    dyn.tl.reduceDimension(adata, **reduceDimension_kwargs)
-    # dyn.pp.recipe_monocle(adata, n_top_genes=n_top_genes, fg_kwargs=fg_kwargs)
-    # dyn.tl.reduceDimension(adata, n_pca_components=n_pca_components)
+    preprocessor.preprocess_adata(adata, recipe=recipe)
 
     return adata

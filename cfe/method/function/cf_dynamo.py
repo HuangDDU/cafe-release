@@ -1,9 +1,10 @@
 import anndata as ad
 import dynamo as dyn
-import numpy as np
 
+# import numpy as np
 # import scipy.sparse as sp
-import scvelo as scv
+# import scanpy as sc
+# import scvelo as scv
 
 try:
     # for docker
@@ -29,6 +30,9 @@ def dynamo(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
+    basis: str = "X_umap",
+    moment: bool = True,
+    n_neighbors: int = 30,
     dynamics_kwargs: dict = {},
     cell_velocities_kwargs: dict = {},
 ):
@@ -48,29 +52,28 @@ def dynamo(
     # 1. preprocess
     if repreprocess:
         preprocess_pipeline(adata, style="dynamo", **repreprocess_kwargs)
-
+        dyn.tl.moments(adata)  # make sure moments is computed
+        adata.layers["Ms"] = adata.layers["M_s"]  # extract moment matrix for transition matrix calculation
+        adata.layers["Mu"] = adata.layers["M_u"]
+        dyn.tl.neighbors(adata, n_neighbors=n_neighbors)  # recompute neighbors
+    basis = basis[2:]  # remove "X_"
     # 2. execute method
+    # dynamo core function
     dyn.tl.dynamics(adata, **dynamics_kwargs)
-    dyn.tl.cell_velocities(adata, **cell_velocities_kwargs)
-    adata.layers["velocity"] = adata.layers["velocity_S"].toarray()  # csr sparse matrix to array
-    if np.min((adata.obsp["distances"] > 0).sum(1).A1) == 0:
-        print("neighbor graph seems to be corrupted, recompute neighbor graph.")
-        scv.pp.neighbors(adata)  # recompute neighbor graph if some points have no neighbors
-    scv.tl.velocity_graph(adata)
-    # TODO: compute velocity graph later in wrapper function: 'add_trajectory_velocity'
-
-    # TODO: use raw dynamo velocity graph, but 'velocity_graph_neg' can't set accurately for paga.
-    # velocity_graph = adata.obsp["pearson_transition_matrix"]
-    # adata.uns["velocity_graph"] = velocity_graph
-    # # adata.uns["velocity_graph_neg"] = sp.csr_matrix(velocity_graph.shape, dtype=velocity_graph.dtype) # fill 0
-    # adata.uns["velocity_graph_neg"] = sp.csr_matrix(np.ones(velocity_graph.shape)/velocity_graph.shape[1]) # fill avg value
+    dyn.tl.cell_velocities(adata, basis=basis, **cell_velocities_kwargs)  # scv.tl.velocity_graph(adata)
+    # velocity_key = "velocity"
+    # adata.layers[velocity_key] = adata.layers["velocity_S"].toarray()  # extract velocity matrix
+    # adata.var[f"{velocity_key}_genes"] = adata.var["use_for_transition"]  # extract velocity gene
+    adata = adata[:, adata.var["use_for_transition"]]  # extract velocity gene
+    velocity_embedding = adata.obsm[f"velocity_{basis}"]
 
     # 3,4. extract and save results
     trajectory_dict = {
         "wrapper_type": "velocity",
-        "velocity": adata.layers["velocity"],
-        "velocity_graph": adata.uns["velocity_graph"],
-        "velocity_graph_neg": adata.uns["velocity_graph_neg"],
+        "velocity": None,
+        "velocity_graph": None,
+        "velocity_graph_neg": None,
+        "velocity_embedding": velocity_embedding,
         "neighbors": {"distances": adata.obsp["distances"], "connectivities": adata.obsp["connectivities"]},
         "obs_index": adata.obs.index,
         "var_index": adata.var.index,

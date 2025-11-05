@@ -250,7 +250,9 @@ class FateAnnData(ad.AnnData):
         self.prior_information.update(kwargs)
 
     def recognize_prior_information(self):
-        # recognize rior information dict automatically
+        # recognize prior information dict automatically
+
+        logger.debug("recognizing prior information...")
         prior_information = {}
         # cluster and basis are chosen by candidate list priority.
         cluster_candidate_list = ["clusters", "celltype"]
@@ -258,12 +260,12 @@ class FateAnnData(ad.AnnData):
         for cluster_candidate in cluster_candidate_list:
             if cluster_candidate in self.obs.columns:
                 prior_information["cluster"] = cluster_candidate
-                logger.debug(f"recognize '{cluster_candidate}' in '.obs' columns as 'cluster' key")
+                logger.debug(f"recognize '{cluster_candidate}' in '.obs' columns as 'cluster' key", indent_level=2)
                 break
         for basis_candidate in basis_candidate_list:
             if basis_candidate in self.obsm.keys():
                 prior_information["basis"] = basis_candidate
-                logger.debug(f"recognize '{basis_candidate}' in '.obsm' keys as 'basis' key")
+                logger.debug(f"recognize '{basis_candidate}' in '.obsm' keys as 'basis' key", indent_level=2)
                 break
         # TODO: start_cell need specified
         self.prior_information.update(prior_information)
@@ -548,7 +550,7 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_linear(
         self,
         pseudotime: list,
-        directed: bool = False,
+        directed: bool = True,
         do_scale_minmax: bool = True,
     ) -> None:
         """add linear trajectory, such as Comp1(baseline), Palantir(TODO), Cytotrace(TODO).
@@ -747,7 +749,12 @@ class FateAnnData(ad.AnnData):
 
         if isinstance(X_emb, str):
             X_emb = self.obsm[X_emb]
-        if not isinstance(X_emb, pd.DataFrame):
+        if isinstance(X_emb, pd.DataFrame):
+            if not X_emb.index.equals(self.obs.index):
+                # TODO: need syn with other similar warning
+                logger.warning("cell number of 'X_emb' and 'self.obs' are not equal, use subset of self as 'self' in this function")
+                self = self[X_emb.index]
+        else:
             X_emb = pd.DataFrame(X_emb, index=self.obs.index)
 
         # add self loop for discrete isolated milestone
@@ -1093,9 +1100,10 @@ class FateAnnData(ad.AnnData):
             # paga based on expression embedding and velocity embedding
             new_adata = sc.AnnData(X=adata.obsm[basis], obs=adata.obs, obsm=adata.obsm, obsp=adata.obsp, uns=adata.uns)
             new_adata.layers["spliced"] = adata.obsm[basis]
-            new_adata.layers["velocity"] = velocity_embedding
             new_adata.layers["unspliced"] = adata.obsm[basis]
+            new_adata.layers["velocity"] = velocity_embedding
             # recomput velocity graph based on low-dim velocity and embedding
+            sc.pp.neighbors(new_adata)
             scv.tl.velocity_graph(new_adata)
             scv.tl.paga(new_adata, groups="clusters")  # recompute paga
             df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
@@ -1463,6 +1471,7 @@ class FateAnnData(ad.AnnData):
                 for model_name in model_name_list:
                     if model_name == "ref":
                         continue
+                    # model name format: method_name-backend
                     now_backend = model_name.split("__")[1].split("-")[1]
                     if now_backend == backend:
                         filtered_model_name_list.append(model_name)

@@ -1,6 +1,8 @@
 import argparse
 import importlib
 import json
+import logging
+import os
 import pickle
 
 import scanpy as sc
@@ -28,6 +30,10 @@ def main():
 
     print(f"python interpreter path: {sys.executable}")
 
+    # optimize logging output
+    os.environ["TQDM_DISABLE"] = "1"
+    logging.basicConfig(level=logging.WARNING, format="%(message)s", datefmt="%S")
+
     # parse args from command line
     function_name, adata_path, parameters, output_filename, save_h5ad = parse_args()
 
@@ -48,8 +54,15 @@ def main():
     with open(output_filename, "wb") as f:
         pickle.dump(trajectory_dict, f)
     if save_h5ad is not None:
-        print(f"save adata h5ad file to '{save_h5ad}'.")
-        adata.write_h5ad(save_h5ad)
+        if "save_h5ad" in trajectory_dict:
+            # method directly save h5ad result, like pyrovelocity
+            import shutil
+
+            shutil.copyfile(trajectory_dict["save_h5ad"], save_h5ad)
+            print(f"copy adata h5ad file from {trajectory_dict['save_h5ad']} to {save_h5ad}")
+        else:
+            print(f"save adata h5ad file to '{save_h5ad}'.")
+            adata.write_h5ad(save_h5ad)
     else:
         print("'save_h5ad' is None, skip saving adata h5ad file.")
     print(f"{function_name} finish!")

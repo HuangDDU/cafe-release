@@ -125,6 +125,7 @@ class FateMethod:
             backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
             self.choose_backend(self.backend_name)
             self.id = random_time_string(f"{self.method_name}-{self.backend}")
+            self.method_backend.id = self.id
         if settings.seperate_log_file:
             set_log_file(f".cfe/{fadata.id}/log/{self.id}.log")
         if rewrite:

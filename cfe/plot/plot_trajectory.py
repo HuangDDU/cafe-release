@@ -26,7 +26,7 @@ def plot_trajectory(
     size_transitions: int = 2,
     waypoint_wrapper_kwargs: dict = {},
     recompute_trajectory_embedding: bool = False,
-    save: str = None,
+    save: bool | str = None,
     **sc_pl_embedding_kwargs,
 ) -> None:
     """Plot cell embedding and trajectory with different color for now model by fadata.model_name
@@ -207,7 +207,10 @@ def plot_trajectory(
                 # TODO: legend  setting
 
     if save is not None:
+        if isinstance(save, bool) and save:
+            save = f".cfe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
         plt.savefig(save)
+        logger.debug(f"save trajectory plot to '{save}'")
     return ax
 
 

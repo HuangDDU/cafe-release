@@ -20,6 +20,7 @@ class CellFateExplorerConfig:
 
         # save external data after trajectory inference, may waste time and disk space
         self.save_external_data = False
+        self.save_h5ad = False
 
         # plot settings
         self.plot_format = "pdf"
@@ -38,6 +39,10 @@ class CellFateExplorerConfig:
             logger.warning("R or rpy2 is not available. You can't use dynverse dataset")
         # manually settings r_available=False for testing
         self.r_available = False
+        self.version = "0.1.2_alpha"  # ref: https://zhuanlan.zhihu.com/p/703265351
+
+    def check_gpu(self):
+        self.gpu = ""
 
     def __getitem__(self, key):
         if hasattr(self, key):
