@@ -453,11 +453,16 @@ class FateAnnData(ad.AnnData):
                 X=trajectory_dict.get("X"),  # add X for velocity method like veloae
             )
         elif wrapper_type == "lineage":
+            # TODO: fix lineage trajectory for cellrank
             self.add_trajectory_lineage(
                 probability=trajectory_dict["probability"],
                 cluster_key=trajectory_dict.get("cluster_key", None),
                 new_cluster_list=trajectory_dict.get("new_cluster_list", None),
             )
+
+    def add_trajectory_by_h5ad(self):
+        # TODO: add trajectory by reading h5ad file in raw_wrapper_dict
+        pass
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None, waypoint_wrapper_kwargs: dict = {}) -> None:
         """Create WaypointWrapper object"""
@@ -1104,9 +1109,10 @@ class FateAnnData(ad.AnnData):
             new_adata.layers["velocity"] = velocity_embedding
             # recomput velocity graph based on low-dim velocity and embedding
             sc.pp.neighbors(new_adata)
-            scv.tl.velocity_graph(new_adata)
+            scv.tl.velocity_graph(new_adata, show_progress_bar=False)
             scv.tl.paga(new_adata, groups="clusters")  # recompute paga
             df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
+            print(df)
             # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
             milestone_network = (
                 df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
@@ -1139,6 +1145,7 @@ class FateAnnData(ad.AnnData):
             milestone_network["directed"] = True
         # TODO: other strategy LAP
 
+        X_emb = pd.DataFrame(self.obsm[basis], index=self.obs.index)  # use all cell
         self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
 
     def add_metric(
@@ -1395,6 +1402,10 @@ class FateAnnData(ad.AnnData):
         velocity_embedding = velocity_df.values
 
         return velocity_embedding
+
+    def get_lineage(self, model_name):
+        # TODO: DFS from root to find all lineage for downstream driver gene search
+        pass
 
     def update_uns_cfe(self):
         # update .uns["cfe"]

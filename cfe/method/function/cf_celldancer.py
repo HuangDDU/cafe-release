@@ -22,6 +22,10 @@ def celldancer(
     adata: ad.AnnData,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
+    cluster: str = None,
+    basis: str = "X_umap",
+    velocity_kwargs: dict = {},
+    compute_cell_velocity_kwargs: dict = {},
 ):
     """CellDancer: Estimating Cell-dependent RNA Velocity
 
@@ -45,25 +49,34 @@ def celldancer(
     cellDancer_df = cd.utilities.adata_to_df_with_embed(
         adata,
         us_para=["Mu", "Ms"],
-        cell_type_para="clusters",
-        embed_para="X_umap",
+        cell_type_para=cluster,
+        embed_para=basis,
     )
-    loss_df, cellDancer_df = cd.velocity(cellDancer_df, permutation_ratio=0.5, n_jobs=24)
-    cellDancer_df = cd.compute_cell_velocity(cellDancer_df=cellDancer_df, projection_neighbor_size=100)
+    loss_df, cellDancer_df = cd.velocity(cellDancer_df, **velocity_kwargs)
+    cellDancer_df = cd.compute_cell_velocity(cellDancer_df=cellDancer_df, **compute_cell_velocity_kwargs)
+    # loss_df, cellDancer_df = cd.velocity(cellDancer_df)
+    # cellDancer_df = cd.compute_cell_velocity(cellDancer_df=cellDancer_df, projection_neighbor_size=100) # compute by transciption parameter
 
     # 3. extract results
-    velocity_embedding = cellDancer_df.groupby("cellID").first()[["velocity1", "velocity2"]].fillna(0).values
+    velocity_df = cellDancer_df.groupby("cellID").first()[["velocity1", "velocity2"]].fillna(0)
+    adata.obsm[f"velocity_{basis[2:]}"] = velocity_df.loc[adata.obs.index].values  # align index
+    # celldancer generate many zero velocity cells, only extracted valid velocity cell to construct trajectory.
+    adata = adata[~((adata.obsm[f"velocity_{basis[2:]}"] == 0).all(axis=1))].copy()
 
     # 4. save results
+    trajectory_dict = extract_trajectory_dict(adata, basis=basis)
+    return trajectory_dict
+
+
+def extract_trajectory_dict(adata, basis="X_umap"):
     trajectory_dict = {
         "wrapper_type": "velocity",
         "velocity": None,
         "velocity_graph": None,
         "velocity_graph_neg": None,
-        "velocity_embedding": velocity_embedding,
+        "velocity_embedding": adata.obsm[f"velocity_{basis[2:]}"],
         "neighbors": {"distances": adata.obsp["distances"], "connectivities": adata.obsp["connectivities"]},
         "obs_index": adata.obs.index,
         "var_index": adata.var.index,
     }
-
     return trajectory_dict
