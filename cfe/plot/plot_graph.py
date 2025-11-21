@@ -1,112 +1,159 @@
 import itertools
+from collections.abc import Sequence
 
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 
 # import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
 import scanpy as sc
 
+from .._logging import logger
 from ..data import FateAnnData
 from .add_color import add_milestone_cell_color, add_milestone_color
 
-# NOTE: Direct wrapper plot , will be moved to plot_wrapper.py
 
-
+# TODO: two layer loop for model_name and color can be optimized by copy plot among ax
 def plot_graph(
     fadata: FateAnnData,
-    color: str | list = "milestone",
-    nx_draw_kwrags={},
-    sc_pl_embedding_kwargs={},
+    model_name: str | Sequence[str] = None,
+    color: str | Sequence[str] = None,
+    layout_by_row: str = "color",
+    nx_draw_kwargs: dict = {},
+    recompute_milestone_embedding: bool = True,
+    save: bool | str = None,
+    **sc_pl_embedding_kwargs,
 ):
-    """Plot DAG base on milestone network
+    """Plot DAG base on milestone network amd show cell embedding
 
     Args:
-        fadata (FateAnnData): FateAnnData
-        save (str, optional): img path.
+        fadata (FateAnnData): FateAnnData object with trajectory.
+        model_name (str | Sequence[str], optional): model name(s).
+        color (str | Sequence[str], optional): Color(s), default extracted from prior information.
+        layout_by_row (str, optional): layout by row.
+        nx_draw_kwargs (dict, optional): additional keyword arguments for networkx draw.
+        sc_pl_embedding_kwargs (dict, optional): additional keyword arguments for scanpy embedding plot.
+        recompute_milestone_embedding (bool, optional): whether to recompute milestone embedding.
+        save (bool | str, optional): path to save the plot.
+        sc_pl_embedding_kwargs (dict, optional): additional keyword arguments for scanpy embedding plot.
 
     Returns:
-        _type_: _description_
+        axes: axes
     """
+    if model_name is None:
+        model_name = fadata.model_name
+    if color is None:
+        color = fadata.prior_information.get("cluster")
 
-    # extract milestone network
-    milestone_wrapper = fadata.milestone_wrapper
-    milestone_id_list = milestone_wrapper.id_list
-    milestone_network = milestone_wrapper.milestone_network
-    milestone_percentages = milestone_wrapper.milestone_percentages
-    divergence_regions = milestone_wrapper.divergence_regions
-    is_directed = milestone_network["directed"].any()
+    model_name_list = [model_name] if isinstance(model_name, str) else model_name
+    color_list = [color] if isinstance(color, str) else color
 
-    # color and position fo milestone
-    milestone_color_list = add_milestone_color(len(milestone_id_list))  # color rgb
-    milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
-    G = nx.from_pandas_edgelist(
-        milestone_network,
-        source="from",
-        target="to",
-        edge_attr=True,
-        create_using=nx.DiGraph if is_directed else nx.Graph,
-    )
-    for descrete_node in set(milestone_id_list) - set(G.nodes):
-        # descrete node need external addition
-        G.add_node(descrete_node)
-    milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot")  # position
-    # position fo cell
-    milestone_emb_df = pd.DataFrame(milestone_emb_dict).T
+    if len(model_name_list) == 1:
+        layout_by_row = "model"  # only one model as row
+    if len(color_list) == 1:
+        layout_by_row = "color"  # only one color as row
 
-    def mix_emb(mpg):
-        # mix related milestone emb to get position for a cell
-        mpg_emb = milestone_emb_df.loc[mpg["milestone_id"]]
-        return mpg_emb.apply(lambda emb_dim: (emb_dim.array * mpg["percentage"].array)).sum()
+    # create subplots
+    if layout_by_row == "model":
+        row_list, col_list = model_name_list, color_list
+    elif layout_by_row == "color":
+        row_list, col_list = color_list, model_name_list
+    n_rows = len(row_list)
+    n_cols = len(col_list)
+    figsize = sc_pl_embedding_kwargs.pop("figsize", (7 * n_cols, 5 * n_rows))  # replace sc plt figsize
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
 
-    basis = "milestone_network_emb"
-    cell_emb_df = milestone_percentages.groupby("cell_id").apply(lambda mpg: mix_emb(mpg))
-    fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
+    # multiple model and color support
+    for i, model_name in enumerate(model_name_list):
+        # milestone_embedding = fadata.get_milestone_embedding(model_name=model_name)  # # TODO: save in fadata
+        milestone_embedding = None
+        if recompute_milestone_embedding or milestone_embedding is None:
+            logger.debug(f"calculate new milestone embedding for model_name:{model_name}.")
+            milestone_wrapper = fadata.get_milestone_wrapper(model_name=model_name)  # extract milestone network
+            milestone_id_list = milestone_wrapper.id_list
+            milestone_network = milestone_wrapper.milestone_network
+            milestone_percentages = milestone_wrapper.milestone_percentages
+            divergence_regions = milestone_wrapper.divergence_regions
+            is_directed = milestone_network["directed"].any()
 
-    if "milestone" in color:
-        # color of cells
-        cell_color_key = "milestone"
-        cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
-        fadata.obs[cell_color_key] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
-        fadata.uns[f"{cell_color_key}_colors"] = cell_color_df.loc[fadata.obs.index].values
+            # color and position fo milestone
+            milestone_color_list = add_milestone_color(len(milestone_id_list))  # color rgb
+            milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
+            G = nx.from_pandas_edgelist(
+                milestone_network,
+                source="from",
+                target="to",
+                edge_attr=True,
+                create_using=nx.DiGraph if is_directed else nx.Graph,
+            )
+            for descrete_node in set(milestone_id_list) - set(G.nodes):
+                # descrete node need external addition
+                G.add_node(descrete_node)
+            milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot")  # position
+            # position fo cell
+            milestone_emb_df = pd.DataFrame(milestone_emb_dict).T
 
-    # plot
-    # zorder: 1: line, 2: cell, 3: milestone
-    ax_list = sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, **sc_pl_embedding_kwargs)  # first plot embedding to get ax_list
-    ax_list = ax_list if isinstance(ax_list, list) else [ax_list]
-    color = color if isinstance(color, list) else [color]
-    for i in range(len(color)):
-        ax = ax_list[i]
-        c = color[i]
-        if c == "milestone":
-            # remove legend for color with milestone , but it waste time for show and remove
-            ax.legend().remove()
+            def mix_emb(mpg, emb_df=milestone_emb_df):
+                # mix related milestone emb to get position for a cell
+                mpg_emb = emb_df.loc[mpg["milestone_id"]]
+                return mpg_emb.apply(lambda emb_dim: (emb_dim.array * mpg["percentage"].array)).sum()
 
-        nx.draw(
-            G,
-            milestone_emb_dict,
-            with_labels=True,
-            node_color=[milestone_color_dict[node] for node in G.nodes],
-            width=5,  # TODO: adjusted by cell size
-            edge_color="gray",
-            arrowstyle="simple",
-            arrowsize=30,  # TODO: adjusted by cell size
-            ax=ax,
-            **nx_draw_kwrags,
-        )
-        if divergence_regions.shape[0] > 0:
-            plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
+            basis = "_milestone_network_emb"
+            cell_emb_df = milestone_percentages.groupby("cell_id").apply(lambda mpg: mix_emb(mpg))
+        else:
+            # TODO: save in fadata
+            pass
+        fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
 
-        # tmp_kwargs = sc_pl_embedding_kwargs.copy()
-        # tmp_kwargs["legend_loc"] = None if c == "milestone" else tmp_kwargs.get("legend_loc", None)
-        # sc.pl.embedding(
-        #     fadata,
-        #     basis=basis,
-        #     color=c,
-        #     ax=ax,
-        #     legend_loc=None,
-        #     # **tmp_kwargs
-        # )  # second plot embedding to put embbeding on top graph layer
+        for j, color in enumerate(color_list):
+            if layout_by_row == "model":
+                ax = axes[i, j]  # row is model_name, col is color
+            else:
+                ax = axes[j, i]  # row is color, col is model_name
+
+            if "milestone" in color:
+                # color of cells
+                cell_color_key = "milestone"
+                cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
+                fadata.obs[cell_color_key] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
+                fadata.uns[f"{cell_color_key}_colors"] = cell_color_df.loc[fadata.obs.index].values
+
+            # base scanpy embedding scatter plot
+            # plot single str for color parameter
+            # zorder: 1: line, 2: cell(scanpy), 3: milestone
+            sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
+            sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, ax=ax, **sc_pl_embedding_kwargs)
+
+            # legend remove
+            if color == "milestone" or (layout_by_row == "color" and i < len(model_name) - 1):
+                # remove legend for color with milestone, but it waste time for show and remove
+                ax.legend().remove()
+
+            # TODO: nx plot keep unchange in the color loop, but it should plot for every ax.
+            nx.draw(
+                G,
+                milestone_emb_dict,
+                with_labels=True,
+                node_color=[milestone_color_dict[node] for node in G.nodes],
+                width=5,
+                edge_color="gray",
+                arrowstyle="simple",
+                arrowsize=30,
+                ax=ax,
+                **nx_draw_kwargs,
+            )
+            if divergence_regions.shape[0] > 0:
+                plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
+
+            del fadata.obsm[basis]
+
+    if save is not None:
+        if isinstance(save, bool) and save:
+            save = f".cfe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
+        plt.savefig(save)
+        logger.debug(f"save trajectory plot to '{save}'")
+    return axes
 
 
 def plot_divergence_region(divergence_regions, milestone_emb_dict, ax):
@@ -156,5 +203,3 @@ def plot_divergence_region(divergence_regions, milestone_emb_dict, ax):
         polygon_vertices = dpp[dpp["triangle_id"] == triangle_id][["comp_1", "comp_2"]].values  # extract polygon point
         polygon = patches.Polygon(polygon_vertices, closed=True, fill=True, color="lightgrey", alpha=0.5)
         ax.add_patch(polygon)
-
-    return ax

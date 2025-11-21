@@ -144,6 +144,8 @@ class MilestoneWrapper(FateWrapper):
         progressions = progressions.query("`from` != `to`")
 
         # percentage for "from milestone", for start milestone， percentage = 1 - sum(other end milestone percentages). it's important to for divergence region.
+        # TODO: for all discrete milestone, progresions group result is empty.
+        # print(progressions.groupby(["cell_id", "from"]).apply(lambda x: 1 - x["percentage"].sum()))
         froms = progressions.groupby(["cell_id", "from"]).apply(lambda x: 1 - x["percentage"].sum()).rename().reset_index()
         froms.columns = ["cell_id", "milestone_id", "percentage"]
 

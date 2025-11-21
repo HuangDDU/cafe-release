@@ -12,6 +12,9 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
         fadata (FateAnnData): FateAnnData object
         wrapper_type (str, optional): wrapper type determines the plot style. Defaults to None.
     """
+    if model_name is None:
+        model_name = fadata.model_name
+
     if wrapper_type is None:
         # extract wrapper type from fadata
         wrapper_type = fadata.wrapper_type
@@ -26,7 +29,7 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
     elif wrapper_type == "cycle":
         plot_cycle(fadata)
     elif wrapper_type == "probability":
-        plot_probability(fadata)
+        plot_probability(fadata, model_name=model_name, **kwargs)
     elif wrapper_type == "cluster":
         plot_cluster(fadata)
     elif wrapper_type == "projection":
@@ -35,6 +38,11 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
         plot_graph(fadata)
     elif wrapper_type == "velocity":
         plot_velocity(fadata, model_name=model_name, **kwargs)
+    elif wrapper_type == "lineage":
+        # TODO: plot_lineage, like
+        # https://cellrank.readthedocs.io/en/stable/api/_autosummary/plotting/cellrank.pl.circular_projection.html
+        # https://cellrank.readthedocs.io/en/stable/notebooks/tutorials/estimators/700_fate_probabilities.html
+        pass
 
 
 # plot_{wrapper_type}
@@ -62,8 +70,19 @@ def plot_cycle(fadata):
     pass
 
 
-def plot_probability(fadata):
-    pass
+def plot_probability(fadata, basis=None, model_name: str = None):
+    import scanpy as sc
+
+    if basis is None:
+        basis = fadata.prior_information.get("basis")
+    raw_wrapper_dict = fadata.get_trajectory_dict(model_name=model_name)["raw_wrapper_dict"]
+    if "end_state_probabilities" in raw_wrapper_dict:
+        end_state_probabilities = raw_wrapper_dict["end_state_probabilities"].drop(columns=["cell_id"])
+    elif "probability" in raw_wrapper_dict:
+        end_state_probabilities = raw_wrapper_dict["probability"].drop(columns=["cell_id"])
+    end_state_list = end_state_probabilities.columns.tolist()
+    fadata.obs[end_state_list] = end_state_probabilities.values
+    sc.pl.embedding(fadata, color=end_state_list, basis=basis)
 
 
 def plot_cluster(fadata):

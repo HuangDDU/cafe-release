@@ -16,7 +16,7 @@ unitvelo,unitvelo,huangzhaoyang/unitvelo:0.0.1,unitvelo,
 cytotrace2,cytotrace2,huangzhaoyang/cytotrace2:0.0.1,cytotrace2,
 palantir,palantir,huangzhaoyang/palantir:0.0.1,cfe,
 sctc,sctc,huangzhaoyang/sctc:0.0.1,cfe,
-cellrank,cellrank,,,
+cellrank,cellrank,,cfe,
 stavia,stavia,huangzhaoyang/stavia:0.0.1,stavia,
 ti_paga,,,,dynverse/ti_paga:v0.9.9.05
 ti_slingshot,,,,dynverse/ti_slingshot:v1.0.3

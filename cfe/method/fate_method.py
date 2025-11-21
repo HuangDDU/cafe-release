@@ -109,6 +109,7 @@ class FateMethod:
         self,
         fadata: FateAnnData,
         parameters: dict = {},
+        id: str = None,
         rewrite: bool = True,
         backend_name: Optional[Literal["conda", "python_function", "cfe_docker", "dynverse_docker", None]] = None,
     ) -> None:
@@ -124,7 +125,7 @@ class FateMethod:
         if (self.backend is None) or ((backend_name is not None) and (backend_name == self.backend_name)):
             backend_name = backend_name if backend_name is not None else self.backend_name  # newer backend
             self.choose_backend(self.backend_name)
-            self.id = random_time_string(f"{self.method_name}-{self.backend}")
+            self.id = random_time_string(f"{self.method_name}-{self.backend}") if id is None else id
             self.method_backend.id = self.id
         if settings.seperate_log_file:
             set_log_file(f".cfe/{fadata.id}/log/{self.id}.log")

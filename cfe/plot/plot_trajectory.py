@@ -15,8 +15,8 @@ from .add_color import add_milestone_cell_color, add_milestone_color
 
 def plot_trajectory(
     fadata: FateAnnData,
-    model_name: str | Sequence[str] | None = None,
-    color: str | Sequence[str] | None = None,
+    model_name: str | Sequence[str] = None,
+    color: str | Sequence[str] = None,
     basis: str = None,
     curve: bool = True,
     layout_by_row: str = "color",
@@ -28,14 +28,14 @@ def plot_trajectory(
     recompute_trajectory_embedding: bool = False,
     save: bool | str = None,
     **sc_pl_embedding_kwargs,
-) -> None:
+):
     """Plot cell embedding and trajectory with different color for now model by fadata.model_name
     ref: pydynverse/plot/plot_dimred.plot_dimred
 
     Args:
         fadata (FateAnnData): FateAnnData object with trajectory.
-        model_name (str | Sequence[str] | None, optional): model name(s).
-        color (str | Sequence[str] | None, optional): Color(s), default extracted from prior information.
+        model_name (str | Sequence[str], optional): model name(s).
+        color (str | Sequence[str], optional): Color(s), default extracted from prior information.
         basis (str, optional): embedding basis.
         curve (bool, optional): whether to plot a curve.
         layout_by_row (str, optional): layout by row.
@@ -46,9 +46,9 @@ def plot_trajectory(
         waypoint_wrapper_kwargs (dict, optional): additional keyword arguments for waypoint wrapper.
         recompute_trajectory_embedding (bool, optional): whether to recompute trajectory embedding.
         save (str, optional): Path to save the plot.
-
+        sc_pl_embedding_kwargs (dict, optional): additional keyword arguments for scanpy embedding plot.
     Returns:
-        None
+        axes
     """
 
     if model_name is None:
@@ -103,14 +103,14 @@ def plot_trajectory(
         # wp_segments.to_csv(f"tmp_wp_segments.csv")
         # print("Successfully write 'tmp_milestone_positions.csv' and 'tmp_wp_segments.csv' for cellxgene visualization")
 
+        milestone_wrapper = fadata.get_milestone_wrapper(model_name)
         for j, color in enumerate(color_list):
             if layout_by_row == "model":
                 ax = axes[i, j]  # row is model_name, col is color
             else:
                 ax = axes[j, i]  # row is color, col is model_name
-            logger.debug("plot_trajectory")
-            milestone_wrapper = fadata.get_milestone_wrapper(model_name)
-            if (color == "milestone") or ((isinstance(color, list)) and ("milestone" in color)):
+            logger.debug(f"plot_trajectory for model_name:'{model_name}', color:'{color}'")
+            if color == "milestone":
                 # add milestone mixed color
                 milestone_id_list = milestone_wrapper["id_list"]
                 milestone_percentages = milestone_wrapper["milestone_percentages"]
@@ -136,6 +136,7 @@ def plot_trajectory(
                 ax.legend().remove()  # remove legend for color with milestone, but it waste time for show and remove
 
             # milestone and waypoint trajectory plot
+            # TODO: trajectory plot keep unchange in the color loop, but it should plot for every ax.
             directed = milestone_wrapper["milestone_network"]["directed"].any()
             if curve:
                 # draw milestone
@@ -211,7 +212,7 @@ def plot_trajectory(
             save = f".cfe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
         plt.savefig(save)
         logger.debug(f"save trajectory plot to '{save}'")
-    return ax
+    return axes
 
 
 def project_waypoints(

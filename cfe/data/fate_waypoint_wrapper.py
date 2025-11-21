@@ -143,11 +143,12 @@ class WaypointWrapper(FateWrapper):
             pd.DataFrame: distances dataframe
         """
         # attribute in the MilestoneWrapper
+        # don't affect the original milestone_network
         cell_id_list = self.milestone_wrapper.cell_id_list
         milestone_id_list = self.milestone_wrapper.id_list
-        milestone_network = self.milestone_wrapper.milestone_network
-        milestone_percentages = self.milestone_wrapper.milestone_percentages
-        divergence_regions = self.milestone_wrapper.divergence_regions
+        milestone_network = self.milestone_wrapper.milestone_network.copy()
+        milestone_percentages = self.milestone_wrapper.milestone_percentages.copy()
+        divergence_regions = self.milestone_wrapper.divergence_regions.copy()
         directed = self.milestone_wrapper.directed
 
         waypoint_id_list = self.id_list
@@ -162,7 +163,6 @@ class WaypointWrapper(FateWrapper):
                 return x
             return f"MILESTONE_{x}"
 
-        # don't affect the original milestone_network
         milestone_network = milestone_network.copy()
         milestone_network["from"] = milestone_network["from"].apply(milestone_trafo_fun)
         milestone_network["to"] = milestone_network["to"].apply(milestone_trafo_fun)

@@ -674,6 +674,8 @@ class FateAnnData(ad.AnnData):
             # the starting point is a completely virtual point
             start_milestone_id = "milestone_begin"
             # the terminal point is extracted from the column name, and the default first column is cell_id
+            if "cell_id" not in end_state_probabilities.columns:
+                end_state_probabilities["cell_id"] = self.obs.index.tolist()
             end_milestone_ids = end_state_probabilities.columns.tolist()
             end_milestone_ids.remove("cell_id")
             milestone_ids = [start_milestone_id] + end_milestone_ids
@@ -926,95 +928,28 @@ class FateAnnData(ad.AnnData):
         probability: pd.DataFrame,
         cluster_key: str = None,
         new_cluster_list: list = None,
+        strategy: str = "base",  # base, graph_fusion, hierarchical_clustering
+        **strategy_kwargs,
     ):
         # TODO: for palantir, cellrank
-        from ..util import project_to_segments
+        from ._lineage_wrapper import LINEAGE_STRATEGIES
 
-        if cluster_key is None:
-            # use new cluster list
-            if new_cluster_list is None:
-                raise ValueError("cluster_key and new_cluster_list cannot be None at the same time.")
-            else:
-                cluster_list = pd.Series(new_cluster_list)
+        logger.debug(f"Adding lineage trajectory using '{strategy}' strategy...")
+
+        strategy_func = LINEAGE_STRATEGIES[strategy]
+        trajectory_components = strategy_func(
+            fadata=self, probability=probability, cluster_key=cluster_key, new_cluster_list=new_cluster_list, **strategy_kwargs
+        )
+
+        if trajectory_components is None:
+            logger.warning(f"Failed to add lineage trajectory using '{strategy}' strategy.")
         else:
-            # use cluster attribute in adata.obs
-            cluster_list = self.obs[cluster_key]
-        lineage_name_list = probability.columns.tolist()  # 终端状态聚类名称
-        main_cluster_list = [i for i in list(set(cluster_list)) if i not in lineage_name_list]  # 主干道上的聚类名称
-
-        # 概率空间的的里程碑计算
-        cluster_probability = probability.copy()
-        cluster_probability["cluster"] = cluster_list
-        cluster_probability = cluster_probability.groupby("cluster").agg("mean")
-        print("cluster_probability")
-        print(cluster_probability)
-
-        # 寻找谱系串
-        lineage_list_list = []
-        for lineage_name in lineage_name_list:
-            tmp_cluster_list = main_cluster_list + [lineage_name]
-            lineage_list = cluster_probability.loc[tmp_cluster_list, lineage_name].sort_values().index.tolist()
-            lineage_list_list.append(lineage_list)
-        print(lineage_list_list)
-
-        # 合并谱系串计算得到milestone_network与divergence_regions
-        # 最长公共前缀
-        def get_prefix_cluster_list(lineage_list_list: list):
-            prefix_cluster_list = []
-            for cluster_list in zip(*lineage_list_list):
-                if len(set(cluster_list)) == 1:
-                    prefix_cluster_list.append(cluster_list[0])
-                else:
-                    break
-            return prefix_cluster_list
-
-        prefix_cluster_list = get_prefix_cluster_list(lineage_list_list)
-        branch_cluster = prefix_cluster_list[-1]
-        # milestone_network
-        milestone_network = pd.DataFrame(
-            columns=["from", "to"],
-            data=list(zip(prefix_cluster_list[:-1], prefix_cluster_list[1:])) + [[branch_cluster, i] for i in lineage_name_list],
-        )
-        milestone_network["length"] = 1
-        milestone_network["directed"] = True
-        # divergence_regions
-        divergence_id = "".join([branch_cluster] + lineage_name_list)
-        divergence_regions = pd.DataFrame(
-            {
-                "milestone_id": [branch_cluster] + lineage_name_list,
-                "divergence_id": divergence_id,
-                "is_start": [True] + [False] * len(lineage_name_list),
-            }
-        )
-
-        # 暂时直接投影计算
-        print("probability")
-        print(probability)
-        print(cluster_probability.loc[milestone_network["from"],])
-        print(cluster_probability.loc[milestone_network["to"],])
-        proj = project_to_segments(
-            x=probability,
-            segment_start=cluster_probability.loc[milestone_network["from"],],
-            segment_end=cluster_probability.loc[milestone_network["to"],],
-        )
-        progressions = milestone_network.iloc[proj["segment"] - 1][["from", "to"]]
-        progressions["cell_id"] = self.obs.index
-        progressions["percentage"] = proj["progression"]
-        progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
-        print(progressions)
-
-        # TODO: 区分投影计算
-        # # 投影到边上
-        # probability
-        # main_progression = project_to_segement()
-        # project_to_divergence_region
-        # # 投影到面上
-
-        self.add_trajectory(
-            milestone_network=milestone_network,
-            divergence_regions=divergence_regions,
-            progressions=progressions,
-        )
+            self.add_trajectory(
+                milestone_network=trajectory_components["milestone_network"],
+                divergence_regions=trajectory_components.get("divergence_regions"),
+                progressions=trajectory_components["progressions"],
+            )
+            logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
     # TODO: WaddingtonOT, Moscot
     # def add_transition_matrix()
@@ -1033,6 +968,7 @@ class FateAnnData(ad.AnnData):
         basis=None,
         X: np.array = None,
     ):
+        # TODO: move to _velocity_wrapper module
         "add velocity trajectory using PAGA transform, such as scVelo, VeloAE"
         if cluster is None:
             cluster = self.prior_information.get("cluster")

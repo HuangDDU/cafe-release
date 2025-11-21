@@ -1,6 +1,7 @@
-from . import data, method, metric, plot, preprocess, util
 from ._logging import logger
 from ._settings import settings
+
+from . import data, method, metric, plot, preprocess, util  # isort: skip
 
 logo = """
    _____     _ _ ______    _       ______            _

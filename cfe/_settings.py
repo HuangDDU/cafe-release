@@ -2,7 +2,7 @@ import os
 import sys
 import warnings
 
-from ._logging import logger
+# from ._logging import logger
 
 
 class CellFateExplorerConfig:
@@ -28,15 +28,15 @@ class CellFateExplorerConfig:
 
         self.dynverse_docker_via_json = False  # middle file json result in low efficiency
 
-        # check if rpy2 is available
-        try:
-            import rpy2
+        # # check if rpy2 is available
+        # try:
+        #     import rpy2
 
-            self.r_available = True
-            logger.debug(f"R and rpy2{rpy2} are available. You can use dynverse dataset")
-        except ImportError:
-            self.r_available = False
-            logger.warning("R or rpy2 is not available. You can't use dynverse dataset")
+        #     self.r_available = True
+        #     logger.debug(f"R and rpy2{rpy2} are available. You can use dynverse dataset")
+        # except ImportError:
+        #     self.r_available = False
+        #     logger.warning("R or rpy2 is not available. You can't use dynverse dataset")
         # manually settings r_available=False for testing
         self.r_available = False
         self.version = "0.1.2_alpha"  # ref: https://zhuanlan.zhihu.com/p/703265351
