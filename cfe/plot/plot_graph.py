@@ -11,7 +11,6 @@ import scanpy as sc
 
 from .._logging import logger
 from ..data import FateAnnData
-from .add_color import add_milestone_cell_color, add_milestone_color
 
 
 # TODO: two layer loop for model_name and color can be optimized by copy plot among ax
@@ -66,20 +65,15 @@ def plot_graph(
 
     # multiple model and color support
     for i, model_name in enumerate(model_name_list):
-        # milestone_embedding = fadata.get_milestone_embedding(model_name=model_name)  # # TODO: save in fadata
+        milestone_wrapper = fadata.get_milestone_wrapper(model_name=model_name)  # extract milestone network
+        milestone_id_list = milestone_wrapper.id_list
+        milestone_network = milestone_wrapper.milestone_network
+        milestone_percentages = milestone_wrapper.milestone_percentages
+        divergence_regions = milestone_wrapper.divergence_regions
+        is_directed = milestone_wrapper["directed"]
         milestone_embedding = None
         if recompute_milestone_embedding or milestone_embedding is None:
             logger.debug(f"calculate new milestone embedding for model_name:{model_name}.")
-            milestone_wrapper = fadata.get_milestone_wrapper(model_name=model_name)  # extract milestone network
-            milestone_id_list = milestone_wrapper.id_list
-            milestone_network = milestone_wrapper.milestone_network
-            milestone_percentages = milestone_wrapper.milestone_percentages
-            divergence_regions = milestone_wrapper.divergence_regions
-            is_directed = milestone_network["directed"].any()
-
-            # color and position fo milestone
-            milestone_color_list = add_milestone_color(len(milestone_id_list))  # color rgb
-            milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
             G = nx.from_pandas_edgelist(
                 milestone_network,
                 source="from",
@@ -103,6 +97,7 @@ def plot_graph(
             cell_emb_df = milestone_percentages.groupby("cell_id").apply(lambda mpg: mix_emb(mpg))
         else:
             # TODO: save in fadata
+            # milestone_embedding = fadata.get_milestone_embedding(model_name=model_name)  # # TODO: save in fadata
             pass
         fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
 
@@ -112,12 +107,17 @@ def plot_graph(
             else:
                 ax = axes[j, i]  # row is color, col is model_name
 
-            if "milestone" in color:
+            if color == "milestone":
                 # color of cells
                 cell_color_key = "milestone"
-                cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
+                missing_cell_color = "#808080"
+                cell_color_dict = milestone_wrapper["cell_color_dict"]
+                if len(cell_color_dict) != fadata.n_obs:
+                    logger.warning(f"milestone cell color length not equal to cell number! set missing color as '{missing_cell_color}'.")
                 fadata.obs[cell_color_key] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
-                fadata.uns[f"{cell_color_key}_colors"] = cell_color_df.loc[fadata.obs.index].values
+                fadata.uns[f"{cell_color_key}_colors"] = [
+                    cell_color_dict[i] if i in cell_color_dict else missing_cell_color for i in fadata.obs.index
+                ]
 
             # base scanpy embedding scatter plot
             # plot single str for color parameter
@@ -131,6 +131,7 @@ def plot_graph(
                 ax.legend().remove()
 
             # TODO: nx plot keep unchange in the color loop, but it should plot for every ax.
+            milestone_color_dict = milestone_wrapper["milestone_color_dict"]
             nx.draw(
                 G,
                 milestone_emb_dict,
@@ -150,7 +151,7 @@ def plot_graph(
 
     if save is not None:
         if isinstance(save, bool) and save:
-            save = f".cfe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
+            save = f".cfe/{fadata.id}/img/graph_{basis}_{'_'.join(model_name_list)}.png"
         plt.savefig(save)
         logger.debug(f"save trajectory plot to '{save}'")
     return axes

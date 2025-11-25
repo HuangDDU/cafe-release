@@ -1,11 +1,11 @@
+import matplotlib.pyplot as plt
+
 from .._logging import logger
 from ..data import FateAnnData
-from ..util import temporary_obsm_key
-
-# from .plot_trajectory import plot_trajectory
+from ._wrapper_plots import PLOTTER_MODULE_REGISTRY
 
 
-def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str = None, **kwargs) -> None:
+def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str = None, mode: str = None, save: bool | str = None, **kwargs) -> None:
     """plot original wrapper data
 
     Args:
@@ -15,106 +15,41 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
     if model_name is None:
         model_name = fadata.model_name
 
+    # --- 1. Infer wrapper_type if not provided ---
     if wrapper_type is None:
         # extract wrapper type from fadata
-        wrapper_type = fadata.wrapper_type
-        trajectory_dict = fadata.get_trajectory_dict(model_name)
-        wrapper_type = trajectory_dict["raw_wrapper_dict"]["wrapper_type"]
+        wrapper_type = fadata.get_raw_wrapper_dict(model_name).get("wrapper_type", "direct")
         logger.info(f"find wrapper type: {wrapper_type}")
 
-    if wrapper_type == "directed":
-        plot_directed(fadata)
-    elif wrapper_type == "linear":
-        plot_linear(fadata)
-    elif wrapper_type == "cycle":
-        plot_cycle(fadata)
-    elif wrapper_type == "probability":
-        plot_probability(fadata, model_name=model_name, **kwargs)
-    elif wrapper_type == "cluster":
-        plot_cluster(fadata)
-    elif wrapper_type == "projection":
-        plot_projection(fadata)
-    elif wrapper_type == "graph":
-        plot_graph(fadata)
-    elif wrapper_type == "velocity":
-        plot_velocity(fadata, model_name=model_name, **kwargs)
-    elif wrapper_type == "lineage":
-        # TODO: plot_lineage, like
-        # https://cellrank.readthedocs.io/en/stable/api/_autosummary/plotting/cellrank.pl.circular_projection.html
-        # https://cellrank.readthedocs.io/en/stable/notebooks/tutorials/estimators/700_fate_probabilities.html
-        pass
+    # --- 2. Find the correct plotter module ---
+    plotter_module = PLOTTER_MODULE_REGISTRY.get(wrapper_type)
+    if not plotter_module:
+        logger.warning(f"No plotter module found for wrapper type '{wrapper_type}'. Nothing to plot.")
+        return
 
+    # --- 3. Determine the plot mode ---
+    if mode is None:
+        # Use the default mode defined in the module, or fallback to a common default
+        mode = getattr(plotter_module, "DEFAULT_MODE", "embedding")
+        logger.info(f"No mode specified, using default for '{wrapper_type}': '{mode}'")
 
-# plot_{wrapper_type}
+    function_name = f"plot_{mode}"
+    plot_function = getattr(plotter_module, function_name, None)  # Note: 核心函数
 
+    if not plot_function:
+        logger.error(f"Plotting mode '{mode}' (function '{function_name}') not found in module for wrapper '{wrapper_type}'.")
+        # You could list available styles here for better user feedback
+        available_modes = [s.replace("plot_", "") for s in dir(plotter_module) if s.startswith("plot_")]
+        logger.info(f"Available modes for '{wrapper_type}': {available_modes}")
+        return
 
-def plot_directed(
-    fadata: FateAnnData,
-    color: str | list = "milestone",
-):
-    # # TODO: beautify
-    # plot_trajectory(
-    #     fadata=fadata,
-    #     curve=False,
-    # )
-    from .plot_graph import plot_graph
+    # --- 4. Dispatch to the specific plot function ---
+    logger.debug(f"Dispatching to plotter '{wrapper_type}' with mode '{mode}'.")
+    plot_function(fadata=fadata, model_name=model_name, **kwargs)
 
-    plot_graph(fadata, color=color)
-
-
-def plot_linear(fadata, model_name):
-    pass
-
-
-def plot_cycle(fadata):
-    pass
-
-
-def plot_probability(fadata, basis=None, model_name: str = None):
-    import scanpy as sc
-
-    if basis is None:
-        basis = fadata.prior_information.get("basis")
-    raw_wrapper_dict = fadata.get_trajectory_dict(model_name=model_name)["raw_wrapper_dict"]
-    if "end_state_probabilities" in raw_wrapper_dict:
-        end_state_probabilities = raw_wrapper_dict["end_state_probabilities"].drop(columns=["cell_id"])
-    elif "probability" in raw_wrapper_dict:
-        end_state_probabilities = raw_wrapper_dict["probability"].drop(columns=["cell_id"])
-    end_state_list = end_state_probabilities.columns.tolist()
-    fadata.obs[end_state_list] = end_state_probabilities.values
-    sc.pl.embedding(fadata, color=end_state_list, basis=basis)
-
-
-def plot_cluster(fadata):
-    pass
-
-
-def plot_projection(fadata):
-    pass
-
-
-def plot_graph(fadata):
-    pass
-
-
-def plot_velocity(fadata, basis=None, model_name: str = None, style="scvelo", mode="stream"):
-    if basis is None:
-        basis = fadata.prior_information.get("basis")
-    velocity_basis = f"velocity_{basis[2:]}"
-    velocity_embedding = fadata.get_raw_wrapper_dict(model_name).get(velocity_basis)
-
-    with temporary_obsm_key(fadata, velocity_basis, velocity_embedding):
-        if style == "scvelo":
-            import scvelo as scv
-
-            if mode == "stream":
-                scv.pl.velocity_embedding_stream(fadata, basis=basis[2:])
-            elif mode == "grid":
-                scv.pl.velocity_embedding_grid(fadata, basis=basis[2:])
-            else:
-                scv.pl.velocity_embedding(fadata, basis=basis[2:])
-        else:
-            # TODO: dynamo style
-            import dynamo as dyn
-
-            dyn.pl.streamline_plot(fadata, basis=basis[2:])
+    # --- 5. Save the figure if requested ---
+    if save is not None:
+        if isinstance(save, bool) and save:
+            save = f".cfe/{fadata.id}/img/wrapper_{model_name}.png"
+        plt.savefig(save)
+        logger.debug(f"save trajectory plot to '{save}'")

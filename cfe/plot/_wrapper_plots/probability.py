@@ -1,3 +1,8 @@
+import matplotlib.colors as mcolors
+import seaborn as sns
+
+from ..._settings import settings
+
 DEFAULT_MODE = "embedding"
 
 
@@ -30,14 +35,32 @@ def plot_embedding(fadata, model_name: str = None, basis=None):
     fadata.obs.drop(columns=end_state_list, inplace=True)
 
 
-def plot_star(fadata, model_name: str = None):
+def plot_star(fadata, model_name: str = None, terminal_palette=settings.sns_palette):
     import cellrank as cr
     import pandas as pd
 
     probability_df = _get_probability_df(fadata, model_name=model_name)
     terminal_state_list = probability_df.columns.tolist()
-    cluster_color_dict = dict(zip(fadata.obs["clusters"].cat.categories.tolist(), fadata.uns["clusters_colors"]))
+    if len(terminal_state_list) <= 2:
+        print("Warning: Less than 3 terminal states detected, star plot may not be informative.")
+
+    # color for terminal states
+    cluster_list = fadata.obs["clusters"].cat.categories.tolist()
+    cluster_color_list = fadata.uns.get("clusters_colors", [])
+    is_subset = all(state in cluster_list for state in terminal_state_list)
+    if is_subset and len(cluster_color_list) > 0:
+        # color from existing cluster color dict
+        cluster_color_dict = dict(zip(cluster_list, cluster_color_list))
+        terminal_state_color_list = [cluster_color_dict[t] for t in terminal_state_list]
+    else:
+        # new color dict
+        palette = sns.color_palette(terminal_palette, n_colors=len(terminal_state_list))
+        terminal_state_color_list = [mcolors.to_hex(color) for color in palette]
+
+    # add cellrank related dadta
     fadata.obs["term_states_fwd"] = pd.Categorical(probability_df.idxmax(axis=1), categories=terminal_state_list)
-    fadata.uns["term_states_fwd_colors"] = [cluster_color_dict[t] for t in terminal_state_list]
+    fadata.uns["term_states_fwd_colors"] = terminal_state_color_list
     fadata.obsm["lineages_fwd"] = probability_df.values
+
+    # plot
     cr.pl.circular_projection(fadata, keys=["clusters"], legend_loc="right")

@@ -344,6 +344,13 @@ class FateAnnData(ad.AnnData):
             milestone_percentages=milestone_percentages,
             progressions=progressions,
         )
+        # synchronize mielstone color with cluster color in prior_information if possible
+        cluster = self.prior_information.get("cluster")
+        if cluster and (f"{cluster}_colors" in self.uns):
+            ref_color_dict = dict(zip(self.obs[cluster].cat.categories.tolist(), self.uns[f"{cluster}_colors"]))
+        else:
+            ref_color_dict = None
+        milestone_wrapper._generate_color(ref_color_dict=ref_color_dict)
 
         self.milestone_wrapper = milestone_wrapper
         self.is_wrapped_with_trajectory = True
@@ -482,12 +489,32 @@ class FateAnnData(ad.AnnData):
         # self.trajectory_history_dict[model_name]["waypoint_wrapper"] = waypoint_wrapper
         self.set_waypoint_wrapper(waypoint_wrapper, model_name)
 
-    def __getitem__(self, key):
-        # TODO: it will waste resource for preprocessing, because there are many slice operation
-        sub_adata = super().__getitem__(key)
-        sub_fadata = self.from_anndata(sub_adata)
-        # TODO: add sub operation for all other attributes, such as prior_information, milestone_wrapper, wayppoint_wrapper, etc.
-        return sub_fadata
+    # fix
+    def __getitem__(self, index):
+        # 1. call Anndata __getitem__ to get the sliced AnnData object
+        new_adata = super().__getitem__(index)
+
+        # 2. directly set it to FateAnndata
+        new_adata.__class__ = FateAnnData
+
+        # 3. copy simple attribute from 'self' to 'new_adata'
+        new_adata.id = self.id
+        new_adata.prior_information = self.prior_information
+        new_adata.model_name = self.model_name
+        new_adata.wrapper_type = self.wrapper_type
+        new_adata.raw_wrapper_dict = self.raw_wrapper_dict
+        # new_adata.is_wrapped_with_trajectory = self.is_wrapped_with_trajectory
+        # new_adata.is_wrapped_with_waypoints = self.is_wrapped_with_waypoints
+
+        # 4. copy complex trajectory attribute from 'self' to 'new_adata'
+        # TODO: subset trajectory_dict
+        #  deep copy milestone_wrapper and waypoint_wrapper if exist
+        #  filter cells in milestone_wrapper and waypoint_wrapper if exist
+        new_adata.uns["cfe"] = self.uns["cfe"]
+        new_adata.cfe_dict = self.cfe_dict
+        new_adata.trajectory_history_dict = self.trajectory_history_dict
+
+        return new_adata
 
     def add_trajectory_branch(self, branch_network: pd.DataFrame, branch_progressions: pd.DataFrame, branches: pd.DataFrame) -> None:
         """Add branch trajectory,such as PAGA
@@ -706,6 +733,7 @@ class FateAnnData(ad.AnnData):
         self,
         milestone_network: pd.DataFrame,
         cluster: str | list,
+        add_direction: bool = False,
     ):
         """add cluster trajectory, such as ClusterMST(baseline).
 
@@ -715,6 +743,10 @@ class FateAnnData(ad.AnnData):
             milestone_network (pd.DataFrame): milestone network.
             cluster (str | list): cluster key or list.
         """
+        if add_direction:
+            # TODO: fix for undirected graph
+            logger.debug("try to add direction for undirected graph use prior information: 'start_milestone' or 'start_cell'")
+            pass
         cluster_list = cluster
         mn_ft = milestone_network[["from", "to"]]
         both_direction = pd.concat([mn_ft.assign(label=mn_ft["from"], percentage=0), mn_ft.assign(label=mn_ft["to"], percentage=1)])
@@ -756,13 +788,19 @@ class FateAnnData(ad.AnnData):
 
         if isinstance(X_emb, str):
             X_emb = self.obsm[X_emb]
-        if isinstance(X_emb, pd.DataFrame):
-            if not X_emb.index.equals(self.obs.index):
-                # TODO: need syn with other similar warning
-                logger.warning("cell number of 'X_emb' and 'self.obs' are not equal, use subset of self as 'self' in this function")
-                self = self[X_emb.index]
+            cell_id_list = self.obs.index.tolist()
+        elif isinstance(X_emb, pd.DataFrame):
+            if X_emb.index.dtype == int:
+                # for method cluster mst, reset index from int to cell_id
+                X_emb.index = self.obs.iloc[X_emb.index].index
+            cell_id_list = self.obs.loc[X_emb.index].index.tolist()  # intersection of cell id
+            if len(cell_id_list) < self.shape[0]:
+                cell_lost_list = set(self.obs.index) - set(cell_id_list)
+                logger.warning(f"cell lost during trajectory projection: {cell_lost_list}")
         else:
-            X_emb = pd.DataFrame(X_emb, index=self.obs.index)
+            # ndarray
+            cell_id_list = self.obs.index.tolist()
+            X_emb = pd.DataFrame(X_emb, index=cell_id_list)
 
         # add self loop for discrete isolated milestone
         discrete_milestones = list(set(milestone_emb.index) - (set(milestone_network["from"]) | set(milestone_network["to"])))
@@ -783,12 +821,12 @@ class FateAnnData(ad.AnnData):
                 segment_end=milestone_emb.loc[milestone_network["to"],],
             )
             progressions = milestone_network.iloc[proj["segment"] - 1][["from", "to"]]
-            progressions["cell_id"] = self.obs.index
+            progressions["cell_id"] = X_emb.index
             progressions["percentage"] = proj["progression"]
             progressions = progressions[["cell_id", "from", "to", "percentage"]].reset_index(drop=True)
         else:
             # project cells onto the line segments corresponding to their respective clusters
-            cluster_series = self.obs[cluster_key]
+            cluster_series = self[X_emb.index.tolist()].obs[cluster_key]
             cluster_id_list = cluster_series.unique()
             progressions = []
 
@@ -849,8 +887,11 @@ class FateAnnData(ad.AnnData):
         if "directed" not in cell_graph.columns:
             cell_graph["directed"] = False
 
-        cell_ids = self.obs.index
         is_directed = cell_graph["directed"].any()
+        cell_ids = list(pd.unique(pd.concat([cell_graph["from"], cell_graph["to"]])))
+        if len(cell_ids) < self.shape[0]:
+            cell_lost_list = set(self.obs.index) - set(cell_ids)
+            logger.warning(f"cell lost during trajectory graph construction: {cell_lost_list}")
 
         # keep points are key cells for milestone network, where they have to appear.
         if to_keep is None:
@@ -858,6 +899,8 @@ class FateAnnData(ad.AnnData):
         elif isinstance(to_keep, dict):
             to_keep = pd.Series(to_keep)
         v_keeps = to_keep[to_keep].index.to_list()
+
+        # TODO: cell_ids lost
 
         if backend.lower() == "networkx":
             # construct graph object using networkX as backend, which are more convenient for dataframe.
@@ -871,9 +914,9 @@ class FateAnnData(ad.AnnData):
 
             # simplify graph preliminary
             # step 1: for each cell, find closest milestone
-            distance_df = pd.DataFrame(dict(nx.shortest_path_length(G.to_undirected(), weight="length"))).loc[
-                cell_ids, v_keeps
-            ]  # calucate distance as undirected graph, like "mode=all" in igraph
+            # calucate distance as undirected graph, like "mode=all" in igraph
+            distance_df = pd.DataFrame(dict(nx.shortest_path_length(G.to_undirected(), weight="length")))
+            distance_df = distance_df.loc[cell_ids, v_keeps]
             closest_trajpoint = distance_df.idxmin(axis=1)  # closest keep point for each cell
 
             # step 2: simplify backbone
@@ -909,7 +952,7 @@ class FateAnnData(ad.AnnData):
             milestone_network[["from", "to"]] = milestone_prefix + milestone_network[["from", "to"]]
             progressions[["from", "to"]] = milestone_prefix + progressions[["from", "to"]]
         else:
-            # construct graph object using igraph as backend, which are faster
+            # TODO: construct graph object using igraph as backend, which are faster
             milestone_network = None
             progressions = None
 

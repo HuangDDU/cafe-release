@@ -2,9 +2,13 @@ import anndata as ad
 import scanpy as sc
 
 try:
+    # for docker
     from method_decorator import method_info
+    from preprocess_pipeline import preprocess_pipeline
 except ImportError:
+    # for completed cfe environment
     from cfe.method.function.method_decorator import method_info
+    from cfe.method.function.preprocess_pipeline import preprocess_pipeline
 
 
 @method_info(
@@ -17,6 +21,7 @@ def comp1(
     adata: ad.AnnData,
     repreprocess: bool = True,
     basis: str = "X_pca",
+    recompute_basis: bool = False,
     component: int = 1,
 ) -> dict:
     """Comp1: baseline for linear wrapper, extract an embedded component pseudotime method
@@ -25,38 +30,34 @@ def comp1(
         adata (ad.AnnData): The input AnnData object.
         repreprocess (bool, optional): Whether to preprocess the data.
         basis (str, optional): The embedding name in .obsm.
+        recompute_basis (bool, optional): Whether to recompute the embedding.
         component (int, optional): The component number.
 
     Returns:
-        dict: A trajectory dict with keys: "wrapper_type" and "pseudotime".
+        dict: A trajectory dict of linear wrapper.
     """
     # 1. preprocess
-    if repreprocess:
-        sc.pp.normalize_per_cell(adata)
-        sc.pp.log1p(adata)
-        sc.pp.highly_variable_genes(adata)
-        adata = adata[:, adata.var["highly_variable"]]
+    embedding_method = basis[2:].lower() if basis.startswith("X_") else basis.lower()
+    if repreprocess and recompute_basis:
+        # stop at sc.pp.pca, or sc.pp.neighbors if other embedding method
+        preprocess_pipeline(adata, style="scanpy", if_neighbors=False if embedding_method == "pca" else True)
 
     # 2. execute method
-    if basis not in adata.obsm:
+    if recompute_basis or (basis not in adata.obsm):
         # execute dimension reduction if basis not in adata.obsm
-        embedding_method = basis[2:].lower()
         available_embedding_methods = ["pca", "tsne", "umap"]  # TODO: phate, diffmap ...
         # recompute the embedding
         if embedding_method in available_embedding_methods:
             if embedding_method == "pca":
-                sc.pp.pca(adata)
+                pass  # already computed in preprocess_pipeline
             elif embedding_method == "tsne":
                 sc.tl.tsne(adata)
             elif embedding_method == "umap":
-                sc.pp.pca(adata)  # need pca first
-                sc.pp.neighbors(adata)
                 sc.tl.umap(adata)
         else:
             # default use pca
             print(f"embedding method '{embedding_method}' is not available, use 'PCA' instead")
-            basis = "X_pca"
-            sc.pp.pca(adata)
+            basis = "pca"
 
     # 3. extract results
     pseudotime = adata.obsm[basis][:, component - 1].tolist()

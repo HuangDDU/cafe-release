@@ -143,6 +143,14 @@ class TestMilestoneWrapper:
 
         assert compare_dataframes_closely(milestone_percentages, expected_milestone_percentages, on_columns=["cell_id", "milestone_id"])
 
+    def test_generate_color(self):
+        mw = self.milestone_wrapper
+        # lazy load for milestone_color_dict and cell_color_dict, automatic call function '_generate_color' when first call
+        milestone_color_dict = mw.milestone_color_dict
+        cell_color_dict = mw.cell_color_dict
+        assert isinstance(milestone_color_dict, dict), "milestone_color_dict should be a dict"
+        assert isinstance(cell_color_dict, dict), "cell_color_dict should be a dict"
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

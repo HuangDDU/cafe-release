@@ -1,22 +1,20 @@
-import scanpy as sc
+# import scanpy as sc
 
-from ..plot_stack import plot_stack as raw_plot_stack
+from ..plot_pseudotime import plot_pseudotime_embedding, plot_pseudotime_stack
 
 DEFAULT_MODE = "embedding"
 
 
-def plot_embedding(fadata, model_name: str = None, basis: str = None, **kwargs):
-    """Plots pseudotime on an embedding for a linear trajectory."""
-    if basis is None:
-        basis = fadata.prior_information.get("basis", "X_umap")
+# def plot_embedding(fadata, model_name: str = None, basis: str = None, **kwargs):
+#     """Plots pseudotime on an embedding for a linear trajectory."""
+#     plot_pseudotime_embedding(fadata, model_name=model_name, basis=basis, **kwargs)
 
-    pseudotime = fadata.get_trajectory_pseudotime(model_name=model_name)
-    fadata.obs["pseudotime"] = pseudotime
-
-    sc.pl.embedding(fadata, color="pseudotime", basis=basis, cmap="viridis", **kwargs)
+plot_embedding = plot_pseudotime_embedding
 
 
-def plot_stack(fadata, model_name: str = None, cluster_key: str = "clusters", **kwargs):
-    """Generates a stream plot for a linear trajectory."""
-    # Directly reuse the main plot_stack function
-    raw_plot_stack(fadata, cluster_key=cluster_key, model_name=model_name, **kwargs)
+# def plot_stack(fadata, model_name: str = None, cluster: str = "clusters", **kwargs):
+#     """Generates a stream plot for a linear trajectory."""
+#     plot_pseudotime_stack(fadata, model_name=model_name, cluster=cluster, **kwargs)
+
+
+plot_stack = plot_pseudotime_stack

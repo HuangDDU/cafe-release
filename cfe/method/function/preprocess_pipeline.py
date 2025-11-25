@@ -29,6 +29,7 @@ def scanpy_preprocess_pipeline(
     if not if_hvg:
         return adata
     sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes, flavor=flavor)
+    adata = adata[:, adata.var["highly_variable"]]
     if not if_pca:
         return adata
     sc.pp.pca(adata, n_comps=n_pcs)

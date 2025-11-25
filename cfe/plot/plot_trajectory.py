@@ -1,16 +1,15 @@
 from collections.abc import Sequence
 
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 import scanpy as sc
+from matplotlib.patches import FancyArrowPatch
 from scipy.stats import norm
 
 from .._logging import logger
 from ..data import FateAnnData
-from .add_color import add_milestone_cell_color, add_milestone_color
 
 
 def plot_trajectory(
@@ -24,6 +23,7 @@ def plot_trajectory(
     color_trajectory: str = None,
     size_milestones: int = 30,
     size_transitions: int = 2,
+    size_arrow: int = 10,
     waypoint_wrapper_kwargs: dict = {},
     recompute_trajectory_embedding: bool = False,
     save: bool | str = None,
@@ -111,19 +111,12 @@ def plot_trajectory(
                 ax = axes[j, i]  # row is color, col is model_name
             logger.debug(f"plot_trajectory for model_name:'{model_name}', color:'{color}'")
             if color == "milestone":
-                # add milestone mixed color
-                milestone_id_list = milestone_wrapper["id_list"]
-                milestone_percentages = milestone_wrapper["milestone_percentages"]
-                milestone_color_list = add_milestone_color(len(milestone_id_list))
-                milestone_color_dict = dict(zip(milestone_id_list, milestone_color_list))
-                milestone_wrapper.color_list = [mcolors.to_hex(mc) for mc in milestone_color_list]  # add color for CXG visualization
-                fadata.uns["milestone_color_dict"] = milestone_color_dict
-                cell_color_df = add_milestone_cell_color(milestone_color_dict, milestone_percentages)
-                fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
                 missing_cell_color = "#808080"
-                if cell_color_df.shape[0] != fadata.n_obs:
+                cell_color_dict = milestone_wrapper["cell_color_dict"]
+                if len(cell_color_dict) != fadata.n_obs:
                     logger.warning(f"milestone cell color length not equal to cell number! set missing color as '{missing_cell_color}'.")
-                fadata.uns["milestone_colors"] = [cell_color_df.loc[i] if i in cell_color_df.index else missing_cell_color for i in fadata.obs.index]
+                fadata.obs["milestone"] = pd.Categorical(fadata.obs.index, categories=fadata.obs.index.tolist())
+                fadata.uns["milestone_colors"] = [cell_color_dict[i] if i in cell_color_dict else missing_cell_color for i in fadata.obs.index]
 
             # base scanpy embedding scatter plot
             sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
@@ -137,7 +130,7 @@ def plot_trajectory(
 
             # milestone and waypoint trajectory plot
             # TODO: trajectory plot keep unchange in the color loop, but it should plot for every ax.
-            directed = milestone_wrapper["milestone_network"]["directed"].any()
+            directed = milestone_wrapper["directed"]
             if curve:
                 # draw milestone
                 ax.scatter(milestone_positions["comp_1"], milestone_positions["comp_2"], c="black", s=size_milestones)  # waypoint scatter
@@ -147,32 +140,41 @@ def plot_trajectory(
                     wp_segments_g = wp_segments[wp_segments["group"] == g]
                     ax.plot(wp_segments_g["comp_1"], wp_segments_g["comp_2"], c="black", linewidth=size_transitions)
 
-                # plot arrow at the midpoint of edge.
                 if directed:
+                    arrow_segments = wp_segments[wp_segments["arrow"]].copy()
 
-                    def get_arrow_df(group):
-                        group = group.sort_values(by="percentage")
-                        start = group.iloc[0]
-                        end = group.iloc[-1]
-                        # scale vector to aimed norm length for smooth curve
-                        dx = end["comp_1"] - start["comp_1"]
-                        dy = end["comp_2"] - start["comp_2"]
-                        target_norm = 0.01
-                        scale = target_norm / np.linalg.norm([dx, dy])
-                        dx = scale * dx
-                        dy = scale * dy
-                        s = pd.Series({"x": start["comp_1"], "y": start["comp_2"], "dx": dx, "dy": dy})
-                        return s
+                    head_length = 0.6 * size_arrow
+                    head_width = 0.4 * size_arrow
+                    dynamic_arrowstyle = f"-|>,head_length={head_length},head_width={head_width}"
 
-                    arrow_df = wp_segments[wp_segments["arrow"]].groupby("group").apply(get_arrow_df)
-                    ax.quiver(arrow_df["x"], arrow_df["y"], arrow_df["dx"], arrow_df["dy"])
-                if color_trajectory is None:
+                    for _, row in arrow_segments.iterrows():
+                        # Find the next point on the same segment to define a short vector for the arrow direction
+                        segment_group = wp_segments[wp_segments["group"] == row["group"]]
+                        current_index = segment_group.index.get_loc(row.name)
+
+                        if current_index < len(segment_group) - 1:
+                            start_pos = (row["comp_1"], row["comp_2"])
+                            end_pos = (segment_group.iloc[current_index + 1]["comp_1"], segment_group.iloc[current_index + 1]["comp_2"])
+
+                            # Use FancyArrowPatch for better control: only draw the head
+                            arrow = FancyArrowPatch(
+                                posA=start_pos,
+                                posB=end_pos,
+                                arrowstyle=dynamic_arrowstyle,  # Style: only draw head at posB
+                                connectionstyle="arc3,rad=0",  # Straight line
+                                shrinkA=0,  # No gap at the start
+                                shrinkB=1,  # No gap at the end
+                                color="black",
+                                zorder=4,
+                            )
+                            ax.add_patch(arrow)
+                if color_trajectory is not None:
                     # TODO: add color to trajectory
                     pass
                 else:
                     pass
             else:
-                # directly use NetworkX to draw milestone network
+                # use NetworkX to draw milestone network directly， plot arrow at the midpoint of edge.
                 G = nx.from_pandas_edgelist(
                     milestone_wrapper["milestone_network"],
                     source="from",
@@ -192,7 +194,7 @@ def plot_trajectory(
                 milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
                 milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
                 pos = dict(zip(milestone_positions["milestone_id"], milestone_positions[["comp_1", "comp_2"]].values))
-                milestone_color_dict = fadata.uns["milestone_color_dict"]
+                milestone_color_dict = milestone_wrapper["milestone_color_dict"]
 
                 nx.draw_networkx(
                     G=G,
@@ -270,8 +272,11 @@ def project_waypoints(
 
     def calculate_closest_and_arrow(group):
         # choose the middle waypoint of a milestone network edege, where the percentage is closest to 0.5
-        closest_index = (group["percentage"] - 0.5).abs().idxmin()
-        group["arrow"] = (group.index == closest_index) | (group.index == closest_index + 1)  # arrow column
+        if len(group) > 2:
+            closest_index = (group["percentage"] - 0.5).abs().idxmin()
+            group["arrow"] = group.index == closest_index
+        else:
+            group["arrow"] = False
         return group
 
     segments = segments.groupby("group").apply(calculate_closest_and_arrow).reset_index(drop=True)

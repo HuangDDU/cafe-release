@@ -3,9 +3,12 @@
 # from typing import Any
 
 # import h5py
+import matplotlib.colors as mcolors
 import pandas as pd
+import seaborn as sns
 
 from .._logging import logger
+from .._settings import settings
 from ..util import random_time_string
 from .fate_wrapper import FateWrapper
 
@@ -83,6 +86,10 @@ class MilestoneWrapper(FateWrapper):
         # self.classify_milestone_network()
         self.milestone_network_class = "N"
         self.directed = milestone_network["directed"].any()
+
+        # lazy load for color
+        self._milestone_color_dict = None
+        self._cell_color_dict = None
 
     @staticmethod
     def convert_milestone_percentages_to_progressions(milestone_network: pd.DataFrame, milestone_percentages: pd.DataFrame) -> pd.DataFrame:
@@ -164,6 +171,65 @@ class MilestoneWrapper(FateWrapper):
         # TODO: PyDynverse and CFE implementation
         self.milestone_network_class = "N"
         self.directed = False
+
+    # fix for milestone and cell color
+    @property
+    def milestone_color_dict(self):
+        """Lazy load milestone color dictionary."""
+        if getattr(self, "_milestone_color_dict", None) is None:
+            self._generate_color()
+        return self._milestone_color_dict
+
+    @property
+    def cell_color_dict(self):
+        """Lazy load cell color dictionary."""
+        if getattr(self, "_milestone_color_dict", None) is None:
+            self._generate_color()
+        return self._cell_color_dict
+
+    def _generate_color(self, palette_name=settings.sns_palette, ref_color_dict: dict = None):
+        # TODO: auto detect fadata cluster related color for cellrank, scvelo ...
+        # color for milestone (rgb).
+        if (ref_color_dict is not None) and (set(self.id_list).issubset(set(ref_color_dict.keys()))):
+            logger.debug("synchronize milestone color with reference color dict.")
+            if isinstance(next(iter(ref_color_dict.values())), str):
+                # hex string to rgb list
+                def color_func(x):
+                    return list(mcolors.to_rgb(x))
+
+            else:
+                # rgb list
+                def color_func(x):
+                    return list(x)
+
+            milestone_color_dict = {milestone_id: color_func(ref_color_dict[milestone_id]) for milestone_id in self.id_list}
+        else:
+            logger.debug("generate milestone color from palette.")
+            n = len(self.id_list)
+            palette = sns.color_palette(palette_name)
+            if n <= len(palette):
+                palette = palette[:n]
+            else:
+                logger.warning(
+                    f"The number of colors({n}) is greater than the number of colors in the '{palette_name}' palette({len(palette)}), and the 'husl' palette selection is used."
+                )
+                palette = sns.color_palette("husl", n_colors=n)
+
+            milestone_color_list = [list(i) for i in palette]  # transfer from tuple to list, [r, g, b]
+            milestone_color_dict = dict(zip(self.id_list, milestone_color_list))
+        milestone_color_df = pd.DataFrame(milestone_color_dict, index=["r", "g", "b"]).T
+
+        # color for cell
+        def mix_color(mpg):
+            # mix related milestone color to get color for a cell
+            mpg_color = milestone_color_df.loc[mpg["milestone_id"]]
+            mix_color_array = mpg_color.apply(lambda rgb_channel: (rgb_channel.array * mpg["percentage"].array).sum())
+            return mcolors.to_hex(mix_color_array)
+
+        cell_color_dict = self.milestone_percentages.groupby("cell_id").apply(lambda mpg: mix_color(mpg)).to_dict()
+
+        self._milestone_color_dict = milestone_color_dict
+        self._cell_color_dict = cell_color_dict
 
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges
