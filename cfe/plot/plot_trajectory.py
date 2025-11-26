@@ -19,8 +19,10 @@ def plot_trajectory(
     basis: str = None,
     curve: bool = True,
     layout_by_row: str = "color",
+    show_milestone_labels: bool = False,
+    milestone_legend_loc: str = "on data",
     milestone_color: str | list = None,
-    color_trajectory: str = None,
+    color_trajectory: str = "black",
     size_milestones: int = 30,
     size_transitions: int = 2,
     size_arrow: int = 10,
@@ -39,6 +41,7 @@ def plot_trajectory(
         basis (str, optional): embedding basis.
         curve (bool, optional): whether to plot a curve.
         layout_by_row (str, optional): layout by row.
+        show_milestone_labels (bool, optional): whether to show milestone labels.
         milestone_color (str | list, optional): milestone color(s) to use for plotting.
         color_trajectory (str, optional): trajectory color.
         size_milestones (int, optional): milestone point size.
@@ -59,6 +62,8 @@ def plot_trajectory(
     if basis is None:
         basis = fadata.prior_information.get("basis")
         logger.debug(f"extract '{basis}' from prior infomation as parameter 'basis' ")
+    # setting default parameter for sc.pl.embedding
+    sc_pl_embedding_kwargs.setdefault("frameon", False)
 
     model_name_list = [model_name] if isinstance(model_name, str) else model_name
     color_list = [color] if isinstance(color, str) else color
@@ -123,7 +128,7 @@ def plot_trajectory(
             sc.pl.embedding(fadata, color=color, basis=basis, ax=ax, show=False, **sc_pl_embedding_kwargs)  # base cell embedding
 
             # legend remove
-            if color == "milestone" or (layout_by_row == "color" and i < len(model_name) - 1):
+            if color == "milestone" or (layout_by_row == "color" and i < len(model_name_list) - 1):
                 # milestone colors are too many, remove legend to save space
                 # when color is row, only show legend for the last model
                 ax.legend().remove()  # remove legend for color with milestone, but it waste time for show and remove
@@ -131,14 +136,36 @@ def plot_trajectory(
             # milestone and waypoint trajectory plot
             # TODO: trajectory plot keep unchange in the color loop, but it should plot for every ax.
             directed = milestone_wrapper["directed"]
-            if curve:
-                # draw milestone
-                ax.scatter(milestone_positions["comp_1"], milestone_positions["comp_2"], c="black", s=size_milestones)  # waypoint scatter
 
+            if show_milestone_labels or not curve:
+                G = nx.from_pandas_edgelist(
+                    milestone_wrapper["milestone_network"],
+                    source="from",
+                    target="to",
+                    create_using=nx.DiGraph if directed else nx.Graph,
+                )
+                # get milestone positions
+
+                def get_milestone(row):
+                    f, t = row["group"].split("---")
+                    if row["percentage"] == 0:
+                        return f
+                    else:
+                        return t
+
+                milestone_positions.apply(lambda row: get_milestone, axis=1)
+                milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
+                milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
+                pos = dict(zip(milestone_positions["milestone_id"], milestone_positions[["comp_1", "comp_2"]].values))
+                milestone_color_dict = milestone_wrapper["milestone_color_dict"]
+
+            # plot trajectory
+            if curve:
+                # waypoint calculation and visulization
                 # connect waypoint scatter points into a curve
                 for g in wp_segments["group"].unique():
                     wp_segments_g = wp_segments[wp_segments["group"] == g]
-                    ax.plot(wp_segments_g["comp_1"], wp_segments_g["comp_2"], c="black", linewidth=size_transitions)
+                    ax.plot(wp_segments_g["comp_1"], wp_segments_g["comp_2"], c=color_trajectory, linewidth=size_transitions)
 
                 if directed:
                     arrow_segments = wp_segments[wp_segments["arrow"]].copy()
@@ -164,55 +191,61 @@ def plot_trajectory(
                                 connectionstyle="arc3,rad=0",  # Straight line
                                 shrinkA=0,  # No gap at the start
                                 shrinkB=1,  # No gap at the end
-                                color="black",
+                                color=color_trajectory,
                                 zorder=4,
                             )
                             ax.add_patch(arrow)
-                if color_trajectory is not None:
-                    # TODO: add color to trajectory
-                    pass
-                else:
-                    pass
             else:
-                # use NetworkX to draw milestone network directly， plot arrow at the midpoint of edge.
-                G = nx.from_pandas_edgelist(
-                    milestone_wrapper["milestone_network"],
-                    source="from",
-                    target="to",
-                    create_using=nx.DiGraph if directed else nx.Graph,
-                )
-
-                # get milestone positions
-                def get_milestone(row):
-                    f, t = row["group"].split("---")
-                    if row["percentage"] == 0:
-                        return f
-                    else:
-                        return t
-
-                milestone_positions.apply(lambda row: get_milestone, axis=1)
-                milestone_positions["milestone_id"] = milestone_positions.apply(lambda row: get_milestone(row), axis=1)
-                milestone_positions = milestone_positions.groupby("milestone_id").apply(lambda x: x.iloc[0]).reset_index(drop=True)
-                pos = dict(zip(milestone_positions["milestone_id"], milestone_positions[["comp_1", "comp_2"]].values))
-                milestone_color_dict = milestone_wrapper["milestone_color_dict"]
-
-                nx.draw_networkx(
+                # use network
+                nx.draw_networkx_edges(
                     G=G,
                     pos=pos,
-                    node_color=[milestone_color_dict[node] for node in G.nodes],
+                    edge_color=color_trajectory,
                     width=3,
                     arrowsize=15,
-                    linewidths=3,
-                    edgecolors="black",
                     ax=ax,
                 )
 
-                # TODO: legend  setting
+            # plot milestone
+            if show_milestone_labels:
+                # use networkx
+                nx.draw_networkx_nodes(
+                    G=G,
+                    pos=pos,
+                    node_color=[milestone_color_dict[node] for node in G.nodes],
+                    edgecolors="black",
+                    ax=ax,
+                )
+                # Show milestone legend
+                if milestone_legend_loc == "on data":
+                    nx.draw_networkx_labels(G=G, pos=pos)
+                else:
+                    # usually right margin
+                    from matplotlib.lines import Line2D
+
+                    milestone_handles = [
+                        Line2D([0], [0], marker="o", color="w", label=m_id, markerfacecolor=m_color, markersize=10, markeredgecolor="black")
+                        for m_id, m_color in milestone_color_dict.items()
+                    ]
+
+                    # check if there is an existing legend (Scanpy's), set title for Scanpy legend and keep it
+                    scanpy_legend = ax.get_legend()
+                    if scanpy_legend:
+                        scanpy_legend.set_title("Cells")
+                        ax.add_artist(scanpy_legend)
+                        bbox_to_anchor = (1.3, 0.5)  # shift latter legene
+                    else:
+                        bbox_to_anchor = (1.0, 0.5)
+                    # Add milestone legend below the existing one
+                    ax.legend(handles=milestone_handles, title="Milestones", loc="center left", bbox_to_anchor=bbox_to_anchor, frameon=False)
+
+            else:
+                ax.scatter(milestone_positions["comp_1"], milestone_positions["comp_2"], c="black", s=size_milestones)  # waypoint scatter
 
     if save is not None:
         if isinstance(save, bool) and save:
             save = f".cfe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
-        plt.savefig(save)
+        plt.savefig(save, bbox_inches="tight")
         logger.debug(f"save trajectory plot to '{save}'")
     return axes
 
