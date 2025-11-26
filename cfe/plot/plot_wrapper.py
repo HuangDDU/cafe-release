@@ -19,7 +19,7 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
     if wrapper_type is None:
         # extract wrapper type from fadata
         wrapper_type = fadata.get_raw_wrapper_dict(model_name).get("wrapper_type", "direct")
-        logger.info(f"find wrapper type: {wrapper_type}")
+        logger.debug(f"find wrapper type: {wrapper_type}")
 
     # --- 2. Find the correct plotter module ---
     plotter_module = PLOTTER_MODULE_REGISTRY.get(wrapper_type)
@@ -31,7 +31,7 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
     if mode is None:
         # Use the default mode defined in the module, or fallback to a common default
         mode = getattr(plotter_module, "DEFAULT_MODE", "embedding")
-        logger.info(f"No mode specified, using default for '{wrapper_type}': '{mode}'")
+        logger.debug(f"No mode specified, using default for '{wrapper_type}': '{mode}'")
 
     function_name = f"plot_{mode}"
     plot_function = getattr(plotter_module, function_name, None)  # Note: 核心函数

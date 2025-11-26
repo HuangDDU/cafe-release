@@ -10,7 +10,7 @@ def plot_embedding(fadata, model_name: str = None, basis=None):
     cluster = raw_wrapper_dict["cluster"]
 
     # plot trajectory
-    axes = plot_trajectory(fadata, curve=False)
+    axes = plot_trajectory(fadata, curve=False, show_milestone_labels=True, basis=basis)
     ax = axes.flatten()[0]
 
     # connect cell and milestone by cluster

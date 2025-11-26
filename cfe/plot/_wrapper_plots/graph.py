@@ -22,7 +22,7 @@ def plot_embedding(fadata, model_name: str = None, cluster: str = None, basis: s
     filtered_cell_id_list = list(pd.unique(pd.concat([milestone_network["from"], milestone_network["to"]])))
 
     # base scanpy plot
-    ax = sc.pl.embedding(fadata, color=cluster, basis=basis, show=False)
+    ax = sc.pl.embedding(fadata, color=cluster, basis=basis, frameon=False, show=False)
 
     # plot all cells in graph
     G_all = nx.from_pandas_edgelist(cell_graph, source="from", target="to", create_using=nx.Graph)

@@ -15,7 +15,7 @@ def plot_embedding(fadata, model_name: str = None, basis: str = None):
     # milestone_emb = raw_wrapper_dict["milestone_emb"]
 
     # plot trajectory
-    axes = plot_trajectory(fadata, curve=False)
+    axes = plot_trajectory(fadata, curve=False, show_milestone_labels=True, basis=basis)
     ax = axes.flatten()[0]
 
     # create edge dataframe

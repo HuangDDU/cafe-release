@@ -324,6 +324,7 @@ class FateAnnData(ad.AnnData):
         divergence_regions: pd.DataFrame = None,
         milestone_percentages: pd.DataFrame = None,
         progressions: pd.DataFrame = None,
+        generate_color: bool = True,
     ) -> None:
         """Create MilestoneWrapper object as trajectory
 
@@ -345,12 +346,13 @@ class FateAnnData(ad.AnnData):
             progressions=progressions,
         )
         # synchronize mielstone color with cluster color in prior_information if possible
-        cluster = self.prior_information.get("cluster")
-        if cluster and (f"{cluster}_colors" in self.uns):
-            ref_color_dict = dict(zip(self.obs[cluster].cat.categories.tolist(), self.uns[f"{cluster}_colors"]))
-        else:
-            ref_color_dict = None
-        milestone_wrapper._generate_color(ref_color_dict=ref_color_dict)
+        if generate_color:
+            cluster = self.prior_information.get("cluster")
+            if cluster and (f"{cluster}_colors" in self.uns):
+                ref_color_dict = dict(zip(self.obs[cluster].cat.categories.tolist(), self.uns[f"{cluster}_colors"]))
+            else:
+                ref_color_dict = None
+            milestone_wrapper._generate_color(ref_color_dict=ref_color_dict)
 
         self.milestone_wrapper = milestone_wrapper
         self.is_wrapped_with_trajectory = True
@@ -406,7 +408,7 @@ class FateAnnData(ad.AnnData):
         self.wrapper_type = "directed"
         self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster_key)
 
-    def add_trajectory_by_type(self, trajectory_dict: dict) -> None:
+    def add_trajectory_by_type(self, trajectory_dict: dict, **kwargs) -> None:
         """automatically add trajectory by wrapper type in trajectory_dict
 
         Args:
@@ -418,36 +420,36 @@ class FateAnnData(ad.AnnData):
         self.raw_wrapper_dict = trajectory_dict
 
         if wrapper_type == "directed":
-            self.add_trajectory(**trajectory_dict)
+            self.add_trajectory(**trajectory_dict, **kwargs)
         elif wrapper_type == "branch":
             self.add_trajectory_branch(
                 branch_network=trajectory_dict["branch_network"],
                 branches=trajectory_dict["branches"],
                 branch_progressions=trajectory_dict["branch_progressions"],
+                **kwargs,
             )
         elif wrapper_type == "linear":
-            self.add_trajectory_linear(pseudotime=trajectory_dict["pseudotime"])
+            self.add_trajectory_linear(pseudotime=trajectory_dict["pseudotime"], **kwargs)
         elif wrapper_type == "cycle":
-            self.add_trajectory_cycle(pseudotime=trajectory_dict["pseudotime"])
+            self.add_trajectory_cycle(pseudotime=trajectory_dict["pseudotime"], **kwargs)
         elif wrapper_type == "probability":
             self.add_trajectory_probability(
                 end_state_probabilities=trajectory_dict["end_state_probabilities"],
                 pseudotime=trajectory_dict["pseudotime"] if "pseudotime" in trajectory_dict.keys() else None,
+                **kwargs,
             )
         elif wrapper_type == "cluster":
-            self.add_trajectory_cluster(milestone_network=trajectory_dict["milestone_network"], cluster=trajectory_dict["cluster"])
+            self.add_trajectory_cluster(milestone_network=trajectory_dict["milestone_network"], cluster=trajectory_dict["cluster"], **kwargs)
         elif wrapper_type == "projection":
             self.add_trajectory_projection(
                 milestone_network=trajectory_dict["milestone_network"],
                 milestone_emb=trajectory_dict["milestone_emb"],
                 X_emb=trajectory_dict["X_emb"],
                 cluster_key=trajectory_dict.get("cluster_key", None),
+                **kwargs,
             )
         elif wrapper_type == "graph":
-            self.add_trajectory_graph(
-                cell_graph=trajectory_dict["cell_graph"],
-                to_keep=trajectory_dict["to_keep"],
-            )
+            self.add_trajectory_graph(cell_graph=trajectory_dict["cell_graph"], to_keep=trajectory_dict["to_keep"], **kwargs)
         elif wrapper_type == "velocity":
             self.add_trajectory_velocity(
                 velocity=trajectory_dict["velocity"],
@@ -457,7 +459,8 @@ class FateAnnData(ad.AnnData):
                 neighbors=trajectory_dict.get("neighbors"),
                 obs_index=trajectory_dict.get("obs_index"),
                 var_index=trajectory_dict.get("var_index"),
-                X=trajectory_dict.get("X"),  # add X for velocity method like veloae
+                X=trajectory_dict.get("X"),  # add X for velocity method like veloae,
+                **kwargs,
             )
         elif wrapper_type == "lineage":
             # TODO: fix lineage trajectory for cellrank
@@ -465,6 +468,7 @@ class FateAnnData(ad.AnnData):
                 probability=trajectory_dict["probability"],
                 cluster_key=trajectory_dict.get("cluster_key", None),
                 new_cluster_list=trajectory_dict.get("new_cluster_list", None),
+                **kwargs,
             )
 
     def add_trajectory_by_h5ad(self):
@@ -871,6 +875,7 @@ class FateAnnData(ad.AnnData):
         to_keep: pd.Series | dict = None,
         milestone_prefix: str = "milestone_",
         backend: str = "networkx",
+        simplify_kwargs: dict = {},
     ):
         """add graph trajectory, such as GraphMST(baseline).
 
@@ -887,6 +892,10 @@ class FateAnnData(ad.AnnData):
         if "directed" not in cell_graph.columns:
             cell_graph["directed"] = False
 
+        if "prune_threshold" not in simplify_kwargs:
+            # for dataset 'pancreas' and method 'Graph MST' , threnshold is best
+            simplify_kwargs["prune_threshold"] = 0.05
+
         is_directed = cell_graph["directed"].any()
         cell_ids = list(pd.unique(pd.concat([cell_graph["from"], cell_graph["to"]])))
         if len(cell_ids) < self.shape[0]:
@@ -899,8 +908,6 @@ class FateAnnData(ad.AnnData):
         elif isinstance(to_keep, dict):
             to_keep = pd.Series(to_keep)
         v_keeps = to_keep[to_keep].index.to_list()
-
-        # TODO: cell_ids lost
 
         if backend.lower() == "networkx":
             # construct graph object using networkX as backend, which are more convenient for dataframe.
@@ -957,9 +964,15 @@ class FateAnnData(ad.AnnData):
             progressions = None
 
         # first add
-        self.add_trajectory(milestone_network=milestone_network, divergence_regions=None, progressions=progressions)
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=None,
+            progressions=progressions,
+            generate_color=False,  # here there are many milestone, don't generate color
+        )
         # simplify and add
-        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name)  # TODO: update
+        simplified_milestone_wrapper = self.simplify_trajectory(self.model_name, simplify_kwargs=simplify_kwargs)  # TODO: update
+        # TODO: new lost cells
         self.add_trajectory(
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,
@@ -1168,7 +1181,7 @@ class FateAnnData(ad.AnnData):
         group_df = self.milestone_wrapper.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
         self.obs[cluster_key] = group_df.loc[self.obs.index]
 
-    def simplify_trajectory(self, model_name="default") -> MilestoneWrapper:
+    def simplify_trajectory(self, model_name="default", simplify_kwargs: dict = {}) -> MilestoneWrapper:
         """simplify trajectory for metric comparison, also used in FateAnnData.add_trajectory_cell_graph
         ref: PyDynverse/pydynverse/wrap/simplify_trajectory.py
 
@@ -1202,7 +1215,9 @@ class FateAnnData(ad.AnnData):
         edge_points["id"] = edge_points["id"].apply(lambda x: f"SIMPLIFYCELL_{x}")
 
         # core: simplify networkx network
-        out = self._simplify_networkx_network(G, force_keep=divergence_regions["milestone_id"], edge_points=edge_points)
+        from ._simplify_networkx_network import simplify_networkx_network as snn
+
+        out = snn(G, force_keep=divergence_regions["milestone_id"], edge_points=edge_points, **simplify_kwargs)
 
         # milestone data structure based on simplied network
         G = out["gr"]
@@ -1220,12 +1235,6 @@ class FateAnnData(ad.AnnData):
             progressions=progressions,
         )
         return simplified_milestone_wrapper
-
-    def _simplify_networkx_network(self, G, force_keep, edge_points):
-        # copy from: PyDynverse/pydynverse/wrap/simplify_networkx_network.py
-        from ._simplify_networkx_network import simplify_networkx_network as snn
-
-        return snn(G, force_keep=force_keep, edge_points=edge_points)
 
     def get_trajectory_embedding(self, basis=None, model_name=None):
         if model_name is None:

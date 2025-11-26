@@ -68,11 +68,15 @@ class MilestoneWrapper(FateWrapper):
                 milestone_percentages = None
             else:
                 raise ValueError("Exactly one of milestone_percentages or progressions, must be defined, the other should be None")
+        # remove cells which are related to milestone that not shown in milestone network, （TODO: for graph mst optimization）
+        # then convert to another dataframe
         if progressions is None:
             # milestone_percentages -> progressions, 'add_trajectory' test case
+            milestone_percentages = MilestoneWrapper._check_milestone_percentages(milestone_network, milestone_percentages)
             progressions = MilestoneWrapper.convert_milestone_percentages_to_progressions(milestone_network, milestone_percentages)
         else:
             # progressions -> milestone_percentages, 'add_trajectory_branch' test case
+            progressions = MilestoneWrapper._check_progression(milestone_network, progressions)
             milestone_percentages = MilestoneWrapper.convert_progressions_to_milestone_percentages(milestone_network, progressions)
         if cell_id_list is not None:
             self.cell_id_list = list(cell_id_list)
@@ -90,6 +94,30 @@ class MilestoneWrapper(FateWrapper):
         # lazy load for color
         self._milestone_color_dict = None
         self._cell_color_dict = None
+
+    @staticmethod
+    def _check_milestone_percentages(milestone_network, milestone_percentages):
+        valid_milestones = set(milestone_network["from"]).union(set(milestone_network["to"]))
+        invalid_mask = ~milestone_percentages["milestone_id"].isin(valid_milestones)
+
+        if invalid_mask.any():
+            invalid_cells = milestone_percentages.loc[invalid_mask, "cell_id"].unique()
+            logger.warning(f"dropping {len(invalid_cells)} cells because they map to milestones missing from the network.")
+            milestone_percentages = milestone_percentages[~milestone_percentages["cell_id"].isin(invalid_cells)].copy()
+
+        return milestone_percentages
+
+    @staticmethod
+    def _check_progression(milestone_network, progressions):
+        valid_milestones = set(milestone_network["from"]).union(set(milestone_network["to"]))
+        invalid_mask = (~progressions["from"].isin(valid_milestones)) | (~progressions["to"].isin(valid_milestones))
+
+        if invalid_mask.any():
+            invalid_cells = progressions.loc[invalid_mask, "cell_id"].unique()
+            logger.warning(f"dropping {len(invalid_cells)} cells because they map to milestones missing from the network.")
+            progressions = progressions[~progressions["cell_id"].isin(invalid_cells)].copy()
+
+        return progressions
 
     @staticmethod
     def convert_milestone_percentages_to_progressions(milestone_network: pd.DataFrame, milestone_percentages: pd.DataFrame) -> pd.DataFrame:
