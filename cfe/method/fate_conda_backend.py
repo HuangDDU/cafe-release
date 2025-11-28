@@ -19,6 +19,8 @@ from .fate_backend import Backend
 class CondaBackend(Backend):
     """Specific implementation of abstract Backend class using Python functions."""
 
+    # TODO: Here, the class is only for python methods, need to extend to R methods.
+
     def __init__(self, function_name="comp1", conda_name="cfe", id=""):
         self.function_name = function_name
         self.conda_name = conda_name

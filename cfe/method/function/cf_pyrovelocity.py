@@ -51,6 +51,8 @@ def pyrovelocity(
         train_model,
     )
 
+    # working dir is setting to avoid use previous middle file.
+
     with tempfile.TemporaryDirectory() as tmp_wd:
         #
         data_set_name = "tmp"
@@ -59,10 +61,9 @@ def pyrovelocity(
         if "filename" in adata.uns:
             adata_filename = adata.uns["filename"]
         else:
-            # for docker test: save adata for latter unitvelo pipeline
             adata_filename = "adata.h5ad"
             adata.write(adata_filename)
-            print("save adata for unitvelo pipeline:", adata_filename)
+            print("save adata for pyrovelocity pipeline:", adata_filename)
         data_set_name = adata_filename.split("/")[-1]
         data_external_path = adata_filename.replace(data_set_name, "")
         data_set_name = data_set_name.replace(".h5ad", "")
@@ -115,6 +116,7 @@ def pyrovelocity(
 
         # read result adata
         adata = sc.read(postprocessing_outputs.postprocessed_data)
+        print("adata result", adata.shape)
 
     trajectory_dict = {
         "wrapper_type": "velocity",
@@ -124,6 +126,7 @@ def pyrovelocity(
         "neighbors": {"distances": adata.obsp["distances"], "connectivities": adata.obsp["connectivities"]},
         "obs_index": adata.obs.index,
         "var_index": adata.var.index,
+        "save_h5ad": postprocessing_outputs.postprocessed_data,
     }
 
     return trajectory_dict

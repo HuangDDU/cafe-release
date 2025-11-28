@@ -62,9 +62,9 @@ def celldancer(
     adata.obsm[f"velocity_{basis[2:]}"] = velocity_df.loc[adata.obs.index].values  # align index
     # celldancer generate many zero velocity cells, only extracted valid velocity cell to construct trajectory.
     adata = adata[~((adata.obsm[f"velocity_{basis[2:]}"] == 0).all(axis=1))].copy()
+    trajectory_dict = extract_trajectory_dict(adata, basis=basis)
 
     # 4. save results
-    trajectory_dict = extract_trajectory_dict(adata, basis=basis)
     return trajectory_dict
 
 

@@ -48,10 +48,15 @@ def scvelo(
     # 2. execute method
     scv.tl.velocity(adata, **velocity_kwargs)  # compute high dimensional velocity
     scv.tl.velocity_graph(adata, **velocity_graph_kwargs)  # compute transition probability
-
     # scv.pl.velocity_embedding_stream(adata, basis="umap", show=False)  # don't plot here
+    adata.uns["method_name"] = scvelo  # to find correspodding function "extract_trajectory_dict" easily
 
     # 3,4. extract and save results
+    trajectory_dict = extract_trajectory_dict(adata)
+    return trajectory_dict
+
+
+def extract_trajectory_dict(adata):
     trajectory_dict = {
         "wrapper_type": "velocity",
         "velocity": adata.layers["velocity"],
