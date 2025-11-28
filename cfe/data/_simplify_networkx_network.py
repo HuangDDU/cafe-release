@@ -75,7 +75,13 @@ def simplify_networkx_network(
     simplified_graphs = []
     for connected_component in connected_component_list:
         subgr = gr.subgraph(connected_component).copy()
-        diameter = nx.diameter(subgr, weight="weight")
+        # 计算直径时需要使用无向图，因为有向图可能不是强连通的
+        subgr_undirected = subgr.to_undirected() if is_directed else subgr
+        try:
+            diameter = nx.diameter(subgr_undirected, weight="weight")
+        except nx.NetworkXError:
+            # 如果子图不连通，使用最大边权作为估计
+            diameter = max([d.get("weight", 1) for u, v, d in subgr.edges(data=True)], default=1)
         if diameter < threshold:
             logger.debug(f"remove small component, diameter {diameter:.2f}, size:{len(subgr.nodes)}, nodes:{subgr.nodes}")
             # skip small components
@@ -395,8 +401,8 @@ def simplify_get_edge_points_on_path(sub_edge_points: pd.DataFrame, path: pd.Dat
     # 3. 分离 "在路径上" 和 "不在路径上" 的细胞
     mask_on_path = merged["_is_forward"].notna()
 
-    on_path_raw = merged[mask_on_path].copy()
-    not_on_path = merged[~mask_on_path].drop(columns=["_is_forward"])
+    on_path_raw = merged[mask_on_path].copy().reset_index(drop=True)
+    not_on_path = merged[~mask_on_path].drop(columns=["_is_forward"]).reset_index(drop=True)
 
     # 4. 统一 "在路径上" 的细胞方向
     # 如果细胞匹配到的是反向边 (_is_forward == False)，需要翻转 from/to 并重算 percentage
@@ -406,10 +412,14 @@ def simplify_get_edge_points_on_path(sub_edge_points: pd.DataFrame, path: pd.Dat
     mask_rev = ~on_path_raw["_is_forward"]
 
     if mask_rev.any():
-        # 翻转 from/to
-        on_path_raw.loc[mask_rev, ["from", "to"]] = on_path_raw.loc[mask_rev, ["to", "from"]].values
+        # 翻转 from/to - 使用临时变量避免索引问题
+        rev_idx = mask_rev[mask_rev].index
+        temp_from = on_path_raw.loc[rev_idx, "from"].copy()
+        temp_to = on_path_raw.loc[rev_idx, "to"].copy()
+        on_path_raw.loc[rev_idx, "from"] = temp_to.values
+        on_path_raw.loc[rev_idx, "to"] = temp_from.values
         # 翻转 percentage (1 - p)
-        on_path_raw.loc[mask_rev, "percentage"] = 1.0 - on_path_raw.loc[mask_rev, "percentage"]
+        on_path_raw.loc[rev_idx, "percentage"] = 1.0 - on_path_raw.loc[rev_idx, "percentage"]
 
     # 5. 将 path 的元数据 (weight, cs) merge 进去，以便计算新位置
     # 此时 on_path_raw 的 from/to 已经全部调整为正向，可以直接与 path merge

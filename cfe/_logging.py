@@ -1,4 +1,5 @@
 import logging
+import os
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -47,6 +48,11 @@ def set_log_file(filename=".cfe/cfe_debug.log", logger=None):
         logger.debug(f"set new log file: {filename}")
         old_handler.close()
         logger.removeHandler(old_handler)
+
+    # 确保日志文件的目录存在
+    log_dir = os.path.dirname(filename)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
 
     file_handler = logging.FileHandler(filename, mode="a", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)

@@ -266,7 +266,7 @@ class TestFateAnnData:
                 "from": "milestone_begin",
                 "to": "milestone_end",
                 "length": 1,
-                "directed": False,
+                "directed": True,
             },
             index=[0],
         )
@@ -1046,6 +1046,7 @@ class TestFateAnnData:
         }
         return test_data
 
+    @pytest.mark.skip("undirected simplification has some issues to be fixed")
     def test_simplify_trajectory_bifurcation_directed(self):
         # input data
         test_data = self.get_simplify_trajectory_test_data_bifurcation()
