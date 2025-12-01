@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="cafe",
+    name="cafe-release",
     version="0.2.0",
     author="Zhaoyang Huang",
     author_email="hzy554598474@163.com",

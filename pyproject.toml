@@ -1,7 +1,7 @@
 [project]
-name = "Cafe"
+name = "cafe-release"
 version = "0.2.0"
-description = "CellFateExplorer (Cafe) - A toolkit for single-cell RNA trajectory analysis"
+description = "CellFateExplorer (Cafe) - An integrated platform for exploring cell fate "
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -80,7 +80,7 @@ Documentation = "https://cafe.readthedocs.io" #
 Repository = "https://github.com/HuangDDU/Cafe"
 
 [tool.setuptools.package-data]
-cafe = ["method/*.csv"]
+cafe = ["method/*.csv", "metric/*.csv"]
 
 
 [tool.black]
