@@ -1,6 +1,6 @@
 import pytest
 
-from cfe.util import (
+from cafe.util import (
     parse_bash_resource_usage_string,
     parse_docker_resource_usage_string_list,
 )
@@ -8,7 +8,7 @@ from cfe.util import (
 
 def test_parse_bash_resource_usage_string():
     usage_string = """
-    Command being timed: "python cfe/cli.py benchmark --data tmp/input.h5ad --method_list comp1 paga --save_fig tmp/comp1.jpg --save_h5ad tmp/comp1.h5ad --parameter_file tmp/comp1.yaml"
+    Command being timed: "python cafe/cli.py benchmark --data tmp/input.h5ad --method_list comp1 paga --save_fig tmp/comp1.jpg --save_h5ad tmp/comp1.h5ad --parameter_file tmp/comp1.yaml"
         User time (seconds): 21.87
         System time (seconds): 4.03
         Percent of CPU this job got: 99%

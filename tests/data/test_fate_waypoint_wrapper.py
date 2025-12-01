@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import cfe
+import cafe
 
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
@@ -15,7 +15,7 @@ class TestWaypointWrapper:
 
     def test_magic_method(self):
         """test __***__ methods"""
-        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
+        self.waypoint_wrapper = cafe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
 
         # test __contains__
@@ -30,7 +30,7 @@ class TestWaypointWrapper:
         assert set(attribute_name_list).issubset(set(ww.keys())), f"{attribute_name_list} should be the keys of the dict: {ww_dict}"
 
     def test_init(self):
-        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
+        self.waypoint_wrapper = cafe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
         # ww.pipeline()
 
@@ -41,7 +41,7 @@ class TestWaypointWrapper:
         assert ww.waypoints is not None
 
     def test_select_waypoints(self):
-        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
+        self.waypoint_wrapper = cafe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
 
         # 预期构造结果
@@ -113,7 +113,7 @@ class TestWaypointWrapper:
         assert compare_dataframes(ww.waypoints, expected_waypoints, "waypoint_id")
 
     def test_calculate_geodesic_distances(self):
-        self.waypoint_wrapper = cfe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
+        self.waypoint_wrapper = cafe.data.WaypointWrapper(self.milestone_wrapper, resolution=1)
         ww = self.waypoint_wrapper
 
         expected_waypoint_geodesic_distances = pd.DataFrame(
@@ -167,10 +167,10 @@ class TestWaypointWrapper:
                 data=[["g", "B", 1]],
             )
         )
-        milestone_wrapper = cfe.data.MilestoneWrapper(
+        milestone_wrapper = cafe.data.MilestoneWrapper(
             milestone_network=milestone_network, divergence_regions=divergence_regions, milestone_percentages=milestone_percentages
         )
-        waypoint_wrapper = cfe.data.WaypointWrapper(milestone_wrapper, resolution=1)
+        waypoint_wrapper = cafe.data.WaypointWrapper(milestone_wrapper, resolution=1)
         # unconnected milestone network test
 
         expected_waypoint_geodesic_distances = pd.DataFrame(

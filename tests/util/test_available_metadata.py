@@ -1,11 +1,11 @@
 import pandas as pd
 import pytest
 
-import cfe
+import cafe
 
 
 def test_get_available_method_df():
-    method_df = cfe.util.get_available_method_df()
+    method_df = cafe.util.get_available_method_df()
     assert isinstance(method_df, pd.DataFrame)
 
 

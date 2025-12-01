@@ -5,12 +5,12 @@ method_name="${1:-comp1}"
 destination_dir="method_docker"
 
 # path of source and definition file
-source_parse_file="cfe/method/function/parse_args.py"
-source_decorator_file="cfe/method/function/method_decorator.py"
-source_preprocess_file="cfe/method/function/preprocess_pipeline.py"
-source_method_file="cfe/method/function/cf_${method_name}.py"
-source_dockerfile="cfe/method/Dockerfile/${method_name}.dockerfile"
-source_pip_requirement="cfe/method/requirement/${method_name}.txt"
+source_parse_file="cafe/method/function/parse_args.py"
+source_decorator_file="cafe/method/function/method_decorator.py"
+source_preprocess_file="cafe/method/function/preprocess_pipeline.py"
+source_method_file="cafe/method/function/cf_${method_name}.py"
+source_dockerfile="cafe/method/Dockerfile/${method_name}.dockerfile"
+source_pip_requirement="cafe/method/requirement/${method_name}.txt"
 
 destination_parse_file="${destination_dir}/run.py"
 destination_decorator_file="${destination_dir}/method_decorator.py"

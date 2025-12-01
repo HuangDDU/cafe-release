@@ -22,7 +22,7 @@ class TestCFVeloAE:
     def test_raw(self):
         import sys
 
-        sys.path.append("../../../cfe/method/function")  # prepare relative package file
+        sys.path.append("../../../cafe/method/function")  # prepare relative package file
         from cf_veloae import veloae
 
         trajectory_dict = veloae(self.adata, **self.parameters)
@@ -33,14 +33,14 @@ class TestCFVeloAE:
     # def test_function(self):
     #     pass
 
-    @pytest.mark.skipif(if_test_raw, reason="skip conda backend test, because it should be in conda environment 'cfe'")
+    @pytest.mark.skipif(if_test_raw, reason="skip conda backend test, because it should be in conda environment 'cafe'")
     def test_conda(self):
         fadata = method_testcase(self.adata, self.method_name, "conda", self.parameters)
         assert fadata.is_wrapped_with_trajectory
 
-    @pytest.mark.skipif(if_test_raw, reason="skip cfe docker backend test, because it should be in conda environment 'cfe'")
+    @pytest.mark.skipif(if_test_raw, reason="skip cafe docker backend test, because it should be in conda environment 'cafe'")
     def test_docker(self):
-        fadata = method_testcase(self.adata, self.method_name, "cfe_docker", self.parameters)
+        fadata = method_testcase(self.adata, self.method_name, "cafe_docker", self.parameters)
         assert fadata.is_wrapped_with_trajectory
 
 

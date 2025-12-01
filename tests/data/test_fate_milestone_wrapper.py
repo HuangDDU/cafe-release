@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-import cfe
+import cafe
 
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
@@ -33,7 +33,7 @@ def setup_method_data():
             ["f", "A", 0.2],
         ],
     )
-    milestone_wrapper = cfe.data.MilestoneWrapper(
+    milestone_wrapper = cafe.data.MilestoneWrapper(
         milestone_network=milestone_network,
         divergence_regions=divergence_regions,
         milestone_percentages=milestone_percentages,
@@ -93,7 +93,7 @@ class TestMilestoneWrapper:
     #     pass
 
     def test_convert_progressions_to_milestone_percentages(self):
-        from cfe.data import MilestoneWrapper
+        from cafe.data import MilestoneWrapper
 
         milestone_network = pd.DataFrame(
             columns=["from", "to", "length", "directed"],

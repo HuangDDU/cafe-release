@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import cfe
+import cafe
 
 
 def test_project_to_segments():
@@ -42,7 +42,7 @@ def test_project_to_segments():
     segment_end.set_index("milestone_id", inplace=True)
 
     # execute function
-    out = cfe.util.project_to_segments(x, segment_start, segment_end)
+    out = cafe.util.project_to_segments(x, segment_start, segment_end)
 
     # expected result
     expected_x_proj = (

@@ -1,11 +1,11 @@
 import pandas as pd
 import pytest
 
-import cfe
+import cafe
 
 
 def test_init():
-    metrics = cfe.metric.metrics
+    metrics = cafe.metric.metrics
     assert isinstance(metrics, pd.DataFrame)
     assert set(["isomorphic", "edge_flip", "him"]) <= set(metrics["metric_id"])
 

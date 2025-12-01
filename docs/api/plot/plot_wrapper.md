@@ -1,1 +1,1 @@
-::: cfe.plot.plot_wrapper
+::: cafe.plot.plot_wrapper

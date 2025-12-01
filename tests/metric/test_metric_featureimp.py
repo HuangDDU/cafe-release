@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cfe.data import FateAnnData
-from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.metric.metric_featureimp import (
+from cafe.data import FateAnnData
+from cafe.data.fate_milestone_wrapper import MilestoneWrapper
+from cafe.metric.metric_featureimp import (
     calculate_feature_importances,
     calculate_featureimp_cor,
     calculate_featureimp_enrichment,
@@ -20,7 +20,7 @@ from cfe.metric.metric_featureimp import (
 # from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
-# from cfe.util.expand_matrix import expand_matrix
+# from cafe.util.expand_matrix import expand_matrix
 
 np.random.seed(42)
 CELL_IDS = [f"cell{i}" for i in range(1, 21)]
@@ -40,7 +40,7 @@ def fadata_dataset():
     expression = pd.DataFrame(expr, index=CELL_IDS, columns=GENES)
 
     obs = pd.DataFrame(index=CELL_IDS)
-    uns = {"cfe": {"trajectory_history_dict": {}}}
+    uns = {"cafe": {"trajectory_history_dict": {}}}
     fa = FateAnnData(X=np.empty((len(CELL_IDS), 1)), obs=obs, uns=uns)
     fa.obsm = {"expression": expression}
     fa.prior_information = {"features_id": ["Gene1", "Gene2"]}
@@ -89,7 +89,7 @@ def fi_method_tiny():
 
 def test_get_expression_and_wrapper():
     obs = pd.DataFrame(index=["a", "b", "c"])
-    uns = {"cfe": {"trajectory_history_dict": {}}}
+    uns = {"cafe": {"trajectory_history_dict": {}}}
     fa = FateAnnData(X=np.array([[1, 2], [3, 4], [5, 6]]), obs=obs, uns=uns)
 
     expr_df = get_expression(fa)
@@ -187,7 +187,7 @@ def make_toy_fadata():
     mp = pd.DataFrame({"cell_id": cells * 2, "milestone_id": ["M1"] * 20 + ["M2"] * 20, "percentage": np.concatenate([m1, m2])})
     mn = pd.DataFrame({"from": ["M1"], "to": ["M2"], "length": [1], "directed": [True]})
 
-    fa = FateAnnData(X=np.empty((20, 1)), obs=pd.DataFrame(index=cells), uns={"cfe": {"trajectory_history_dict": {}}})
+    fa = FateAnnData(X=np.empty((20, 1)), obs=pd.DataFrame(index=cells), uns={"cafe": {"trajectory_history_dict": {}}})
     fa.obsm = {"expression": expr}
     mw = MilestoneWrapper(milestone_network=mn, milestone_percentages=mp)
     fa.model_name = "ref"
@@ -216,7 +216,7 @@ def test_featureimp_cor_midrange():
     pred_mp = ref_mp.copy()
     pred_mp["percentage"] += np.random.normal(0, 0.05, size=len(pred_mp))
     mw2 = MilestoneWrapper(milestone_network=fa.milestone_wrapper.milestone_network, milestone_percentages=pred_mp)
-    hist = fa.uns["cfe"]["trajectory_history_dict"]
+    hist = fa.uns["cafe"]["trajectory_history_dict"]
     hist["ref"] = {"milestone_wrapper": fa.milestone_wrapper}
     hist["pred"] = {"milestone_wrapper": mw2}
 

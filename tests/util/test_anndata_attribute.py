@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import scanpy as sc
 
-from cfe.util import AnndataAttribute
+from cafe.util import AnndataAttribute
 
 
 class TestAnndataAttribute:

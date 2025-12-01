@@ -7,7 +7,7 @@ import pytest
 import scanpy as sc
 from scipy.sparse import csc_matrix
 
-import cfe
+import cafe
 
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
@@ -26,7 +26,7 @@ def setup_method_data():
 
     counts = csc_matrix(counts)
 
-    fadata = cfe.data.FateAnnData(X=counts)
+    fadata = cafe.data.FateAnnData(X=counts)
     fadata.obs.index = ["a", "b", "c", "d", "e", "f"]
     fadata.obs["clusters"] = [1, 1, 2, 2, 2, 3]
     fadata.obs["clusters"] = fadata.obs["clusters"].astype("category")
@@ -45,12 +45,12 @@ class TestFateAnnData:
     def test_init(self):
         assert isinstance(self.fadata, ad.AnnData)
         assert self.fadata.shape == (6, 2)
-        assert "cfe" in self.fadata.uns.keys()
+        assert "cafe" in self.fadata.uns.keys()
 
     def test_from_anndata(self):
         # data source: https://github.com/theislab/cellrank_reproducibility/blob/master/data/dyngen_simulated_data/bifurcating.h5ad
         adata = sc.read_h5ad(f"{os.path.dirname(__file__)}/bifurcating.h5ad")
-        fadata = cfe.data.FateAnnData.from_anndata(adata)
+        fadata = cafe.data.FateAnnData.from_anndata(adata)
         assert fadata.id is not None
 
     def test_to_anndata(self):
@@ -58,9 +58,9 @@ class TestFateAnnData:
         adata = fadata.to_anndata(delete_trajectory=True)
         assert isinstance(adata, ad.AnnData)
 
-    @pytest.mark.skipif(not cfe.settings.r_available, reason="R is not available")
+    @pytest.mark.skipif(not cafe.settings.r_available, reason="R is not available")
     def test_read_dynverse_simulation_data(self):
-        fadata = cfe.data.FateAnnData.read_dynverse_simulation_data()
+        fadata = cafe.data.FateAnnData.read_dynverse_simulation_data()
         assert fadata.is_wrapped_with_trajectory
 
     def test_add_model_name(self):
@@ -74,7 +74,7 @@ class TestFateAnnData:
         self.test_add_trajectory()
         # second model
         milestone_wrapper = fadata.milestone_wrapper
-        from cfe.util import random_time_string
+        from cafe.util import random_time_string
 
         # radom_time_string for parsing
         fadata.add_model_name(random_time_string("second model"))
@@ -139,7 +139,7 @@ class TestFateAnnData:
         assert self.fadata.is_wrapped_with_waypoints
         # TODO：test write_h5ad
         # self.fadata.write_h5ad("test_fate_anndata.h5ad")
-        # fadata = cfe.data.read_h5ad("test_fate_anndata.h5ad")
+        # fadata = cafe.data.read_h5ad("test_fate_anndata.h5ad")
         # assert fadata.waypoint_wrapper is not None
 
     def test_get_start_milestone(self):
@@ -238,7 +238,7 @@ class TestFateAnnData:
         pseudotime = [0.0, 0.1, 0.4, 0.5, 0.8, 1.0]
 
         expression = np.tile(pseudotime, (2, 1)).T
-        fadata = cfe.data.FateAnnData(X=expression, name=name)
+        fadata = cafe.data.FateAnnData(X=expression, name=name)
         fadata.obs.index = cell_ids
         fadata.layers["expression"] = expression.copy()
 
@@ -326,7 +326,7 @@ class TestFateAnnData:
     def get_add_trajectory_probability_test_data(self):
         id = "test_add_end_state_probabilities"
         cell_ids = ["a", "aa", "b", "bb", "c", "cc"]
-        fdata = cfe.data.FateAnnData(X=np.zeros((len(cell_ids), 2)), name=id)
+        fdata = cafe.data.FateAnnData(X=np.zeros((len(cell_ids), 2)), name=id)
         end_state_ids = ["A", "B", "C"]
         end_state_probabilities = pd.DataFrame(
             columns=["cell_id", "A", "B", "C"],
@@ -555,7 +555,7 @@ class TestFateAnnData:
         name = "test_add_trajectory_cell_graph"
         cell_ids = ["W", "X", "Y", "Z", "A", "WbX", "XcZ", "XeY", "ZfA", "a", "b", "c", "d", "e", "f"]
         expression = np.zeros([len(cell_ids), 2])
-        fadata = cfe.data.FateAnnData(X=expression, name=name)
+        fadata = cafe.data.FateAnnData(X=expression, name=name)
         fadata.obs.index = cell_ids
 
         cell_graph = pd.DataFrame(
@@ -649,7 +649,7 @@ class TestFateAnnData:
         name = "test_add_trajectory_lineage"
         cell_ids = ["a1", "a2", "b1", "b2", "c1", "c2", "c3", "d1", "d2", "d3"]
         expression = np.zeros([len(cell_ids), 2])
-        fadata = cfe.data.FateAnnData(X=expression, name=name)
+        fadata = cafe.data.FateAnnData(X=expression, name=name)
         fadata.obs.index = cell_ids
 
         cluster_key = "clusters"
@@ -734,7 +734,7 @@ class TestFateAnnData:
                 [2, 0],
             ]
         )
-        fadata = cfe.data.FateAnnData(X=X_emb, name=name)
+        fadata = cafe.data.FateAnnData(X=X_emb, name=name)
         fadata.obs[cluster_key] = cluster_list
         fadata.obsm["X_umap"] = X_emb
         fadata.layers["spliced"] = X_emb
@@ -815,7 +815,7 @@ class TestFateAnnData:
                 [2, 0],
             ]
         )
-        fadata = cfe.data.FateAnnData(X=X_emb, name=name)
+        fadata = cafe.data.FateAnnData(X=X_emb, name=name)
         fadata.obs[cluster_key] = cluster_list
         fadata.obsm["X_umap"] = X_emb
         fadata.layers["spliced"] = X_emb
@@ -841,7 +841,7 @@ class TestFateAnnData:
             tmp_fadata.layers["unspliced"] = tmp_X_emb
             fadata_list.append(tmp_fadata)
         velocity = np.repeat([[1, 0]], 25, axis=0).reshape(25, 2)
-        fadata = cfe.data.FateAnnData.from_anndata(sc.concat(fadata_list))
+        fadata = cafe.data.FateAnnData.from_anndata(sc.concat(fadata_list))
         fadata.obs.index = range(fadata.shape[0])
         print(fadata)
 
@@ -918,7 +918,7 @@ class TestFateAnnData:
             ],
             columns=["cell_id", "from", "to", "percentage"],
         )
-        fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
+        fadata = cafe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
         fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
         # expected result
@@ -971,7 +971,7 @@ class TestFateAnnData:
         cell_ids = test_data["cell_ids"]
         milestone_network = test_data["milestone_network"]
         progressions = test_data["progressions"]
-        fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
+        fadata = cafe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
         milestone_network["directed"] = False  # undirected graph
         fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
@@ -1015,7 +1015,7 @@ class TestFateAnnData:
             columns=["cell_id", "from", "to", "percentage"],
         )
 
-        fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
+        fadata = cafe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
         fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
         # expected result
@@ -1046,7 +1046,6 @@ class TestFateAnnData:
         }
         return test_data
 
-    @pytest.mark.skip("undirected simplification has some issues to be fixed")
     def test_simplify_trajectory_bifurcation_directed(self):
         # input data
         test_data = self.get_simplify_trajectory_test_data_bifurcation()
@@ -1070,7 +1069,7 @@ class TestFateAnnData:
         cell_ids = test_data["cell_ids"]
         milestone_network = test_data["milestone_network"]
         progressions = test_data["progressions"]
-        fadata = cfe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
+        fadata = cafe.data.FateAnnData(name=id, X=np.zeros((len(cell_ids), 2)))
         milestone_network["directed"] = False  # undirected graph
         fadata.add_trajectory(milestone_network=milestone_network, progressions=progressions)
 
