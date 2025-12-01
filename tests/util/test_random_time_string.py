@@ -2,13 +2,13 @@ import re
 
 import pytest
 
-import cfe
+import cafe
 
 
 def test_random_time_string_without_name():
-    # time_string = cfe.util.random_time_string()
+    # time_string = cafe.util.random_time_string()
     name = ""
-    time_string = cfe.util.random_time_string(name=name)
+    time_string = cafe.util.random_time_string(name=name)
 
     assert re.match(r"\d{8}_\d{6}__", time_string), "time format wrong"
 
@@ -20,7 +20,7 @@ def test_random_time_string_without_name():
 
 def test_random_time_string_with_name():
     name = "test_name"
-    time_string = cfe.util.random_time_string(name=name)
+    time_string = cafe.util.random_time_string(name=name)
 
     assert re.match(r"\d{8}_\d{6}__" + re.escape(name) + "__", time_string), "time format wrong"
 

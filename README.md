@@ -1,15 +1,15 @@
-![CellFateExplorer Framework](./docs/img/logo_legend.png)
+![Cafe Framework](./docs/img/logo_legend.png)
 
 [![test](https://github.com/HuangDDU/CellFateExplorer/actions/workflows/test.yml/badge.svg)](https://github.com/HuangDDU/CellFateExplorer/actions/workflows/test.yml)
 [![document](https://readthedocs.org/projects/cellfateexplorer/badge/?version=latest)](https://cellfateexplorer.readthedocs.io/en/latest/)
 
 # Cafe: An integrated platform for exploring cell fate
 
-**Cellular Fate Explorer(CFE or Cafe)** is a integration platform for *inferring*, *visualizing* and *benchmarking* cell fate trajectory for single-cell RNA-seq data.😁
+**Cafe (Cellular Fate Explorer)** is an integration platform for *inferring*, *visualizing* and *benchmarking* cell fate trajectory for single-cell RNA-seq data.😁
 
 ## Framework
 
-![CellFateExplorer Framework](./docs/img/framework.png)
+![Cafe Framework](./docs/img/framework.png)
 
 ## Installation
 

@@ -57,7 +57,7 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 300 chars wide
-        flake8 --count --exit-zero --max-complexity=10 --max-line-length=300 --ignore E714 --statistics  cfe/* tests/*
+        flake8 --count --exit-zero --max-complexity=10 --max-line-length=300 --ignore E714 --statistics  cafe/* tests/*
 
     - name: Add project root to PYTHONPATH
       run: |
@@ -66,6 +66,6 @@ jobs:
     - name: Test with pytest
       run: |
         pip install rpy2==3.3.0
-        mkdir -p ./tests/plot/img
+        mkdir -p ./tests/plot/img ./cafe
         conda install pytest
         pytest -m "not local"

@@ -2,8 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cfe.metric._metric_topology.metric_him import get_matched_adjacencies, him_distance
-from cfe.metric.metric_topology import (
+from cafe.metric._metric_topology.metric_him import (
+    get_matched_adjacencies,
+    him_distance,
+)
+from cafe.metric.metric_topology import (
     calculate_edge_flip,
     calculate_him,
     calculate_isomorphic,

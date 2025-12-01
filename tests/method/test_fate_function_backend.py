@@ -3,13 +3,13 @@ import os.path
 import pytest
 import scanpy as sc
 
-import cfe
+import cafe
 
 
 def get_test_run_data():
     # ref: notebook/quickstart_paga.ipynb, reuse for other backend
     adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
-    fadata = cfe.data.FateAnnData.from_anndata(adata)
+    fadata = cafe.data.FateAnnData.from_anndata(adata)
     fadata.layers["counts"] = fadata.X.copy()
     fadata.layers["expression"] = fadata.X.copy()
     fadata.obs.index = fadata.obs["cell_id"]
@@ -26,7 +26,7 @@ function_name = "comp1"
 
 class TestFunctionBackend:
     def setup_method(self):
-        self.function_backend = cfe.method.FunctionBackend(function_name)
+        self.function_backend = cafe.method.FunctionBackend(function_name)
 
     def test_load_backend(self):
         assert self.function_backend.function_name == function_name

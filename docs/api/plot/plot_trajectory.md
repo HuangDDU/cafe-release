@@ -1,1 +1,1 @@
-::: cfe.plot.plot_trajectory
+::: cafe.plot.plot_trajectory

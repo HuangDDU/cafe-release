@@ -1,6 +1,6 @@
 *__pycache__
 tmp
-.cfe
+.cafe
 
 # test
 *.pytest_cache
@@ -18,6 +18,11 @@ method_docker
 method_docker_input
 method_docker_output
 
+# pypi middle file
+*.egg-info
+dist
+build
 
+# vscode config file
 .vscode
 .env

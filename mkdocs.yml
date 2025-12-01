@@ -1,4 +1,4 @@
-site_name: Cell Fate Explorer
+site_name: Cafe - Cellular Fate Explorer
 repo_url: https://github.com/HuangDDU/CellFateExplorer
 repo_name: HuangDDU/CellFateExplorer
 
@@ -21,8 +21,8 @@ nav:
     - FateMethod: api/method/fate_method.md
     - MethodList: api/method/method_list.md
   - Metric:
-    - TopologyMetric: api/metric/topology_metric.md
-    - ClusterMetric: api/metric/cluster_metric.md
+    - TopologyMetric: api/metric/metric_topology.md
+    - ClusterMetric: api/metric/metric_cluster.md
   - Plot:
     - plot_trajectory: api/plot/plot_trajectory.md
 - Development document:

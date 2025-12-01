@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 import scipy.sparse as sp
 
-import cfe
+import cafe
 
 from .test_fate_function_backend import get_test_run_data
 
@@ -15,7 +15,7 @@ image_id = "dynverse/ti_comp1:v0.9.9.01"
 @pytest.mark.local
 class TestDynverseDockerBackend:
     def setup_method(self):
-        self.dynverse_docker = cfe.method.DynverseDockerBackend(image_id)
+        self.dynverse_docker = cafe.method.DynverseDockerBackend(image_id)
 
     def test_init(self):
         assert self.dynverse_docker.image_id == image_id
@@ -41,7 +41,7 @@ class TestDynverseDockerBackend:
 
     def test_load_definition(self):
         # _load_definition is called in test_load_backend, which is called in __init__
-        from cfe.method.fate_dynverse_docker_backend import Definition
+        from cafe.method.fate_dynverse_docker_backend import Definition
 
         definition = self.dynverse_docker.definition
         assert isinstance(definition, Definition)
@@ -58,14 +58,14 @@ class TestDefinition:
         # definition in dynverse docker backend
 
         # static definition file
-        # from cfe.method.fate_dynverse_docker_backend import Definition
-        # definition_yaml_filename = f"{os.path.dirname(__file__)}/../../cfe/method/definition_deprecated/cf_paga.yml"
+        # from cafe.method.fate_dynverse_docker_backend import Definition
+        # definition_yaml_filename = f"{os.path.dirname(__file__)}/../../cafe/method/definition_deprecated/cf_paga.yml"
         # with open(definition_yaml_filename, "r") as file:
         #     definition_raw = yaml.safe_load(file)
         # self.definition = Definition(definition_raw)
 
         # dynamic definition file need to be download from docker container
-        dynverse_docker = cfe.method.DynverseDockerBackend(image_id)
+        dynverse_docker = cafe.method.DynverseDockerBackend(image_id)
         self.definition = dynverse_docker.definition
 
     def test_magic_methods(self):
@@ -121,7 +121,7 @@ inputs = {
 @pytest.mark.local
 class TestDynverseDockerInput:
     def setup_method(self):
-        from cfe.method.fate_dynverse_docker_backend import DynverseDockerInput
+        from cafe.method.fate_dynverse_docker_backend import DynverseDockerInput
 
         dynverse_docker_input_obj = DynverseDockerInput(**inputs)
 
@@ -142,7 +142,7 @@ class TestDynverseDockerInput:
 @pytest.mark.local
 class TestDynverseDockerOutput:
     def setup_method(self):
-        from cfe.method.fate_dynverse_docker_backend import DynverseDockerOutput
+        from cafe.method.fate_dynverse_docker_backend import DynverseDockerOutput
 
         self.dynverse_docker_output_obj = DynverseDockerOutput()
         self.output_h5_filename = output_h5_filename
@@ -160,7 +160,7 @@ class TestDynverseDockerOutput:
 
 @pytest.mark.local
 def test_write_h5():
-    from cfe.method.fate_dynverse_docker_backend import write_h5
+    from cafe.method.fate_dynverse_docker_backend import write_h5
 
     # minor fix for DynverseDockerInput __init__
     new_input = inputs.copy()
@@ -172,7 +172,7 @@ def test_write_h5():
 
 @pytest.mark.local
 def test_read_h5():
-    from cfe.method.fate_dynverse_docker_backend import read_h5
+    from cafe.method.fate_dynverse_docker_backend import read_h5
 
     dynverse_docker_output = read_h5(h5_filename=output_h5_filename)
 

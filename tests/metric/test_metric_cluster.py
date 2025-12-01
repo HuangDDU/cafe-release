@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cfe.data import FateAnnData
-from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.metric.metric_cluster import calculate_mapping_milestones
+from cafe.data import FateAnnData
+from cafe.data.fate_milestone_wrapper import MilestoneWrapper
+from cafe.metric.metric_cluster import calculate_mapping_milestones
 
 
 @pytest.fixture
@@ -12,7 +12,7 @@ def sample_fadata():
     # 1. 创建一个 FateAnnData，有 6 个细胞
     cell_ids = ["a", "b", "c", "d", "e", "f"]
     obs = pd.DataFrame(index=cell_ids)
-    uns = {"cfe": {"trajectory_history_dict": {}}}
+    uns = {"cafe": {"trajectory_history_dict": {}}}
     fadata = FateAnnData(X=np.empty((6, 1)), obs=obs, uns=uns)
 
     # 2. 构造“参考”里程碑 Wrapper，model_name='ref'

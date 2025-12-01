@@ -2,18 +2,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cfe.data import FateAnnData
-from cfe.data.fate_milestone_wrapper import MilestoneWrapper
-from cfe.metric.metric_position_predict import calculate_position_predict
+from cafe.data import FateAnnData
+from cafe.data.fate_milestone_wrapper import MilestoneWrapper
+from cafe.metric.metric_position_predict import calculate_position_predict
 
-# from cfe.util.expand_matrix import expand_matrix
+# from cafe.util.expand_matrix import expand_matrix
 
 CELL_IDS = ["a", "b", "c", "d", "e", "f"]
 
 
 def make_fadata(mp_ref, mp_pred):
     obs = pd.DataFrame(index=CELL_IDS)
-    fadata = FateAnnData(X=np.empty((len(CELL_IDS), 1)), obs=obs, uns={"cfe": {"trajectory_history_dict": {}}})
+    fadata = FateAnnData(X=np.empty((len(CELL_IDS), 1)), obs=obs, uns={"cafe": {"trajectory_history_dict": {}}})
 
     # 固定网络
     mn = pd.DataFrame(

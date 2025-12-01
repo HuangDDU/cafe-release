@@ -3,7 +3,7 @@ import os.path
 import pytest
 import scanpy as sc
 
-import cfe
+import cafe
 
 method_name = "comp1"
 # method_name = "paga"
@@ -11,8 +11,8 @@ method_name = "comp1"
 
 class TestFateMethod:
     def setup_method(self):
-        cfe.settings.backend = "python_function"
-        self.fate_method = cfe.method.FateMethod(method_name=method_name)
+        cafe.settings.backend = "python_function"
+        self.fate_method = cafe.method.FateMethod(method_name=method_name)
 
     def test_init(self):
         fate_method = self.fate_method
@@ -24,22 +24,22 @@ class TestFateMethod:
         fate_method = self.fate_method
 
         fate_method.choose_backend(backend="python_function")
-        assert fate_method.backend == "python_function" and isinstance(fate_method.method_backend, cfe.method.FunctionBackend)
+        assert fate_method.backend == "python_function" and isinstance(fate_method.method_backend, cafe.method.FunctionBackend)
 
-        self.fate_method.choose_backend(backend="cfe_docker")
-        assert fate_method.backend == "cfe_docker" and isinstance(fate_method.method_backend, cfe.method.CFEDockerBackend)
+        self.fate_method.choose_backend(backend="cafe_docker")
+        assert fate_method.backend == "cafe_docker" and isinstance(fate_method.method_backend, cafe.method.CFEDockerBackend)
 
-        if cfe.settings.r_available:
+        if cafe.settings.r_available:
             # test dynverse docker when R is available
             self.fate_method.choose_backend(backend="dynverse_docker")
-            assert fate_method.backend == "dynverse_docker" and isinstance(fate_method.method_backend, cfe.method.DynverseDockerBackend)
+            assert fate_method.backend == "dynverse_docker" and isinstance(fate_method.method_backend, cafe.method.DynverseDockerBackend)
 
     def test_infer_trajectory(self):
         # notebook/quickstart_paga.ipynb
         # data
         # TODO：Method, Backend测试样例通过
         adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
-        fadata = cfe.data.FateAnnData.from_anndata(adata)
+        fadata = cafe.data.FateAnnData.from_anndata(adata)
         fadata.layers["counts"] = fadata.X.copy()
         fadata.layers["expression"] = fadata.X.copy()
         fadata.obs.index = fadata.obs["cell_id"]
@@ -55,7 +55,7 @@ class TestFateMethod:
     # TOOD: consider if __call__ is needed
     # def test_call(self):
     #     adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
-    #     fadata = cfe.data.FateAnnData.from_anndata(adata)
+    #     fadata = cafe.data.FateAnnData.from_anndata(adata)
     #     fadata.obs.index = fadata.obs["cell_id"]
 
     #     parameters = {

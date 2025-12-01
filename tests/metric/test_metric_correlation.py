@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from cfe.data import FateAnnData
-from cfe.metric.metric_correlation import calculate_correlation
+from cafe.data import FateAnnData
+from cafe.metric.metric_correlation import calculate_correlation
 
 
 @pytest.fixture
@@ -11,7 +11,7 @@ def sample_fadata():
     # 构造细胞信息
     cell_ids = ["a", "b", "c", "d", "e"]
     obs = pd.DataFrame(index=cell_ids)
-    uns = {"cfe": {"trajectory_history_dict": {}}}
+    uns = {"cafe": {"trajectory_history_dict": {}}}
     fadata = FateAnnData(X=np.empty((len(cell_ids), 1)), obs=obs, uns=uns)
 
     # 构造里程碑网络

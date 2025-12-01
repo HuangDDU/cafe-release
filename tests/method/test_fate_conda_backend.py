@@ -3,13 +3,13 @@ import os.path
 import pytest
 import scanpy as sc
 
-import cfe
+import cafe
 
 
 def get_test_run_data():
     # ref: notebook/quickstart_paga.ipynb, reuse for other backend
     adata = sc.read(f"{os.path.dirname(__file__)}/../data/bifurcating.h5ad")
-    fadata = cfe.data.FateAnnData.from_anndata(adata)
+    fadata = cafe.data.FateAnnData.from_anndata(adata)
     fadata.layers["counts"] = fadata.X.copy()
     fadata.layers["expression"] = fadata.X.copy()
     cluster_key = "lineage"
@@ -28,7 +28,7 @@ function_name = "cf_paga"
 @pytest.mark.skip(reason="Conda backend is not available for github action")
 class TestCondaBackend:
     def setup_method(self):
-        self.conda_backend = cfe.method.CondaBackend(function_name)
+        self.conda_backend = cafe.method.CondaBackend(function_name)
 
     def test_load_backend(self):
         assert self.conda_backend.function_name == function_name
