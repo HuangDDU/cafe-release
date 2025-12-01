@@ -29,7 +29,7 @@ dependencies = [
     "matplotlib==3.9.3",
     "seaborn==0.13.2",
     "plotly==6.0.1",
-    "pygraphviz==1.9", 
+    "pygraphviz", 
     # network and clustering
     "networkx==3.4.2",
     "igraph==0.11.8",
