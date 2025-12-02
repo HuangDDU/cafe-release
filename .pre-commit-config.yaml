@@ -15,12 +15,16 @@ repos:
     hooks:
       - id: black
         args: [--line-length=150]  # 可选参数
+        # 排除第三方 stream core 代码
+        exclude: ^cafe/plot/_plot_stream/(stream\.py|stream_extra\.py|scikit_posthocs\.py)$
 # import 导入包排序
 -   repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
         args: [--profile=black]  # 兼容 black 的配置
+        # 排除第三方 stream core 代码
+        exclude: ^cafe/plot/_plot_stream/(stream\.py|stream_extra\.py|scikit_posthocs\.py)$
 # 语法检查 (flake8)
 -   repo: https://github.com/PyCQA/flake8
     rev: 6.1.0
@@ -31,6 +35,8 @@ repos:
           flake8-bugbear, # 潜在bug分析
           flake8-pyproject # 读取 pyproject.toml 中的配置
         ]  # 可选插件
+        # 排除第三方 stream core 代码
+        exclude: ^cafe/plot/_plot_stream/(stream\.py|stream_extra\.py|scikit_posthocs\.py)$
 
 # push的时候需要通过所有测试用例, 这里pytest的配置会在pyproject.toml中
 -   repo: local
