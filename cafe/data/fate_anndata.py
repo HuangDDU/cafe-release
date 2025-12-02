@@ -46,7 +46,20 @@ class FateAnnData(ad.AnnData):
         self.model_name = cafe_dict.get("model_name", "default")
 
         # milestone_wrapper and waypoint_wrapper for all model
-        # TODO: important trajectory dict , show here
+        # trajectory_history_dict
+        # ├── ref                                                       # ref trajectory
+        # │   └── ...
+        # └── scvelo (scvelo trajectory)                                # method name
+        #     ├── milestone_wrapper → MilestoneWrapper object
+        #     ├── waypoint_wrapper → WaypointWrapper object
+        #     ├── raw_wrapper_dict                                      # for method result record
+        #     │   ├── wrapper_type → str
+        #     │   ├── ... other raw data
+        #     ├── trajectory_embedding → dict                           # for visualization
+        #     │   └── X_umap → dict                                     # embedding basis
+        #     │       ├── wp_segments → DataFrame shape=(210, 9)
+        #     │       └── milestone_positions → DataFrame shape=(14, 9)
+        #     └── resource_usage → dict                                 # for benchmark
 
         if "trajectory_history_dict" not in cafe_dict:
             self.trajectory_history_dict = {}
@@ -1106,7 +1119,7 @@ class FateAnnData(ad.AnnData):
             # recomput velocity graph based on low-dim velocity and embedding
             sc.pp.neighbors(new_adata)
             scv.tl.velocity_graph(new_adata, show_progress_bar=False)
-            scv.tl.paga(new_adata, groups="clusters")  # recompute paga
+            scv.tl.paga(new_adata, groups=cluster)  # recompute paga
             df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
             print(df)
             # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
@@ -1491,7 +1504,7 @@ class FateAnnData(ad.AnnData):
             with open(model_filename, "wb") as f:
                 pickle.dump(trajectory_dict, f)
 
-    def load_trajectory_dict(self, dirname: str = None, model_name_list: list[str] = None, backend: str = None):
+    def load_trajectory_dict(self, model_name_list: list[str] | str = None, dirname: str = None, backend: str = None):
         if dirname is None:
             dirname = self.trajectory_history_dir
         if not os.path.exists(dirname):
@@ -1511,6 +1524,8 @@ class FateAnnData(ad.AnnData):
                     if now_backend == backend:
                         filtered_model_name_list.append(model_name)
                 model_name_list = filtered_model_name_list
+        elif isinstance(model_name_list, str):
+            model_name_list = [model_name_list]
         else:
             # TODO: Check if the trajectory is compatible with the data
             pass

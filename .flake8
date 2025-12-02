@@ -9,5 +9,9 @@ ignore =
     E741
 
 # 针对特定文件忽略行尾空格警告（logo 字符串需要保留格式）
+# 第三方代码（stream.py 等）不做 lint 检查
 per-file-ignores =
     cafe/__init__.py: W291, W293
+    cafe/plot/_plot_stream/stream.py: F401, F403, F405, F841, E262, E265, E266, E711
+    cafe/plot/_plot_stream/stream_extra.py: F401, F841, E262, E711, E721, B007
+    cafe/plot/_plot_stream/scikit_posthocs.py: B001, E266, E722, F821, F841

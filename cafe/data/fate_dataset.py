@@ -7,7 +7,7 @@ from .._logging import logger
 from ..preprocess import subsample
 from .fate_anndata import FateAnnData
 
-data_dir = settings.data_dir
+# data_dir = settings.data_dir # need delay binding for data dir
 
 
 def _create_fadata_from_file(
@@ -83,12 +83,13 @@ def read_bifurcating_cellrank(
 
 
 def read_bonemarrow(
-    filename=f"{data_dir}/BoneMarrow/setty_bone_marrow.h5ad",
-    cluster_key="clusters",
-    basis="X_tsne",
+    filename=None,
     **subsample_kwargs,  # subsample args
 ):
     """read case study dataset of palantir and scvelo: bone marrow"""
+    if filename is None:
+        filename = f"{settings.data_dir}/BoneMarrow/bonemarrow_scvelo.h5ad"
+
     milestone_network = pd.DataFrame(
         data=[
             ["HSC_1", "HSC_2"],
@@ -117,9 +118,12 @@ def read_bonemarrow(
 
 
 def read_erythroid_lineage(
-    filename=f"{data_dir}/Gastrulation/erythroid_lineage.h5ad",
+    filename=None,
     **subsample_kwargs,
 ):
+    if filename is None:
+        filename = f"{settings.data_dir}/Gastrulation/erythroid_lineage.h5ad"
+
     milestone_network = pd.DataFrame(
         data=[
             ["Blood progenitors 1", "Blood progenitors 2"],
@@ -129,7 +133,10 @@ def read_erythroid_lineage(
         ],
         columns=["from", "to"],
     )
-    prior_information = {}
+    prior_information = {
+        "start_cell": "cell_903",
+        "end_cell": "cell_6099",
+    }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
@@ -147,7 +154,10 @@ def read_dentategyrus():
     pass
 
 
-def read_pancrease(filename=f"{data_dir}/Pancreas/endocrinogenesis_day15.h5ad", **subsample_kwargs):
+def read_pancreas(filename=None, **subsample_kwargs):
+    if filename is None:
+        filename = f"{settings.data_dir}/Pancreas/endocrinogenesis_day15.h5ad"
+
     milestone_network = pd.DataFrame(
         data=[
             ["Ductal", "Ngn3 low EP"],
@@ -174,7 +184,13 @@ def read_pancrease(filename=f"{data_dir}/Pancreas/endocrinogenesis_day15.h5ad", 
     return fadata
 
 
-def read_pancrease_cellrank(filename=f"{data_dir}/Pancreas/endocrinogenesis_day15.5_velocity_kernel.h5ad", **subsample_kwargs):
+# correct name from pancrease to pancreas, remove pancrease in future version
+read_pancrease = read_pancreas
+
+
+def read_pancreas_cellrank(filename=None, **subsample_kwargs):
+    if filename is None:
+        filename = f"{settings.data_dir}/Pancreas/endocrinogenesis_day15.5_velocity_kernel.h5ad"
     """read cellrank case study dataset: pancrease"""
 
     milestone_network = pd.DataFrame(
@@ -199,3 +215,6 @@ def read_pancrease_cellrank(filename=f"{data_dir}/Pancreas/endocrinogenesis_day1
         subsample_kwargs=subsample_kwargs,
     )
     return fadata
+
+
+read_pancrease_cellrank = read_pancreas_cellrank

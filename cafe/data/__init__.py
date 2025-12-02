@@ -1,10 +1,12 @@
 from ._simplify_networkx_network import simplify_networkx_network
 from .fate_anndata import FateAnnData, read_h5ad
-from .fate_dataset import (  # read dataset
+from .fate_dataset import (  # read dataset; correct name from pancrease to pancreas, remove pancrease in future version
     read_bifurcating_cellrank,
     read_bonemarrow,
     read_dentategyrus,
     read_erythroid_lineage,
+    read_pancreas,
+    read_pancreas_cellrank,
     read_pancrease,
     read_pancrease_cellrank,
 )
@@ -24,7 +26,9 @@ __all__ = [
     "read_bonemarrow",
     "read_dentategyrus",
     "read_erythroid_lineage",
+    "read_pancreas",
     "read_pancrease",
+    "read_pancreas_cellrank",
     "read_pancrease_cellrank",
     "read_bifurcating_cellrank",
 ]

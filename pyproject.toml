@@ -101,6 +101,12 @@ ignore = [
     "B006", # 可变默认参数（如 `def foo(a=[])`）
     "E741", # 模糊的变量名（如 `l`, `O`, `I`）
 ] # 忽略的错误类型（根据项目需求调整）
+# 第三方代码（stream.py 等）不做 lint 检查
+per-file-ignores = [
+    "cafe/plot/_plot_stream/stream.py: F401,F403,F405,F841,E262,E265,E266,E711,E722",
+    "cafe/plot/_plot_stream/stream_extra.py: F401,F841,E262,E711,E721,B007",
+    "cafe/plot/_plot_stream/scikit_posthocs.py: B001,E266,E722,F821,F841",
+]
 
 # replace "pytest.ini"
 [tool.pytest.ini_options]
