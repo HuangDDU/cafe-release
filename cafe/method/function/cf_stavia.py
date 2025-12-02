@@ -75,7 +75,9 @@ def stavia(
     )
     milestone_network["length"] = 1
     milestone_network["directed"] = True
-    cluster_milestones = [str(i) for i in via_object.labels]
+
+    adata.obs["stavia_cluster"] = [str(i) for i in via_object.labels]
+    cluster_milestones = adata.obs["stavia_cluster"]
 
     # 4. save results
     trajectory_dict = {

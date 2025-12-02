@@ -46,6 +46,8 @@ class FateAnnData(ad.AnnData):
         self.model_name = cafe_dict.get("model_name", "default")
 
         # milestone_wrapper and waypoint_wrapper for all model
+        # TODO: important trajectory dict , show here
+
         if "trajectory_history_dict" not in cafe_dict:
             self.trajectory_history_dict = {}
             cafe_dict["trajectory_history_dict"] = self.trajectory_history_dict
