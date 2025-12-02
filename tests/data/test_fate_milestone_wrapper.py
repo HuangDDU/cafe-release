@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-import cfe
+import cafe
 
 from ..test_util import compare_dataframes, compare_dataframes_closely
 
@@ -33,7 +33,7 @@ def setup_method_data():
             ["f", "A", 0.2],
         ],
     )
-    milestone_wrapper = cfe.data.MilestoneWrapper(
+    milestone_wrapper = cafe.data.MilestoneWrapper(
         milestone_network=milestone_network,
         divergence_regions=divergence_regions,
         milestone_percentages=milestone_percentages,
@@ -93,7 +93,7 @@ class TestMilestoneWrapper:
     #     pass
 
     def test_convert_progressions_to_milestone_percentages(self):
-        from cfe.data import MilestoneWrapper
+        from cafe.data import MilestoneWrapper
 
         milestone_network = pd.DataFrame(
             columns=["from", "to", "length", "directed"],
@@ -142,6 +142,14 @@ class TestMilestoneWrapper:
         )
 
         assert compare_dataframes_closely(milestone_percentages, expected_milestone_percentages, on_columns=["cell_id", "milestone_id"])
+
+    def test_generate_color(self):
+        mw = self.milestone_wrapper
+        # lazy load for milestone_color_dict and cell_color_dict, automatic call function '_generate_color' when first call
+        milestone_color_dict = mw.milestone_color_dict
+        cell_color_dict = mw.cell_color_dict
+        assert isinstance(milestone_color_dict, dict), "milestone_color_dict should be a dict"
+        assert isinstance(cell_color_dict, dict), "cell_color_dict should be a dict"
 
 
 if __name__ == "__main__":

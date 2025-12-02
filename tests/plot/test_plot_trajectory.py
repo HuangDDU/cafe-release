@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import pytest
 
-import cfe
+import cafe
 
 
 def get_plot_fadata():
@@ -27,14 +27,13 @@ def get_plot_fadata():
 
 def test_plot_trajectory_curve():
     fadata = get_plot_fadata()
-    cfe.plot.plot_trajectory(fadata, color="clusters", basis="umap")
+    cafe.plot.plot_trajectory(fadata, color="clusters", basis="X_umap")
     plt.savefig(f"{os.path.dirname(__file__)}/img/test_plot_trajectory_curve.png")
 
 
 def test_plot_trajectory():
     fadata = get_plot_fadata()
-    # cfe.plot.plot_trajectory(fadata, color="clusters", basis="umap", curve=False)
-    cfe.plot.plot_trajectory(fadata, basis="umap", curve=False)
+    cafe.plot.plot_trajectory(fadata, color="milestone", basis="X_umap", curve=False)
     plt.savefig(f"{os.path.dirname(__file__)}/img/test_plot_trajectory.png")
 
 

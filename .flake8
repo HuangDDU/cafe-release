@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 150
+ignore =
+    E203,
+    E501,
+    W503,
+    B008,
+    B006,
+    E741
+
+# 针对特定文件忽略行尾空格警告（logo 字符串需要保留格式）
+per-file-ignores =
+    cafe/__init__.py: W291, W293

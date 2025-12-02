@@ -1,0 +1,1 @@
+{"count": {"x": [1, 1], "i": [0, 1], "p": [0, 1, 2], "Dim": [2, 2], "rownames": ["cell1", "cell2"], "colnames": ["gene1", "gene2"]}, "expression_id": "count", "parameters": {"param1": 0.1}, "priors": {"start_cell": "cell1"}, "seed": 0, "verbose": true}

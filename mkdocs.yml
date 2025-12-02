@@ -1,86 +1,98 @@
-site_name: Cell Fate Explorer
+site_name: Cafe - Cellular Fate Explorer
 repo_url: https://github.com/HuangDDU/CellFateExplorer
 repo_name: HuangDDU/CellFateExplorer
 
 nav:
-  - Home: index.md
-  - Tutorial:
-      - Tutorial Summary: tutorial.md
-      - Quick Start: tutorial/quickstart.ipynb
-      - Benchmark: tutorial/benchmark.ipynb
-  - API:
-      - API Summary: api.md
-      - Data:
-          - FateAnnData: api/data/fate_anndata.md
-          - MilestoneWrapper: api/data/fate_milestone_wrapper.md
-          - WaypointWrapper: api/data/fate_waypoint_wrapper.md
+- Index: index.md
+- Installation: installation.md
 
-      - Method:
-          - FateMethod: api/method/fate_method.md
+- Tutorial:
+  - Tutorial Summary: tutorial.md
+  - Quick Start: tutorial/quickstart.ipynb
+  - Benchmark: tutorial/benchmark.ipynb
 
-      - Metric:
-          - TopologyMetric: api/metric/topology_metric.md
-          - ClusterMetric: api/metric/cluster_metric.md
+- API:
+  - API Summary: api.md
+  - Data:
+    - FateAnnData: api/data/fate_anndata.md
+    - MilestoneWrapper: api/data/fate_milestone_wrapper.md
+    - WaypointWrapper: api/data/fate_waypoint_wrapper.md
+  - Method:
+    - FateMethod: api/method/fate_method.md
+    - MethodList: api/method/method_list.md
+  - Metric:
+    - TopologyMetric: api/metric/metric_topology.md
+    - ClusterMetric: api/metric/metric_cluster.md
+  - Plot:
+    - plot_trajectory: api/plot/plot_trajectory.md
+- Development document:
 
-      - Plot:
-          - plot_trajectory: api/plot/plot_trajectory.md
+  - Contributing guide:
+    - Method: development_document/contributing_guide/method.md
   - Shedule:
-      - Shedule Summary: shedule.md
-      - Data: shedule/data.md
-      - Method: shedule/method.md
-      - Plot: shedule/plot.md
-      - Benchmark: shedule/benchmark.md
-      - Downstream Analysis: shedule/downstream_analysis.md
+    # - Shedule Summary: shedule.md
+    - Data: development_document/shedule/data.md
+    - Method: development_document/shedule/method.md
+    - Plot: development_document/shedule/plot.md
+    - Benchmark: development_document/shedule/benchmark.md
+    - Downstream Analysis: development_document/shedule/downstream_analysis.md
+- Change Log: change_log.md
 
-  - Change Log: change_log.md
+extra_css:
+- stylesheets/style.css
 
 theme:
   name: material
   language: en
   custom_dir: docs/overrides/
+  logo: img/logo.png
   features:
-    # - navigation.expand
-    - navigation.tracking
+  # - navigation.expand
+  - navigation.tracking
+  - content.code.annotate # 优化代码块显示
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      toggle:
-        icon: material/toggle-switch-off-outline
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      toggle:
-        icon: material/toggle-switch
-        name: Switch to light mode
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    toggle:
+      icon: material/toggle-switch-off-outline
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    toggle:
+      icon: material/toggle-switch
+      name: Switch to light mode
   icon:
     repo: fontawesome/brands/github
 
 plugins:
-  - search
-  - tags
-  - git-revision-date-localized:
-      type: datetime
-      locale: zh
-  - git-committers:
-      repository: https://github.com/HuangDDU/CellFateExplorer
-      branch: dev
-  - bibtex:
-      bib_file: "docs/references.bib"
-  - mkdocs-jupyter:
-  - mkdocstrings:
-      default_handler: python
-      ignore:
-        - '^{#refs}$'  # 忽略 {#refs}
-      handlers:
-        python:
-          # import: cfe
-          options:
-            show_root_heading: true
-            show_symbol_type_heading: true
-            # show_source: false
-          selection:
-            docstring_style: google
+- search
+- tags
+- git-revision-date-localized:
+    type: datetime
+    locale: zh
+- git-committers:
+    repository: https://github.com/HuangDDU/CellFateExplorer
+    branch: dev
+- bibtex:
+    bib_file: "docs/references.bib"
+- mkdocs-jupyter:
+- mkdocstrings:
+    default_handler: python
+    ignore:
+    - '^{#refs}$' # 忽略 {#refs}
+    handlers:
+      python:
+        # import: cfe
+        options:
+          show_root_heading: true
+          show_symbol_type_heading: true
+          # show_source: false
+        selection:
+          docstring_style: google
 
 markdown_extensions:
-  - pymdownx.tasklist:
-      custom_checkbox: true
+- pymdownx.tasklist:
+    custom_checkbox: true
+- pymdownx.highlight
+- pymdownx.superfences
+- codehilite

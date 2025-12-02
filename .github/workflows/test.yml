@@ -34,22 +34,25 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
         conda install python=3.10
 
-    - name: Check Docker R Python version
-      run: |
-        docker --version
-        R --version
-        python --version
-        docker pull  huangzhaoyang/cf_paga:0.0.1
+    # - name: Check Docker R Python version
+    #   run: |
+    #     docker --version
+    #     R --version
+    #     python --version
+    #     docker pull  huangzhaoyang/cf_paga:0.0.1
 
     - name: Install Graphviz
       run: |
         sudo apt-get update
-        sudo apt-get install -y graphviz
+        sudo apt-get install -y graphviz graphviz-dev
+        pip install pygraphviz
 
     - name: Install dependencies
       run: |
         ls
-        conda env update --file environment.yaml --name base
+        # conda env update --file environment.yaml --name base
+        # pip install cafe-release # install from PyPI
+        pip install -e . # install from pyproject.toml file
 
     - name: Lint with flake8
       run: |
@@ -57,7 +60,7 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 300 chars wide
-        flake8 --count --exit-zero --max-complexity=10 --max-line-length=300 --ignore E714 --statistics  cfe/* tests/*
+        flake8 --count --exit-zero --max-complexity=10 --max-line-length=300 --ignore E714 --statistics  cafe/* tests/*
 
     - name: Add project root to PYTHONPATH
       run: |
@@ -66,6 +69,6 @@ jobs:
     - name: Test with pytest
       run: |
         pip install rpy2==3.3.0
-        mkdir -p ./tests/plot/img
+        mkdir -p ./tests/plot/img ./cafe
         conda install pytest
-        pytest
+        pytest -m "not local"
