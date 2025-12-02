@@ -67,7 +67,7 @@ docs = [
     "mkdocs-jupyter==0.25.1",
     "mkdocs-bibtex==4.1.0",
     "mkdocs-git-revision-date-localized-plugin==1.3.0",
-    "mkdocs-git-committers-plugin-2==0.2.3",
+    "mkdocs-git-committers-plugin==0.2.3",
 ]
 trajectory = [
     "scvelo==0.3.3",
