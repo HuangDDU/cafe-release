@@ -10,10 +10,12 @@ ref:
   https://github.com/pinellolab/STREAM
 """
 
+import os
 from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
 
+from .._logging import logger
 from ..data import FateAnnData
 
 
@@ -30,9 +32,7 @@ def plot_stream(
     show_legend: bool = True,
     alpha: float = 0.8,
     s: int = 30,
-    save_fig: bool = False,
-    fig_path: str = None,
-    fig_format: str = "pdf",
+    save: Union[bool, str] = None,
     **kwargs,
 ) -> List[plt.Figure]:
     """
@@ -66,12 +66,9 @@ def plot_stream(
         Point transparency. Default 0.8 (only effective when mode="cell").
     s : int, optional
         Point size. Default 30 (only effective when mode="cell").
-    save_fig : bool, optional
-        Whether to save the figure. Default False.
-    fig_path : str, optional
-        Path to save the figure.
-    fig_format : str, optional
-        Format for saving. Default "pdf".
+    save : bool or str, optional
+        If True, save to default path `.cafe/{fadata.id}/img/stream_{mode}_{color}.png`.
+        If str, save to the specified path. Default None (don't save).
     **kwargs
         Additional arguments passed to the underlying plotting function.
 
@@ -88,6 +85,10 @@ def plot_stream(
     >>> cafe.pl.plot_stream(fadata, mode="cell", color="clusters")
     >>> # Density stream plot mode
     >>> cafe.pl.plot_stream(fadata, mode="density", color="clusters")
+    >>> # Save to default path
+    >>> cafe.pl.plot_stream(fadata, mode="cell", color="clusters", save=True)
+    >>> # Save to custom path
+    >>> cafe.pl.plot_stream(fadata, mode="cell", color="clusters", save="my_stream.png")
     """
     from ._plot_stream.adapter import StreamPlotAdapter
 
@@ -118,9 +119,6 @@ def plot_stream(
             show_legend=show_legend,
             alpha=alpha,
             s=s,
-            save_fig=save_fig,
-            fig_path=fig_path,
-            fig_format=fig_format,
             **kwargs,
         )
     else:  # mode == "density"
@@ -128,10 +126,33 @@ def plot_stream(
             root="root",
             color=color if color else None,
             fig_size=fig_size,
-            save_fig=save_fig,
-            fig_path=fig_path,
-            fig_format=fig_format,
             **kwargs,
         )
+
+    # Handle save parameter (plot_trajectory style)
+    if save is not None:
+        if isinstance(save, bool) and save:
+            # Generate default save path
+            color_str = "_".join(color) if color else "default"
+            model = model_name or fadata.model_name or "model"
+            save_path = f".cafe/{fadata.id}/img/stream_{mode}_{model}_{color_str}.png"
+        else:
+            save_path = save
+
+        # Ensure directory exists
+        save_dir = os.path.dirname(save_path)
+        if save_dir and not os.path.exists(save_dir):
+            os.makedirs(save_dir, exist_ok=True)
+
+        # Save all figures
+        for i, fig in enumerate(figs):
+            if len(figs) == 1:
+                actual_path = save_path
+            else:
+                # Multiple figures: add index to filename
+                base, ext = os.path.splitext(save_path)
+                actual_path = f"{base}_{i}{ext}"
+            fig.savefig(actual_path, bbox_inches="tight", pad_inches=0.1)
+            logger.info(f"Saved stream plot to '{actual_path}'")
 
     return figs

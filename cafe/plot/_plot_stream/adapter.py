@@ -440,9 +440,6 @@ class StreamPlotAdapter:
         color: List[str] = None,
         fig_size: Tuple = (7, 4.5),
         fig_legend_ncol: int = 1,
-        save_fig: bool = False,
-        fig_path: str = None,
-        fig_format: str = "pdf",
         **kwargs,
     ):
         """
@@ -453,9 +450,6 @@ class StreamPlotAdapter:
             color: 要上色的列表（obs 中的列名或 var 中的基因名）
             fig_size: 图表大小
             fig_legend_ncol: 图例的列数
-            save_fig: 是否保存图表
-            fig_path: 保存路径
-            fig_format: 保存格式
             **kwargs: 传递给 stream.plot_stream_sc 的其他参数
         """
         from .stream import plot_stream_sc as _plot_stream_sc
@@ -496,9 +490,6 @@ class StreamPlotAdapter:
                         self.fadata.uns[color_key] = color_dict
                         logger.debug(f"Converted {colors_key} to {color_key} dict format: {color_dict}")
 
-        if fig_path is None:
-            fig_path = self.fadata.uns.get("workdir", ".")
-
         logger.info(f"Plotting stream_sc with color: {color}")
 
         # 调用本地的绘图函数
@@ -508,9 +499,7 @@ class StreamPlotAdapter:
             color=color,
             fig_size=fig_size,
             fig_legend_ncol=fig_legend_ncol,
-            save_fig=save_fig,
-            fig_path=fig_path,
-            fig_format=fig_format,
+            save_fig=False,  # 保存由上层 plot_stream.py 处理
             return_fig=True,
             **kwargs,
         )
@@ -522,9 +511,6 @@ class StreamPlotAdapter:
         root: str = "root",
         color: List[str] = None,
         fig_size: Tuple = (7, 4.5),
-        save_fig: bool = False,
-        fig_path: str = None,
-        fig_format: str = "pdf",
         **kwargs,
     ):
         """
@@ -534,9 +520,6 @@ class StreamPlotAdapter:
             root: 根节点标识
             color: 要上色的列表
             fig_size: 图表大小
-            save_fig: 是否保存图表
-            fig_path: 保存路径
-            fig_format: 保存格式
             **kwargs: 传递给 stream.plot_stream 的其他参数
         """
         from .stream import plot_stream as _plot_stream
@@ -548,9 +531,6 @@ class StreamPlotAdapter:
             else:
                 color = ["group"] if "group" in self.fadata.obs.columns else [self.fadata.obs.columns[0]]
 
-        if fig_path is None:
-            fig_path = self.fadata.uns.get("workdir", ".")
-
         logger.info(f"Plotting stream with color: {color}")
 
         figs = _plot_stream(
@@ -558,9 +538,7 @@ class StreamPlotAdapter:
             root=root,
             color=color,
             fig_size=fig_size,
-            save_fig=save_fig,
-            fig_path=fig_path,
-            fig_format=fig_format,
+            save_fig=False,  # 保存由上层 plot_stream.py 处理
             return_fig=True,
             **kwargs,
         )
