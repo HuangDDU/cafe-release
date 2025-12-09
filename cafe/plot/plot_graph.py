@@ -99,7 +99,14 @@ def plot_graph(
             # TODO: save in fadata
             # milestone_embedding = fadata.get_milestone_embedding(model_name=model_name)  # # TODO: save in fadata
             pass
-        fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
+
+        # may lose some cells in cell_emb_df
+        if fadata.shape[0] != cell_emb_df.shape[0]:
+            logger.warning(f"cell number mismatch when plot graph for model '{model_name}', skip this model.")
+            fadata = fadata[cell_emb_df.index]
+            fadata.obsm[basis] = cell_emb_df.values
+        else:
+            fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
 
         for j, color in enumerate(color_list):
             if layout_by_row == "model":

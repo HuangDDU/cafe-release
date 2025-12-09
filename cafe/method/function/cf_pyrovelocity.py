@@ -36,7 +36,7 @@ def pyrovelocity(
 
     #  ref: https://docs.pyrovelocity.net/templates/user_example/user_example
     #  pyrovelocity workflow add.
-    # https://github.com/pinellolab/pyrovelocity/blob/v0.4.5/src/pyrovelocity/workflows/main_configuration.py
+    # https://github.com/pyrovelocity/pyrovelocity/blob/v0.4.5/src/pyrovelocity/workflows/main_configuration.py
     import tempfile
 
     import mlflow

@@ -1290,15 +1290,14 @@ class FateAnnData(ad.AnnData):
     def get_trajectory_pseudotime(self, start_milestone=None, start_cell=None, model_name=None):
         trajectory_dict = self.get_trajectory_dict(model_name)
 
+        start_milestone = start_milestone if start_milestone else self.prior_information.get("start_milestone")
         if start_milestone is None:
             logger.debug("start_milestone is None, try to use start cell to identify start milestone automatically")
+            start_cell = start_cell if start_cell else self.prior_information.get("start_cell")
             if start_cell is None:
-                start_cell = self.prior_information.get("start_cell")
-                if start_cell is None:
-                    raise Exception("start_milestone and start_cell are both None")
-                else:
-                    logger.debug(f"extract start_cell('{start_cell}') from prior information")
-            start_milestone = self.get_start_milestone(start_cell, model_name)
+                raise Exception("start_milestone and start_cell are both None")
+            else:
+                logger.debug(f"extract start_cell('{start_cell}') from prior information")
             logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"

@@ -8,6 +8,7 @@ from ..data import FateAnnData
 
 def plot_stack(
     fadata: FateAnnData,
+    pseudotime_key: str = None,
     model_name: str = None,
     cluster: str = None,
     n_bins: int = 100,
@@ -16,7 +17,7 @@ def plot_stack(
     bbox_to_anchor: tuple = (1, 0.5),
 ):
     """
-    Generate a stream plot showing the proportion of cell clusters over pseudotime.
+    Generate a stack plot showing the proportion of cell clusters over pseudotime.
 
     This function calculates a global pseudotime for each cell based on the trajectory,
     bins the data, and plots the density of each cluster over time as a stacked area chart.
@@ -29,15 +30,16 @@ def plot_stack(
         legend_loc (str, optional): Location of the legend. Defaults to "center left".
         bbox_to_anchor (tuple, optional): Bounding box for the legend. Defaults to (1, 0.5).
     """
-    logger.debug(f"Generating stream plot for clusters in 'fadata.obs[{cluster}]'...")
-    if model_name is None:
-        model_name = fadata.model_name
     if cluster is None:
         cluster = fadata.prior_information.get("cluster")
         logger.debug(f"extract '{cluster}' from prior infomation as parameter 'cluster' ")
+    logger.debug(f"Generating stack plot for clusters in 'fadata.obs[{cluster}]'...")
 
     # --- 1. Get Trajectory Data and Calculate Global Pseudotime ---
-    pseudotime = fadata.get_trajectory_pseudotime(model_name=model_name)
+    if pseudotime_key is None:
+        pseudotime = fadata.get_trajectory_pseudotime(model_name=model_name)
+    else:
+        pseudotime = fadata.obs[pseudotime_key]
 
     # --- 2. Prepare Data for Plotting ---
     plot_df = pd.DataFrame({"pseudotime": pseudotime, "cluster": fadata.obs[cluster]})
@@ -64,7 +66,7 @@ def plot_stack(
         logger.warning(f"Could not find colors in 'fadata.uns[{cluster}_colors]'. Using default colormap.")
         colors = plt.cm.viridis(np.linspace(0, 1, len(cluster_names)))
 
-    # Use stackplot to create the stream graph
+    # Use stackplot to create the stack graph
     ax.stackplot(
         density_proportions.index.astype(float),  # X-axis: time bins
         density_proportions.T,  # Y-axis: proportions for each cluster

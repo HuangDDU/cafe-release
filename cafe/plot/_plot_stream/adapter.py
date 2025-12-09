@@ -492,9 +492,24 @@ class StreamPlotAdapter:
 
         logger.info(f"Plotting stream_sc with color: {color}")
 
+        # Filter out cells without valid branch_id to avoid errors in stream_extra.py
+        adata_plot = self.fadata
+        if "branch_id" in self.fadata.obs and "stream_tree" in self.fadata.uns:
+            stream_tree = self.fadata.uns["stream_tree"]
+            valid_branch_ids = set()
+            for u, v in stream_tree.edges():
+                if "id" in stream_tree.edges[u, v]:
+                    valid_branch_ids.add(stream_tree.edges[u, v]["id"])
+
+            mask_valid = self.fadata.obs["branch_id"].isin(valid_branch_ids)
+            if not mask_valid.all():
+                n_invalid = (~mask_valid).sum()
+                logger.warning(f"Filtering out {n_invalid} cells with invalid or missing branch_id for stream plot.")
+                adata_plot = self.fadata[mask_valid].copy()
+
         # 调用本地的绘图函数
         figs = _plot_stream_sc(
-            self.fadata,
+            adata_plot,
             root=root,
             color=color,
             fig_size=fig_size,
