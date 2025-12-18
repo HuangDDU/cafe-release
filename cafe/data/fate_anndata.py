@@ -487,6 +487,16 @@ class FateAnnData(ad.AnnData):
                 new_cluster_list=trajectory_dict.get("new_cluster_list", None),
                 **kwargs,
             )
+        elif wrapper_type == "time":
+            self.add_trajectory_time(
+                tmaps=trajectory_dict["tmaps"],
+                time_key=trajectory_dict.get("time_key", None),
+                cluster_key=trajectory_dict.get("cluster_key", None),
+                flow_threshold=trajectory_dict.get("flow_threshold", 0.1),
+                relative_threshold=trajectory_dict.get("relative_threshold", 0.3),
+                normalize=trajectory_dict.get("normalize", True),
+                include_self_loop=trajectory_dict.get("include_self_loop", False),
+            )
 
     def add_trajectory_by_h5ad(self):
         # TODO: add trajectory by reading h5ad file in raw_wrapper_dict
@@ -1024,8 +1034,202 @@ class FateAnnData(ad.AnnData):
             )
             logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
-    # TODO: WaddingtonOT, Moscot
-    # def add_transition_matrix()
+    def add_trajectory_time(
+        self,
+        tmaps: dict,
+        time_key: str = None,
+        cluster_key: str = None,
+        flow_threshold: float = 0.1,
+        relative_threshold: float = 0.3,
+        normalize: bool = True,
+        include_self_loop: bool = False,
+    ):
+        """Add trajectory from time-series optimal transport results (WaddingtonOT, Moscot).
+
+        This method aggregates cell-level transport matrices into cluster-level transitions,
+        then constructs milestone_network and progressions for cafe trajectory.
+
+        Edge selection strategy (both conditions must be met):
+        1. Absolute threshold: flow > flow_threshold
+        2. Relative threshold: flow > relative_threshold * max_outgoing_flow
+
+        This allows preserving bifurcations while filtering out noise edges.
+
+        Args:
+            tmaps: dict, keys are (t_start, t_end) tuples, values are transport matrices
+                   of shape (n_cells_t_start, n_cells_t_end) representing transition probabilities.
+            time_key: str, column name in obs for time points. If None, uses prior_information.
+            cluster_key: str, column name in obs for cell clusters. If None, uses prior_information.
+            flow_threshold: float, absolute minimum flow to include an edge (default 0.1).
+            relative_threshold: float, keep edges with flow >= relative_threshold * max_flow (default 0.3).
+                               Set to 0 to disable relative filtering.
+            normalize: bool, whether to normalize transition matrix by row.
+            include_self_loop: bool, whether to include self-loop edges (A->A).
+
+        Example:
+            >>> fadata.add_trajectory_time(
+            ...     tmaps=tmaps_moscot,
+            ...     time_key="time",
+            ...     cluster_key="celltype",
+            ...     flow_threshold=0.1,      # 绝对阈值：过滤噪声
+            ...     relative_threshold=0.3,  # 相对阈值：保留 ≥30% 最大流量的边
+            ... )
+        """
+        from scipy import sparse
+
+        logger.debug("FateAnnData add_trajectory_time")
+
+        # Get keys from prior_information if not specified
+        if time_key is None:
+            time_key = self.prior_information.get("time_key", "time")
+        if cluster_key is None:
+            cluster_key = self.prior_information.get("cluster", "clusters")
+
+        obs = self.obs
+        clusters = list(obs[cluster_key].cat.categories)
+        n_clusters = len(clusters)
+        cluster_to_idx = {c: i for i, c in enumerate(clusters)}
+
+        # ========== Step 1: Build cluster indicator matrices (for matrix multiplication) ==========
+        def build_indicator_matrix(time_val):
+            """Build sparse indicator matrix G_t (n_cells_t x n_clusters)"""
+            mask = obs[time_key] == time_val
+            cell_indices = np.where(mask.values)[0]
+            cluster_codes = obs.loc[mask, cluster_key].map(cluster_to_idx).values
+            n_cells = len(cell_indices)
+            data = np.ones(n_cells, dtype=float)
+            G = sparse.csr_matrix((data, (np.arange(n_cells), cluster_codes)), shape=(n_cells, n_clusters))
+            return G
+
+        # ========== Step 2: Aggregate cell-level Tmaps to cluster-level flow ==========
+        cluster_flow = np.zeros((n_clusters, n_clusters))
+
+        logger.debug(f"Aggregating {len(tmaps)} time-pair transport matrices...")
+        for (t1, t2), tmap in tmaps.items():
+            # Validate dimensions
+            n_c1 = (obs[time_key] == t1).sum()
+            n_c2 = (obs[time_key] == t2).sum()
+            if tmap.shape != (n_c1, n_c2):
+                logger.warning(f"Skipping {t1}->{t2}: Tmap shape {tmap.shape} != expected ({n_c1}, {n_c2})")
+                continue
+
+            # Build indicator matrices
+            G1 = build_indicator_matrix(t1)
+            G2 = build_indicator_matrix(t2)
+
+            # Matrix multiplication: ClusterFlow = G1.T @ Tmap @ G2
+            if sparse.issparse(tmap):
+                flow = G1.T @ tmap @ G2
+            else:
+                flow = G1.T @ sparse.csr_matrix(tmap) @ G2
+            cluster_flow += flow.toarray() if sparse.issparse(flow) else flow
+
+        # Normalize by row
+        if normalize:
+            row_sums = cluster_flow.sum(axis=1, keepdims=True)
+            cluster_flow = cluster_flow / (row_sums + 1e-10)
+
+        cluster_flow_df = pd.DataFrame(cluster_flow, index=clusters, columns=clusters)
+
+        # ========== Step 3: Build milestone_network from cluster flow ==========
+        # Strategy: Use both absolute and relative thresholds to preserve bifurcations
+        edges = []
+        for source in clusters:
+            outgoing = cluster_flow_df.loc[source].copy()
+
+            # Optionally exclude self-loop
+            if not include_self_loop:
+                outgoing = outgoing.drop(source, errors="ignore")
+
+            if len(outgoing) == 0 or outgoing.max() == 0:
+                # No valid outgoing edges, add self-loop as fallback
+                edges.append(
+                    {
+                        "from": source,
+                        "to": source,
+                        "length": 1.0,
+                        "directed": True,
+                        "flow": cluster_flow_df.loc[source, source] if source in cluster_flow_df.columns else 0,
+                    }
+                )
+                continue
+
+            # Compute dynamic threshold based on max flow
+            max_flow = outgoing.max()
+            dynamic_threshold = max(flow_threshold, relative_threshold * max_flow)
+
+            # Filter edges by combined threshold
+            valid_targets = outgoing[outgoing >= dynamic_threshold]
+
+            if len(valid_targets) == 0:
+                # Fallback: keep the strongest edge
+                valid_targets = outgoing.nlargest(1)
+
+            for target, flow in valid_targets.items():
+                edges.append(
+                    {
+                        "from": source,
+                        "to": target,
+                        "length": 1.0 / (flow + 1e-6),  # Higher flow → shorter length
+                        "directed": True,
+                        "flow": flow,
+                    }
+                )
+
+        if not edges:
+            logger.warning("No edges found above flow_threshold. Consider lowering the threshold.")
+            # Add self-loops as fallback
+            for c in clusters:
+                edges.append({"from": c, "to": c, "length": 1.0, "directed": True, "flow": 1.0})
+
+        milestone_network = pd.DataFrame(edges)
+
+        # ========== Step 4: Build progressions (assign cells to edges) ==========
+        # Strategy: Assign each cell to the edge (source_cluster -> target_cluster)
+        # where source_cluster is the cell's cluster, and target_cluster is chosen
+        # based on the maximum outgoing flow. Percentage is based on time position.
+
+        time_values = obs[time_key].cat.categories.tolist()
+        time_to_norm = {t: i / max(len(time_values) - 1, 1) for i, t in enumerate(time_values)}
+
+        progressions_list = []
+        for cell_id in obs.index:
+            cell_cluster = obs.loc[cell_id, cluster_key]
+            cell_time = obs.loc[cell_id, time_key]
+
+            # Find the best target cluster (highest flow from this cluster)
+            outgoing = cluster_flow_df.loc[cell_cluster]
+            # Exclude self-loop if there are other options
+            if (outgoing.drop(cell_cluster, errors="ignore") > flow_threshold).any():
+                target_cluster = outgoing.drop(cell_cluster, errors="ignore").idxmax()
+            else:
+                target_cluster = cell_cluster  # Self-loop
+
+            # Percentage based on normalized time
+            percentage = time_to_norm.get(cell_time, 0.5)
+
+            progressions_list.append(
+                {
+                    "cell_id": cell_id,
+                    "from": cell_cluster,
+                    "to": target_cluster,
+                    "percentage": percentage,
+                }
+            )
+
+        progressions = pd.DataFrame(progressions_list)
+
+        # ========== Step 5: Call add_trajectory ==========
+        self.add_trajectory(
+            milestone_network=milestone_network[["from", "to", "length", "directed"]],
+            progressions=progressions,
+        )
+
+        # Store additional info in raw_wrapper_dict
+        self.raw_wrapper_dict["cluster_flow"] = cluster_flow_df
+        self.raw_wrapper_dict["tmaps_keys"] = list(tmaps.keys())
+
+        logger.debug(f"Added time trajectory with {len(milestone_network)} edges and {len(progressions)} cell progressions.")
 
     def add_trajectory_velocity(
         self,
@@ -1169,7 +1373,7 @@ class FateAnnData(ad.AnnData):
     def get_metric(self):
         pass
 
-    def group_onto_trajectory_edges(self, cluster_key="_cafe_te_group"):
+    def group_onto_trajectory_edges(self, model_name=None, cluster_key="_cafe_te_group"):
         """group cells to edges
         ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_trajectory_edges
 
@@ -1181,10 +1385,11 @@ class FateAnnData(ad.AnnData):
             x = x.loc[x["percentage"].idxmax()]
             return f"{x['from']}->{x['to']}"
 
-        group_df = self.milestone_wrapper.progressions.groupby("cell_id").apply(get_trajectory_edges)
+        mw = self.get_trajectory_dict(model_name)["milestone_wrapper"]
+        group_df = mw.progressions.groupby("cell_id").apply(get_trajectory_edges)
         self.obs[cluster_key] = group_df.loc[self.obs.index]
 
-    def group_onto_nearest_milestones(self, cluster_key="_cafe_nm_group"):
+    def group_onto_nearest_milestones(self, model_name=None, cluster_key="_cafe_nm_group"):
         """group cells to nearest milestones
         ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_nearest_milestones
 
@@ -1195,7 +1400,8 @@ class FateAnnData(ad.AnnData):
         def get_nearest_milestone(x):
             return x.loc[x["percentage"].idxmax(), "milestone_id"]
 
-        group_df = self.milestone_wrapper.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
+        mw = self.get_trajectory_dict(model_name)["milestone_wrapper"]
+        group_df = mw.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
         self.obs[cluster_key] = group_df.loc[self.obs.index]
 
     def simplify_trajectory(self, model_name="default", simplify_kwargs: dict = {}) -> MilestoneWrapper:
@@ -1550,7 +1756,7 @@ class FateAnnData(ad.AnnData):
             new_adata = recovery_external_data(self, external_data)
             return new_adata
 
-    def launch_cellxgene(self, tmp_filename=".tmp.h5ad", trajectory=False, port=5005, conda_env="cafe"):  # if show trajectory
+    def launch_cellxgene(self, tmp_filename=None, trajectory=False, port=5005, conda_env="cafe"):  # if show trajectory
         import os
         import subprocess
         import threading
@@ -1565,6 +1771,8 @@ class FateAnnData(ad.AnnData):
             pipe.close()
 
         # 1. save as tmp.h5ad
+        if tmp_filename is None:
+            tmp_filename = f"{os.getcwd()}/.tmp.h5ad"
         self.write_h5ad(tmp_filename)
         logger.debug(f"write h5ad to {tmp_filename}")
         logger.debug("-" * 50)
@@ -1580,16 +1788,24 @@ class FateAnnData(ad.AnnData):
             # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
             # logger.info("cellxgene with trajectory must run on port: 3000")
             # port = 3000
-            conda_env = "cafe"
-            cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+            # conda_env = "cafe" # 在当前环境下
+            # cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+            # cmd = f"DATASET={tmp_filename}"  # dataset
+            # cmd += f" & CXG_SERVER_PORT={5005}"  # server port
+            # cmd += f" & CXG_CLIENT_PORT={port}"  # client port, web interface port
+            # cmd += " & cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene"
+            # cmd += " & make start-dev"
+            # cellxgene with trajectory need use local development version
+            cmd = "cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene && "
+            cmd += f"DATASET={tmp_filename} CXG_SERVER_PORT={5005} CXG_CLIENT_PORT={port} make start-dev"
         else:
             conda_env = "cellxgene"
             cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
             # conda activate + conda_env (usually use but not valid here)
             # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
-            logger.debug(f"execute command: {cmd}")
-            # execuate command (NOTE: python_function can be executed in this way by conda)
-            process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # execuate command (NOTE: python_function can be executed in this way by conda)
+        logger.debug(f"execute command: {cmd}")
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         threading.Thread(target=print_output, args=(process.stdout, "[stdout]"), daemon=True).start()
         threading.Thread(target=print_output, args=(process.stderr, "[stderr]"), daemon=True).start()
         # open browser (NOTE: refresh browser if not valid)

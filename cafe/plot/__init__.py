@@ -1,6 +1,7 @@
 from .plot_benchmark import style_benchmark
 from .plot_embedding_plotly import plot_embedding_plotly
 from .plot_graph import plot_graph
+from .plot_pie import plot_pie
 from .plot_pseudotime import plot_pseudotime_embedding, plot_pseudotime_stack
 from .plot_stack import plot_stack
 from .plot_stream import plot_stream
@@ -17,4 +18,5 @@ __all__ = [
     "plot_pseudotime_embedding",
     "plot_pseudotime_stack",
     "plot_stream",
+    "plot_pie",
 ]

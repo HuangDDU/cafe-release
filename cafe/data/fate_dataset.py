@@ -21,7 +21,7 @@ def _create_fadata_from_file(
 ) -> FateAnnData:
     logger.debug(f"Reading data from '{filename}'...")
     adata = sc.read_h5ad(filename)
-    subsample(adata, **subsample_kwargs)
+    adata = subsample(adata, **subsample_kwargs)
     adata.uns["id"] = id
     # use csc matrix to replace for accelerate dynverse docker running.
     if not sp.isspmatrix_csc(adata.X):
@@ -45,7 +45,7 @@ def _create_fadata_from_file(
             logger.debug(f"add 'start_cell': '{start_cell}'", indent_level=2)
             fadata.add_prior_information(start_cell=start_cell)
         else:
-            logger.warning(f"{start_cell} is not in '.obs.index', skip adding 'start_cell'", ident_level=2)
+            logger.warning(f"{start_cell} is not in '.obs.index', skip adding 'start_cell'", indent_level=2)
 
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
@@ -204,7 +204,7 @@ def read_pancreas_cellrank(filename=None, **subsample_kwargs):
         ],
         columns=["from", "to"],
     )
-    prior_information = {}
+    prior_information = {"start_cell": "cell_2366"}
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,

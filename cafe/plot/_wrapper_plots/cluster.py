@@ -1,6 +1,8 @@
 import networkx as nx
 
 from ..._logging import logger
+
+# from ..plot_pie import plot_pie
 from ..plot_trajectory import plot_trajectory
 
 DEFAULT_MODE = "embedding"
