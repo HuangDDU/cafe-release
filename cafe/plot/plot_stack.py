@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.api import types as ptypes
 
 from .._logging import logger
 from ..data import FateAnnData
@@ -15,6 +16,8 @@ def plot_stack(
     ax: plt.Axes = None,
     legend_loc: str = "center left",
     bbox_to_anchor: tuple = (1, 0.5),
+    save: str | bool = None,
+    return_proportions: bool = False,
 ):
     """
     Generate a stack plot showing the proportion of cell clusters over pseudotime.
@@ -44,15 +47,30 @@ def plot_stack(
     # --- 2. Prepare Data for Plotting ---
     plot_df = pd.DataFrame({"pseudotime": pseudotime, "cluster": fadata.obs[cluster]})
 
-    # Discretize pseudotime into bins
-    pseudotime_bins = np.linspace(plot_df["pseudotime"].min(), plot_df["pseudotime"].max(), n_bins)
-    plot_df["time_bin"] = pd.cut(plot_df["pseudotime"], bins=pseudotime_bins, labels=pseudotime_bins[:-1], right=False)
+    # 根据伪时间类型选择离散类别或连续分箱
+    time_series = plot_df["pseudotime"]
+    is_discrete = ptypes.is_categorical_dtype(time_series) or ptypes.is_object_dtype(time_series)
 
-    # Pivot the table to get counts of each cluster in each time bin
-    density_df = plot_df.groupby(["time_bin", "cluster"]).size().unstack(fill_value=0)
+    if is_discrete:
+        # 离散时间点：不分箱，直接按类别聚合
+        if ptypes.is_categorical_dtype(time_series):
+            time_order = time_series.cat.categories.tolist()
+        else:
+            # 对于 object/string，按出现顺序或自然排序
+            time_order = pd.unique(time_series)
 
-    # Normalize to get proportions (so the total height is always 1)
-    density_proportions = density_df.div(density_df.sum(axis=1), axis=0)
+        density_df = plot_df.groupby(["pseudotime", "cluster"]).size().unstack(fill_value=0).reindex(time_order).fillna(0)
+        density_proportions = density_df.div(density_df.sum(axis=1), axis=0)
+        x_vals = np.arange(len(time_order))
+        x_tick_labels = time_order
+    else:
+        # 连续时间：分箱为面积堆叠
+        pseudotime_bins = np.linspace(time_series.min(), time_series.max(), n_bins)
+        plot_df["time_bin"] = pd.cut(plot_df["pseudotime"], bins=pseudotime_bins, labels=pseudotime_bins[:-1], right=False)
+        density_df = plot_df.groupby(["time_bin", "cluster"]).size().unstack(fill_value=0)
+        density_proportions = density_df.div(density_df.sum(axis=1), axis=0)
+        x_vals = density_proportions.index.astype(float)
+        x_tick_labels = None
 
     # --- 3. Plotting ---
     if ax is None:
@@ -68,7 +86,7 @@ def plot_stack(
 
     # Use stackplot to create the stack graph
     ax.stackplot(
-        density_proportions.index.astype(float),  # X-axis: time bins
+        x_vals,  # X-axis: time (bins or discrete indices)
         density_proportions.T,  # Y-axis: proportions for each cluster
         labels=cluster_names,
         colors=colors,
@@ -88,7 +106,18 @@ def plot_stack(
     ax.set_title("group")  # As in the example image
     ax.legend(loc=legend_loc, bbox_to_anchor=bbox_to_anchor, frameon=False)
 
+    # 设置离散时间刻度标签（仅在离散模式）
+    if x_tick_labels is not None:
+        ax.set_xticks(np.arange(len(x_tick_labels)))
+        ax.set_xticklabels(x_tick_labels, rotation=0)
+
     plt.tight_layout()
-    if "fig" in locals():
-        return fig
-    return ax
+
+    if save is not None:
+        if isinstance(save, bool) and save:
+            save = f".cafe/{fadata.id}/img/stack{pseudotime_key if pseudotime_key else model_name}.png"
+        plt.savefig(save, bbox_inches="tight")
+        logger.debug(f"save trajectory plot to '{save}'")
+
+    if return_proportions:
+        return density_proportions

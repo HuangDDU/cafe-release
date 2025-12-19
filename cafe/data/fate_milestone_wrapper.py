@@ -32,6 +32,7 @@ class MilestoneWrapper(FateWrapper):
         divergence_regions: pd.DataFrame = None,
         milestone_percentages: pd.DataFrame = None,
         progressions: pd.DataFrame = None,
+        wrapper_type: str = None,
         name="MilestoneWrapper",
     ):
         """Initialize the MilestoneWrapper class.
@@ -94,6 +95,8 @@ class MilestoneWrapper(FateWrapper):
         # lazy load for color
         self._milestone_color_dict = None
         self._cell_color_dict = None
+
+        self.wrapper_type = wrapper_type
 
     @staticmethod
     def _check_milestone_percentages(milestone_network, milestone_percentages):
@@ -190,6 +193,27 @@ class MilestoneWrapper(FateWrapper):
         milestone_percentages = pd.concat([selfs, froms, tos]).reset_index(drop=True)
 
         return milestone_percentages
+
+    def group_onto_nearest_milestones(self):
+        # TODO: group cells to nearest milestones and get new MilestoneWrapper object
+        def get_nearest_milestone(x):
+            return x.loc[x["percentage"].idxmax(), "milestone_id"]
+
+        group_df = self.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
+        milestone_percentages = pd.DataFrame(data={"cell_id": group_df.index, "milestone_id": group_df.values, "percentage": 1.0})
+        mw = MilestoneWrapper(
+            milestone_network=self.milestone_network,
+            milestone_id_list=self.id_list,
+            cell_id_list=self.cell_id_list,
+            divergence_regions=self.divergence_regions,
+            milestone_percentages=milestone_percentages,  # here we use new milestone_percentages and generate
+            wrapper_type="cluster",
+        )
+        return mw
+
+    def group_onto_trajectory_edges(self):
+        # TODO: group cells to nearest milestones and get new MilestoneWrapper object
+        pass
 
     def classify_milestone_network(self) -> None:
         """Milestone network classification

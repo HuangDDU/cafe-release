@@ -342,6 +342,7 @@ class FateAnnData(ad.AnnData):
         milestone_percentages: pd.DataFrame = None,
         progressions: pd.DataFrame = None,
         generate_color: bool = True,
+        wrapper_type: str = "direct",
     ) -> None:
         """Create MilestoneWrapper object as trajectory
 
@@ -361,6 +362,7 @@ class FateAnnData(ad.AnnData):
             divergence_regions=divergence_regions,
             milestone_percentages=milestone_percentages,
             progressions=progressions,
+            wrapper_type=wrapper_type,
         )
         # synchronize mielstone color with cluster color in prior_information if possible
         if generate_color:
@@ -497,10 +499,6 @@ class FateAnnData(ad.AnnData):
                 normalize=trajectory_dict.get("normalize", True),
                 include_self_loop=trajectory_dict.get("include_self_loop", False),
             )
-
-    def add_trajectory_by_h5ad(self):
-        # TODO: add trajectory by reading h5ad file in raw_wrapper_dict
-        pass
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None, waypoint_wrapper_kwargs: dict = {}) -> None:
         """Create WaypointWrapper object"""
@@ -650,7 +648,12 @@ class FateAnnData(ad.AnnData):
                 "percentage": pseudotime,
             }
         )
-        self.add_trajectory(milestone_network=milestone_network, divergence_regions=None, progressions=progressions)
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=None,
+            progressions=progressions,
+            wrapper_type="linear",
+        )
 
     def add_trajectory_cycle(
         self,
@@ -700,7 +703,12 @@ class FateAnnData(ad.AnnData):
 
         milestone_network = milestone_network[["from", "to", "length", "directed"]]
 
-        self.add_trajectory(milestone_network=milestone_network, divergence_regions=None, progressions=progressions)
+        self.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=None,
+            progressions=progressions,
+            wrapper_type="cycle",
+        )
 
     def add_trajectory_probability(self, end_state_probabilities: pd.DataFrame, pseudotime: list = None, do_scale_minmax: bool = True):
         """add probability trajectory, such as StatComp(baseline), Palantir.
@@ -758,7 +766,12 @@ class FateAnnData(ad.AnnData):
             )  # 缩放使其之和为1，暂时不理解这个
             progressions = progressions[["cell_id", "from", "to", "percentage"]]
 
-            self.add_trajectory(milestone_network=milestone_network, divergence_regions=divergence_regions, progressions=progressions)
+            self.add_trajectory(
+                milestone_network=milestone_network,
+                divergence_regions=divergence_regions,
+                progressions=progressions,
+                wrapper_type="probability",
+            )
 
     def add_trajectory_cluster(
         self,
@@ -796,6 +809,7 @@ class FateAnnData(ad.AnnData):
             milestone_network=milestone_network,
             divergence_regions=None,
             progressions=progressions,
+            wrapper_type="cluster",
         )
 
     def add_trajectory_projection(
@@ -894,6 +908,7 @@ class FateAnnData(ad.AnnData):
             milestone_id_list=milestone_emb.index.tolist(),
             divergence_regions=None,
             progressions=progressions,
+            wrapper_type="projection",
         )
 
     def add_trajectory_graph(
@@ -1004,6 +1019,7 @@ class FateAnnData(ad.AnnData):
             milestone_network=simplified_milestone_wrapper["milestone_network"],
             divergence_regions=None,
             progressions=simplified_milestone_wrapper["progressions"],
+            wrapper_type="graph",
         )
 
     def add_trajectory_lineage(
@@ -1031,6 +1047,7 @@ class FateAnnData(ad.AnnData):
                 milestone_network=trajectory_components["milestone_network"],
                 divergence_regions=trajectory_components.get("divergence_regions"),
                 progressions=trajectory_components["progressions"],
+                wrapper_type="lineage",
             )
             logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
@@ -1359,7 +1376,9 @@ class FateAnnData(ad.AnnData):
         # TODO: other strategy LAP
 
         X_emb = pd.DataFrame(self.obsm[basis], index=self.obs.index)  # use all cell
-        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
+        self.add_trajectory_projection(
+            milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster, wrapper_type="projection"
+        )
 
     def add_metric(
         self,
@@ -1397,6 +1416,8 @@ class FateAnnData(ad.AnnData):
             pd.DataFrame: _description_
         """
 
+        # don't modify MilestoneWrapper object, only get obs attribute
+        # mw.group_onto_nearest_milestones get new MilestoneWrapper object
         def get_nearest_milestone(x):
             return x.loc[x["percentage"].idxmax(), "milestone_id"]
 
@@ -1498,12 +1519,12 @@ class FateAnnData(ad.AnnData):
 
         start_milestone = start_milestone if start_milestone else self.prior_information.get("start_milestone")
         if start_milestone is None:
-            logger.debug("start_milestone is None, try to use start cell to identify start milestone automatically")
+            logger.debug(f"start_milestone is None, try to use start cell('{start_cell}') to identify start milestone automatically")
             start_cell = start_cell if start_cell else self.prior_information.get("start_cell")
             if start_cell is None:
                 raise Exception("start_milestone and start_cell are both None")
             else:
-                logger.debug(f"extract start_cell('{start_cell}') from prior information")
+                start_milestone = self.get_start_milestone(start_cell, model_name=model_name)
             logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"

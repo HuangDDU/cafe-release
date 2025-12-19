@@ -1,8 +1,7 @@
 import networkx as nx
 
 from ..._logging import logger
-
-# from ..plot_pie import plot_pie
+from ..plot_pie import plot_pie
 from ..plot_trajectory import plot_trajectory
 
 DEFAULT_MODE = "embedding"
@@ -49,3 +48,6 @@ def plot_embedding(fadata, model_name: str = None, basis=None):
     pos.update(milestone_positions.apply(list, axis=1).to_dict())  # add milestone node pos
     # plot edges
     nx.draw_networkx_edges(G, pos=pos, ax=ax, alpha=0.5, edge_color="gray", width=0.5)
+
+
+plot_pie = plot_pie

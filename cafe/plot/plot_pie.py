@@ -42,9 +42,11 @@ def plot_pie(
     milestone_network = mw.milestone_network
     is_directed = mw.directed
 
-    # TODO: move cells to nearest milestone nodes
     # if not mw.wrapper_type == "cluster":
-    #     logger.warning(f"the wrapper type is {mw.wrapper_type}, try to move cells to nearest milestone nodes")
+    if not mw.milestone_percentages["percentage"].isin([0, 1]).all():  # for old MilestoneWrapper without wrapper_type attribute
+        # for wrappers except cluster wrapper, should first group onto the nearest milestones
+        logger.warning("the wrapper type is not cluster, try to group cells onto the nearest milestone")
+        mw = mw.group_onto_nearest_milestones()
 
     # 2. Build Graph
     G = nx.from_pandas_edgelist(
