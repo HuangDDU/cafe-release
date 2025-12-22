@@ -13,7 +13,7 @@ from .fate_anndata import FateAnnData
 def _create_fadata_from_file(
     filename: str,
     milestone_network: pd.DataFrame,
-    cluster_key: str,
+    cluster: str,
     basis: str,
     id: str = None,
     prior_information: dict = {},
@@ -49,7 +49,7 @@ def _create_fadata_from_file(
 
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
-        cluster_key=cluster_key,
+        cluster_key=cluster,
         basis=basis,
     )
     return fadata
@@ -73,7 +73,7 @@ def read_bifurcating_cellrank(
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster_key="lineage",
+        cluster="lineage",
         basis="X_umap",
         id="bifurcating_cellrank",
         prior_information=prior_information,
@@ -88,7 +88,7 @@ def read_bonemarrow(
 ):
     """read case study dataset of palantir and scvelo: bone marrow"""
     if filename is None:
-        filename = f"{settings.data_dir}/BoneMarrow/bonemarrow_scvelo.h5ad"
+        filename = f"{settings.data_dir}/BoneMarrow/setty_bone_marrow.h5ad"
 
     milestone_network = pd.DataFrame(
         data=[
@@ -108,7 +108,7 @@ def read_bonemarrow(
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster_key="clusters",
+        cluster="clusters",
         basis="X_tsne",
         id="bonemarrow",
         prior_information=prior_information,
@@ -140,7 +140,7 @@ def read_erythroid_lineage(
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster_key="celltype",
+        cluster="celltype",
         basis="X_umap",
         id="erythroid_lineage",
         prior_information=prior_information,
@@ -174,7 +174,7 @@ def read_pancreas(filename=None, **subsample_kwargs):
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster_key="clusters",
+        cluster="clusters",
         basis="X_umap",
         id="pancreas",
         prior_information=prior_information,
@@ -208,7 +208,7 @@ def read_pancreas_cellrank(filename=None, **subsample_kwargs):
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster_key="clusters",
+        cluster="clusters",
         basis="X_umap",
         id="pancreas_cellrank",
         prior_information=prior_information,

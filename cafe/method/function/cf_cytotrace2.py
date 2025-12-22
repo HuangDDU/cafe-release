@@ -55,6 +55,8 @@ def cytotrace2(adata: ad.AnnData, repreprocess: bool = True, cluster: str = None
             annotation_path = f"{tmp_wd}/cytotrace2_annotations.csv"
             adata.obs[cluster].to_csv(annotation_path, sep="\t")
             print(f"write annotation to {annotation_path}")
+        else:
+            annotation_path = ""
 
         # 2. execute method
         result = cytotrace2(expression_file, annotation_path, disable_plotting=True, **cytotrace2_kwargs)

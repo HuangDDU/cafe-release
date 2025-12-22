@@ -28,9 +28,9 @@ except ImportError:
 )
 def cellrank(
     adata: ad.AnnData,
+    cluster: str,
     repreprocess: bool = True,
     wrapper_type: str = "probability",
-    cluster: str = "clusters",
     kernel: str = "connectivity",
     kernel_params: dict = {},
     initial_states=None,

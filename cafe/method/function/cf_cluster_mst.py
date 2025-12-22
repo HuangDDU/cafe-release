@@ -26,7 +26,7 @@ def cluster_mst(
     adata: ad.AnnData,
     repreprocess: bool = True,
     basis: str = "X_pca",
-    recluster: bool = True,
+    recluster: bool = False,
     cluster: str = "clusters",
     distance_metric: Optional[Literal["euclidean", "cosine", "manhattan", "cityblock", "l1", "l2"]] = "euclidean",
 ):

@@ -28,9 +28,9 @@ except ImportError:
 )
 def dynamo(
     adata: ad.AnnData,
+    basis: str,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
-    basis: str = "X_umap",
     moment: bool = True,
     n_neighbors: int = 30,
     dynamics_kwargs: dict = {},

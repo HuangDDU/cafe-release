@@ -1051,6 +1051,7 @@ class FateAnnData(ad.AnnData):
             )
             logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
+    # TODO: Time wrapper for WaddingtonOT, Moscot
     def add_trajectory_time(
         self,
         tmaps: dict,
@@ -1765,6 +1766,17 @@ class FateAnnData(ad.AnnData):
             with open(model_filename, "rb") as f:
                 trajectory_dict = pickle.load(f)
             self.set_trajectory_dict(trajectory_dict, model_name)
+
+    def remove_trajectory_dict(self, model_name_list: list[str] | str):
+        if isinstance(model_name_list, str):
+            model_name_list = [model_name_list]
+        for model_name in model_name_list:
+            if model_name in self.trajectory_history_dict:
+                del self.trajectory_history_dict[model_name]
+                self.model_name = "ref"
+                logger.debug(f"remove trajectory '{model_name}' from trajectory_history_dict")
+            else:
+                logger.warning(f"trajectory '{model_name}' not found in trajectory_history_dict, skip remove")
 
     def recovery_external_data(self, model_name=None):
         external_data = self.get_raw_wrapper_dict(model_name).get("external_data")

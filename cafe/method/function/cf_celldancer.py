@@ -20,10 +20,10 @@ except ImportError:
 )
 def celldancer(
     adata: ad.AnnData,
+    cluster: str,
+    basis: str,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
-    cluster: str = None,
-    basis: str = "X_umap",
     velocity_kwargs: dict = {},
     compute_cell_velocity_kwargs: dict = {},
 ):

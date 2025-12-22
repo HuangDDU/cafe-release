@@ -22,6 +22,7 @@ def get_function_parameter_dict(function_obj):
     for param_name, param in sig.parameters.items():
         param_info = {
             "name": param_name,
+            "required": param.default is inspect.Parameter.empty,
             "default": param.default if param.default != inspect.Parameter.empty else None,
             "annotation": param.annotation if param.annotation != inspect.Parameter.empty else None,
             "kind": param.kind.name,

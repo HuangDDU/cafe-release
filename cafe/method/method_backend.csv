@@ -22,7 +22,7 @@ ti_paga,,,,dynverse/ti_paga:v0.9.9.05
 ti_slingshot,,,,dynverse/ti_slingshot:v1.0.3
 ti_comp1,,,,dynverse/ti_comp1:v0.9.9.01
 ti_angle,,,,dynverse/ti_angle:v0.9.9.02
-ti_projection_mst,,,,dynverse/ti_mst:v0.9.9.01
+ti_mst,,,,dynverse/ti_mst:v0.9.9.01
 ti_monocle_ica,,,,dynverse/ti_monocle_ica:v0.9.9.01
 ti_monocle_ddrtree,,,,dynverse/ti_monocle_ddrtree:v0.9.9.02
 ti_scorpius,,,,dynverse/ti_scorpius:v2.0.0

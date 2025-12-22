@@ -604,6 +604,9 @@ def plot_stream(adata,root='root',color = None,preference=None,dist_scale=0.9,
                                    factor_nrow=factor_nrow,factor_ncol=factor_ncol,
                                    log_scale=log_scale,factor_zoomin=factor_zoomin)
         dict_plot['numeric'] = [verts,extent,ann_order,dict_ann_df,dict_im_array]
+    else:
+        # Initialize empty numeric entry to avoid KeyError if loop logic fails
+        dict_plot['numeric'] = [None, None, None, None, None]
 
     for i, ann in enumerate(tqdm_show(color, desc='stream plotting')):
         if(is_string_dtype(dict_ann[ann])):
