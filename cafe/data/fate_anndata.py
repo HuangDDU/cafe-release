@@ -1377,9 +1377,7 @@ class FateAnnData(ad.AnnData):
         # TODO: other strategy LAP
 
         X_emb = pd.DataFrame(self.obsm[basis], index=self.obs.index)  # use all cell
-        self.add_trajectory_projection(
-            milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster, wrapper_type="projection"
-        )
+        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
 
     def add_metric(
         self,
