@@ -1,0 +1,17 @@
+name: unitvelo
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/pro
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - defaults
+dependencies:
+  - python=3.8.20
+  - pip:
+      - numpy==1.23.5
+      - pandas==1.5.3
+      - scvelo==0.2.2
+      - tensorflow==2.13.1
+      - unitvelo==0.2.5
+prefix: /usr/local/conda/envs/unitvelo
