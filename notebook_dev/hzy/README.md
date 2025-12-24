@@ -1,3 +1,5 @@
+> This directory is for development on local WSL(Ubuntu 22.04) system.
+> 
 # Notebook 文件含义
 
 ## 1. 前缀含义

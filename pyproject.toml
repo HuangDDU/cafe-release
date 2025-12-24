@@ -48,6 +48,7 @@ dependencies = [
     "scvelo==0.3.3",
     "dynamo-release==1.4.1",
     "cellrank==2.0.7",
+    # palantir==1.3.6",
 ]
 
 [project.optional-dependencies]

@@ -11,6 +11,7 @@ from . import (
     metric_featureimp,
     metric_position_predict,
     metric_pseudotime,
+    metric_resource,
     metric_topology,
     metric_velocity,
 )
@@ -59,6 +60,10 @@ def calculate_metrics(
             "lm_rsq",
             "featureimp_cor",
             "featureimp_wcor",
+            "time",
+            "time_text",
+            "memory",
+            "memory_text",
         ]
 
     # 获得存在的模型名
@@ -131,6 +136,7 @@ def calculate_metrics(
         _velocity_cache = None
         _position_cache = None
         _featureimp_cache = None
+        _resource_cache = None
 
         for metric in metrics:
             try:
@@ -168,6 +174,10 @@ def calculate_metrics(
                             fi_method=fi_method,  # 使用默认轻量 RF，或者传你自定义的 fi_method
                         )
                     val = _featureimp_cache[metric]
+                elif metric in ["time", "time_text", "memory", "memory_text"]:
+                    if _resource_cache is None:
+                        _resource_cache = metric_resource.calculate_resource_usage(fadata, model_name=pred, format_text=True)
+                    val = _resource_cache[metric]
                 vals[metric] = val
             except Exception as e:
                 logger.warning(f"metric '{metric}' calculation failed for trajectory '{ref_model}(ref)' vs '{pred}(pred)'")
