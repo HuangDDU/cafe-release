@@ -23,7 +23,7 @@ def run(
         load_cached: bool, whether to load cached results if they exist
     """
 
-    # Load method parameter dict from yaml if not provided
+    # load method parameter dict from yaml if not provided
     if method_parameter_dict is None:
         if method_yaml_file is None:
             method_yaml_file = f".cafe/{fadata.id}/benchmark/methods.yaml"
@@ -32,25 +32,29 @@ def run(
         with open(method_yaml_file, "r") as f:
             method_parameter_dict = yaml.safe_load(f)
 
-    # Iterate over each method and its parameters
+    # iterate over each method and its parameters
     for method_name, parameters in method_parameter_dict.items():
-        parameters = parameters or {}  # parameters may be None or empty dict
-
-        logger.info(f"running method: {method_name} with params: {parameters}")
-        # Check if result already exists
-        result_path = f".cafe/{fadata.id}/trajectory_dict/{method_name}.pkl"
+        # check if result already exists
+        result_path = f".cafe/{fadata.id}/trajectory_history/{method_name}.pkl"
         if os.path.exists(result_path):
             if load_cached:
                 logger.info(f"result for {method_name} already exists, load cached result")
+                # fadata.load_trajectory_dict(model_name_list=[method_name])
                 continue
             else:
                 logger.info(f"result for {method_name} already exists, re-running method")
 
-        # Run the method with given parameters
+        # adjust parameter dict
+        parameters = parameters or {}  # parameters may be None or empty dict
+        parameters.update({"benchmark_resource": True})  # benchmark for time and memory resource
+        logger.info(f"running method: {method_name} with params: {parameters}")
+
+        # run the method with given parameters
         method = FateMethod(method_name=method_name)
         method.infer_trajectory(fadata, parameters=parameters, id=method_name)
-        plot_trajectory(fadata, save=True)
+        plot_trajectory(fadata, save=True)  # calculate waypoint and visualization
         fadata.write_trajectory_dict(model_name_list=[method_name])
+        fadata.remove_trajectory_dict(model_name_list=[method_name])
         logger.info(f"method {method_name} finished and result saved.")
 
     logger.info("all methods have run.")

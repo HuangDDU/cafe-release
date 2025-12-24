@@ -8,6 +8,7 @@ channels:
   - defaults
 dependencies:
   - python=3.11.13
+  - pip
   - pip:
       - torch==2.1.2
       - pyrovelocity==0.4.5

@@ -1692,6 +1692,7 @@ class FateAnnData(ad.AnnData):
             "metric",  # (.csv)    milestone and waypoint wrapper object in self.cfe_dict["trajectory_history"]
             "h5ad",  # (.h5ad)   original h5ad files
             "img",  # (.png/.pdf for Adobe Illustrator) image outputs
+            "benchmark",  # benchmark result
         ]
 
         for subdir in subdirs:
@@ -1706,6 +1707,7 @@ class FateAnnData(ad.AnnData):
         self.metric_dir = os.path.join(dirname, "metric")
         self.h5ad_dir = os.path.join(dirname, "h5ad")
         self.image_dir = os.path.join(dirname, "img")
+        self.benchmark_dir = os.path.join(dirname, "benchmark")
 
     def write_trajectory_dict(self, dirname=None, model_name_list=None):
         # save all trajectory, one trajectory is a pkl file: .cafe/{self.id}/trajectory_history/{model_name}.pkl

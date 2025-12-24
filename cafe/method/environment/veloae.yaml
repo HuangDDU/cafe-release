@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - python=3.10.18
+  - pip
   - pip:
     - numpy==1.23.5
     - scipy==1.10.1

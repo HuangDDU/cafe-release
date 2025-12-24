@@ -27,6 +27,9 @@ def metrics(
     if metric_dir is None:
         metric_dir = f".cafe/{fadata.id}/metric/"
 
+    if cluster_edges is None:
+        cluster_edges = fadata.get_milestone_wrapper("ref").milestone_network[["from", "to"]].values.tolist()
+
     if model_name_list is None:
         method_yaml_file = f".cafe/{fadata.id}/benchmark/methods.yaml"
         with open(method_yaml_file, "r") as f:

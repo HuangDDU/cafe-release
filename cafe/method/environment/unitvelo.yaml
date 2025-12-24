@@ -8,6 +8,7 @@ channels:
   - defaults
 dependencies:
   - python=3.8.20
+  - pip
   - pip:
       - numpy==1.23.5
       - pandas==1.5.3
