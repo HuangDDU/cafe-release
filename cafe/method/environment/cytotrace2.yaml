@@ -11,6 +11,8 @@ dependencies:
   - python=3.10.18
   - pip
   - pip:
+      - numpy==1.26.4
+      - pandas==1.5.3
       - torch==2.5.1
       - cytotrace2-py==1.1.0
 

@@ -39,13 +39,14 @@ def _create_fadata_from_file(
     fadata.uns["filename"] = filename  # for methods that need filename rather than 'AnnData' object, such as pyrovelocity, unitvelo
 
     logger.debug("add prior information...")
-    start_cell = prior_information.get("start_cell", None)
-    if start_cell is not None:
-        if start_cell in fadata.obs.index:
-            logger.debug(f"add 'start_cell': '{start_cell}'", indent_level=2)
-            fadata.add_prior_information(start_cell=start_cell)
-        else:
-            logger.warning(f"{start_cell} is not in '.obs.index', skip adding 'start_cell'", indent_level=2)
+    fadata.add_prior_information(**prior_information)
+    # start_cell = prior_information.get("start_cell", None)
+    # if start_cell is not None:
+    #     if start_cell in fadata.obs.index:
+    #         logger.debug(f"add 'start_cell': '{start_cell}'", indent_level=2)
+    #         fadata.add_prior_information(start_cell=start_cell)
+    #     else:
+    #         logger.warning(f"{start_cell} is not in '.obs.index', skip adding 'start_cell'", indent_level=2)
 
     fadata.add_trajectory_mannually(
         milestone_network=milestone_network,
@@ -104,7 +105,10 @@ def read_bonemarrow(
         ],
         columns=["from", "to"],
     )
-    prior_information = {}
+    prior_information = {
+        "start_milestone": "HSC_1",
+        "start_cell": "cell_4823",
+    }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,

@@ -114,7 +114,7 @@ class FateAnnData(ad.AnnData):
         else:
             self.cafe_dict["trajectory_history_dict"][self.model_name] = {"waypoint_wrapper": value}
 
-    def get_trajectory_dict(self, model_name=None):
+    def parse_model_name(self, model_name: str = None):
         model_name_list = self.get_all_model_name(parse=False)
         if model_name is None:
             model_name = self.model_name
@@ -132,9 +132,15 @@ class FateAnnData(ad.AnnData):
         if model_name not in self.trajectory_history_dict:
             logger.debug(f"model '{model_name}' not found in trajectory_history_dict")
             return None
+        return model_name
 
-        trajectory_dict = self.trajectory_history_dict[model_name]
-        return trajectory_dict
+    def get_trajectory_dict(self, model_name: str = None):
+        model_name = self.parse_model_name(model_name)
+        if model_name is None:
+            return None
+        else:
+            trajectory_dict = self.trajectory_history_dict[model_name]
+            return trajectory_dict
 
     def set_trajectory_dict(self, trajectory_dict: dict, model_name=None):
         if model_name is None:
@@ -142,19 +148,32 @@ class FateAnnData(ad.AnnData):
         self.trajectory_history_dict[model_name] = trajectory_dict
 
     def get_milestone_wrapper(self, model_name=None):
+        model_name = self.parse_model_name(model_name)
         return self.get_trajectory_dict(model_name)["milestone_wrapper"]
 
     def set_milestone_wrapper(self, milestone_wrapper: MilestoneWrapper, model_name=None):
         self.get_trajectory_dict(model_name)["milestone_wrapper"] = milestone_wrapper
 
     def get_waypoint_wrapper(self, model_name=None):
-        return self.get_trajectory_dict(model_name)["waypoint_wrapper"]
+        model_name = self.parse_model_name(model_name)
+        trajectory_dict = self.get_trajectory_dict(model_name)
+        if "waypoint_wrapper" not in trajectory_dict:
+            logger.warning(f"waypoint_wrapper not found in trajectory_dict for model '{model_name}'")
+            return None
+        else:
+            return trajectory_dict["waypoint_wrapper"]
 
     def set_waypoint_wrapper(self, waypoint_wrapper: WaypointWrapper, model_name=None):
         self.get_trajectory_dict(model_name)["waypoint_wrapper"] = waypoint_wrapper
 
     def get_raw_wrapper_dict(self, model_name=None):
-        return self.get_trajectory_dict(model_name).get("raw_wrapper_dict", {})
+        model_name = self.parse_model_name(model_name)
+        trajectory_dict = self.get_trajectory_dict(model_name)
+        if "raw_wrapper_dict" not in trajectory_dict:
+            logger.warning(f"raw_wrapper_dict not found in trajectory_dict for model '{model_name}'")
+            return None
+        else:
+            return trajectory_dict["raw_wrapper_dict"]
 
     @classmethod
     def read_dynverse_simulation_data(
@@ -358,7 +377,7 @@ class FateAnnData(ad.AnnData):
         milestone_wrapper = MilestoneWrapper(
             milestone_network=milestone_network,
             milestone_id_list=milestone_id_list,
-            cell_id_list=self.obs.index,  # TODO: fix for cells filtered by inner preprocessing
+            cell_id_list=None,  # may lose cells, should extract from milestone_percentages["cell_id"]
             divergence_regions=divergence_regions,
             milestone_percentages=milestone_percentages,
             progressions=progressions,
@@ -1405,7 +1424,8 @@ class FateAnnData(ad.AnnData):
 
         mw = self.get_trajectory_dict(model_name)["milestone_wrapper"]
         group_df = mw.progressions.groupby("cell_id").apply(get_trajectory_edges)
-        self.obs[cluster_key] = group_df.loc[self.obs.index]
+        self.obs[cluster_key] = None
+        self.obs.loc[group_df.index, cluster_key] = group_df
 
     def group_onto_nearest_milestones(self, model_name=None, cluster_key="_cafe_nm_group"):
         """group cells to nearest milestones
@@ -1422,7 +1442,9 @@ class FateAnnData(ad.AnnData):
 
         mw = self.get_trajectory_dict(model_name)["milestone_wrapper"]
         group_df = mw.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
-        self.obs[cluster_key] = group_df.loc[self.obs.index]
+
+        self.obs[cluster_key] = None
+        self.obs.loc[group_df.index, cluster_key] = group_df
 
     def simplify_trajectory(self, model_name="default", simplify_kwargs: dict = {}) -> MilestoneWrapper:
         """simplify trajectory for metric comparison, also used in FateAnnData.add_trajectory_cell_graph
@@ -1517,8 +1539,18 @@ class FateAnnData(ad.AnnData):
         trajectory_dict = self.get_trajectory_dict(model_name)
 
         start_milestone = start_milestone if start_milestone else self.prior_information.get("start_milestone")
+
+        use_start_cell = False
         if start_milestone is None:
             logger.debug(f"start_milestone is None, try to use start cell('{start_cell}') to identify start milestone automatically")
+            use_start_cell = True
+        elif start_milestone not in trajectory_dict["milestone_wrapper"].id_list:
+            logger.debug(
+                f"start_milestone '{start_milestone}' not in milestone list, try to use start cell('{start_cell}') to identify start milestone automatically"
+            )
+            use_start_cell = True
+
+        if use_start_cell:
             start_cell = start_cell if start_cell else self.prior_information.get("start_cell")
             if start_cell is None:
                 raise Exception("start_milestone and start_cell are both None")
@@ -1788,6 +1820,10 @@ class FateAnnData(ad.AnnData):
 
             new_adata = recovery_external_data(self, external_data)
             return new_adata
+
+    def clear_log():
+        # clear log in cafe_dict
+        pass
 
     def launch_cellxgene(self, tmp_filename=None, trajectory=False, port=5005, conda_env="cafe"):  # if show trajectory
         import os

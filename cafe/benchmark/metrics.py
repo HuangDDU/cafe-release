@@ -13,11 +13,12 @@ from ..metric import metrics as metric_meta_df  # metric dataframe
 def metrics(
     fadata,
     model_name_list=None,
-    metrics=None,
-    cluster_edges=None,
-    metric_dir=None,
+    metrics: list = None,
+    cluster_edges: list = None,
+    metric_dir: str = None,
     overall_score_func: Callable | bool = None,
     if_normalize: bool = True,
+    if_impute: bool = True,
     if_save: bool = True,
 ):
     """ """
@@ -37,6 +38,7 @@ def metrics(
         model_name_list = list(method_parameter_dict.keys())
         logger.info(f"no model_name_list provided, use all methods in method yaml file: {model_name_list}")
 
+    # TODO: metric trajectory dict id check
     # check existing metric files, if missing metrics, recalculate the specific ones
     metric_file_list = os.listdir(metric_dir)
     todo_model_name_list = []
@@ -46,8 +48,9 @@ def metrics(
         if metric_file in metric_file_list:
             logger.info(f"metric file for model '{model_name}' already exists. read it.")
             calculated_metric_df = pd.read_csv(f"{metric_dir}/{metric_file}", index_col=0).T
-            # check missing metrics
             missing_metrics = [m for m in metrics if m not in calculated_metric_df.columns or pd.isna(calculated_metric_df[m].iloc[0])]
+            calculated_metric_df = calculated_metric_df[list(set(metrics) - set(missing_metrics))]
+            # check missing metrics
             if missing_metrics:
                 logger.info(f"model {model_name} missing metrics: {missing_metrics}, recalculating...")
                 fadata.load_trajectory_dict(model_name_list=[model_name])  # load only needed model
@@ -98,13 +101,22 @@ def metrics(
             perfect = metric_meta_df.loc[metric_name, "perfect"]
             worst = metric_meta_df.loc[metric_name, "worst"]
             metric_normalized = metric_df[metric_name]
-            if metric_df[metric_name].isna().any():
+            valid_row = ~metric_normalized.isna()  # valid rows without NaN
+            if valid_row.any():
                 impute_value = (worst + perfect) / 2
-                logger.warning(f"impute value: '{impute_value}' for NaN shown in metric '{metric_name}'")
-                metric_normalized = metric_normalized.fillna(impute_value)  # fillna with mid value
-            metric_normalized = (metric_normalized - worst) / (perfect - worst)
+                log_msg = f"impute NaN value('{impute_value}') shown in {valid_row[~valid_row].index.tolist()} for metric '{metric_name}'"
+                if if_impute:
+                    logger.warning(log_msg)
+                    metric_normalized = metric_normalized.fillna(impute_value)  # fillna with mid value
+                    valid_row[valid_row.index] = True  # update valid after imputation
+                else:
+                    logger.warning(f"don't {log_msg}")
+            metric_normalized[valid_row] = (metric_normalized[valid_row] - worst) / (perfect - worst)
             metric_df_normalized[metric_name] = metric_normalized
         metric_df = metric_df_normalized
+
+    # order the metric dataframe
+    metric_df = metric_df.loc[:, metrics]
 
     if callable(overall_score_func):
         # custom overall score function

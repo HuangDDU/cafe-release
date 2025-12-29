@@ -183,6 +183,7 @@ def calculate_metrics(
                 logger.warning(f"metric '{metric}' calculation failed for trajectory '{ref_model}(ref)' vs '{pred}(pred)'")
                 logger.warning(f"Exception: {e}")
                 vals[metric] = np.nan
+                # raise e # for debug with exception
 
         rows.append(vals)
 

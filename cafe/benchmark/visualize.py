@@ -21,7 +21,7 @@ def visualize(benchmark_df, save="benchmark_heatmap.pdf", figsize=(32, 24)):
     ]
 
     if "overall" in benchmark_df.columns:
-        column_list.append(["overall", "overall", "Overall", "bar", {"width": 4, "legend": False}, "palette3"])
+        column_list.append(["overall", "overall", "Overall", "bar", {"width": 4, "legend": False}, "overall_palette"])
 
     # Accuracy metrics
     id2name = {
@@ -30,7 +30,7 @@ def visualize(benchmark_df, save="benchmark_heatmap.pdf", figsize=(32, 24)):
         "velocity_icvcoh": "Velocity ICVCoh",
         "edge_flip": "Edge Flip",
         "him": "HIM",
-        "isomorphic": "Isomorphic",
+        # "isomorphic": "Isomorphic", # 0 for all rows may result in funkyheatmap error
         "F1_branches": "F1 Branches",
         "F1_milestones": "F1 Milestones",
         "correlation": "Correlation",
@@ -47,27 +47,38 @@ def visualize(benchmark_df, save="benchmark_heatmap.pdf", figsize=(32, 24)):
     metric_column_list = []
     for id, name in id2name.items():
         if id in benchmark_df.columns:
-            metric_column_list.append([id, "group1", name, "funkyrect", "options", "palette1"])
+            metric_column_list.append([id, "metric", name, "funkyrect", {"size": 3}, "metric_palette"])
     column_list = column_list + metric_column_list
 
     # resource group
     if "time" in benchmark_df.columns:
-        column_list.append(["time", "group2", "Time", "rect", "scaling", "palette2"])
-        column_list.append(["time_text", "group2", "", "text", {"overlay": True, "size": 3, "scale": False}, "white6black4"])
+        column_list.append(["time", "resource", "Time", "rect", "scaling", "resource_palette"])
+        column_list.append(["time_text", "resource", "", "text", {"overlay": True, "size": 3, "scale": False}, "white6black4"])
 
     if "memory" in benchmark_df.columns:
-        column_list.append(["memory", "group2", "Memory", "rect", "scaling", "palette2"])
-        column_list.append(["memory_text", "group2", "", "text", {"overlay": True, "size": 3, "scale": False}, "white6black4"])
+        column_list.append(["memory", "resource", "Memory", "rect", "scaling", "resource_palette"])
+        column_list.append(["memory_text", "resource", "", "text", {"overlay": True, "size": 3, "scale": False}, "white6black4"])
 
     column_info = pd.DataFrame(column_list[1:], columns=column_list[0])
     column_info.index = column_info["id"]
 
     column_groups = pd.DataFrame(
         columns=["Category", "group", "palette"],
-        data=[["Overall", "overall", "palette3"], ["Metric", "group1", "palette1"], ["Resources", "group2", "palette2"]],
+        data=[["Overall", "overall", "overall_palette"], ["Metric", "metric", "metric_palette"], ["Resources", "resource", "resource_palette"]],
     )
+    # palette definitions
+    palettes = {
+        "overall_palette": "Blues",
+        "metric_palette": "Greens",
+        "resource_palette": "YlOrBr",
+    }
 
-    funkyheatmappy.funky_heatmap(benchmark_df, column_info=column_info, column_groups=column_groups)
+    funkyheatmappy.funky_heatmap(
+        benchmark_df,
+        column_info=column_info,
+        column_groups=column_groups,
+        palettes=palettes,
+    )
     if save is not None:
         if isinstance(save, bool) and save:
             save = ".cafe/img/benchmark_funkyheatmap.png"
