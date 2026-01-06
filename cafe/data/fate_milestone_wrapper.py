@@ -283,6 +283,46 @@ class MilestoneWrapper(FateWrapper):
         self._milestone_color_dict = milestone_color_dict
         self._cell_color_dict = cell_color_dict
 
+    def rename_milestone(self, old2new: dict):
+        """
+        Rename milestone IDs based on the old2new dictionary, updating all related data structures.
+
+        Parameters:
+        - old2new (dict): A dictionary with old milestone IDs as keys and new milestone IDs as values.
+
+        Raises:
+        - ValueError: If an old ID does not exist or a new ID already exists.
+        """
+        # check if old id exists
+        all_milestones = set(self.id_list)
+        for old_id in old2new.keys():
+            if old_id not in all_milestones:
+                raise ValueError(f"Old milestone ID '{old_id}' does not exist.")
+        # check if new id conflicts
+        new_ids = set(old2new.values())
+        existing_new_conflicts = new_ids.intersection(all_milestones - set(old2new.keys()))
+        if existing_new_conflicts:
+            raise ValueError(f"New milestone ID {existing_new_conflicts} already exists.")
+
+        # update milestone id in various attribute
+        # list(id_list),
+        self.id_list = [old2new.get(mid, mid) for mid in self.id_list]
+        # dataframes(milestone_network, milestone_percentages, progressions, divergence_regions)
+        self.milestone_network["from"] = self.milestone_network["from"].replace(old2new)
+        self.milestone_network["to"] = self.milestone_network["to"].replace(old2new)
+        self.milestone_percentages["milestone_id"] = self.milestone_percentages["milestone_id"].replace(old2new)
+        self.progressions["from"] = self.progressions["from"].replace(old2new)
+        self.progressions["to"] = self.progressions["to"].replace(old2new)
+        if hasattr(self, "divergence_regions") and self.divergence_regions is not None and "milestone_id" in self.divergence_regions.columns:
+            self.divergence_regions["milestone_id"] = self.divergence_regions["milestone_id"].replace(old2new)
+        # dict(_milestone_color_dict and _cell_color_dict)
+        if hasattr(self, "_milestone_color_dict") and self._milestone_color_dict is not None:
+            self._milestone_color_dict = {old2new.get(k, k): v for k, v in self._milestone_color_dict.items()}
+        # if hasattr(self, '_cell_color_dict') and self._cell_color_dict is not None:
+        #     pass
+
+        logger.info(f"successfully renamed milestones: {old2new}")
+
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges
     #     ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_trajectory_edges

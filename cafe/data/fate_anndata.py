@@ -176,66 +176,6 @@ class FateAnnData(ad.AnnData):
             return trajectory_dict["raw_wrapper_dict"]
 
     @classmethod
-    def read_dynverse_simulation_data(
-        cls,
-        data_filename="synthetic/dyntoy/bifurcating_1.rds",
-        data_dir="/usr/share/CellFateExplorer/dynbenchmark/data/",
-    ):
-        # TODO: move to data fate_dataset.py
-        # read dynverse simulation data and create FateAnnData object, default data dir is in /usr/share/CellFateExplorer/dynbenchmark/data/
-        import rpy2.robjects as ro
-
-        from ..util import rpy2_read  # rpy2 data structure transfer automatically
-
-        rpy2_read
-
-        r_script = f"""
-        dataset <- readRDS("{data_dir}/{data_filename}")
-        dataset
-        """
-        dataset = ro.r(r_script)
-
-        # crreate FateAnnData object base expression and count matrix
-        layers = {}
-        if "expression" in dataset:
-            X = dataset["expression"]
-            layers["expression"] = dataset["expression"]
-        if "counts" in dataset:
-            X = dataset["counts"]
-            layers["counts"] = dataset["counts"]
-        fadata = cls(name=dataset["id"], X=X)
-        fadata.layers = layers
-
-        # other Anndata attributes
-        # if dataset.has_key("cell_info"):
-        #     fadata.obs = dataset["cell_info"]
-        fadata.obs = dataset.get("cell_info", fadata.obs)  # equal to above
-        fadata.obs.index = dataset["cell_ids"]
-        fadata.var = dataset.get("feature_info", fadata.obs)
-        fadata.var.index = dataset.get("feature_ids", fadata.var.index)
-
-        # call FateAnnData object method
-        if "prior_information" in dataset:
-            fadata.add_prior_information(**dataset["prior_information"])
-        if "milestone_network" in dataset:
-            milestone_network = dataset["milestone_network"]
-            milestone_percentages = dataset["milestone_percentages"]
-            divergence_regions = dataset["divergence_regions"]
-            # progressions = dataset["progressions"]
-            fadata.add_model_name("ref")
-            fadata.add_trajectory(
-                milestone_network=milestone_network,
-                divergence_regions=divergence_regions,
-                milestone_percentages=milestone_percentages,
-                # progressions=progressions # may cover milestone_percentages
-            )
-
-        if "grouping" in dataset:
-            fadata.obs["grouping"] = pd.Categorical(dataset["grouping"], dataset["group_ids"])
-        # TODO: waypoint add
-        return fadata
-
-    @classmethod
     def from_anndata(cls, adata: ad.AnnData) -> "FateAnnData":
         """Create a FateAnnData object from an existing AnnData object.
 
@@ -1540,17 +1480,23 @@ class FateAnnData(ad.AnnData):
 
         start_milestone = start_milestone if start_milestone else self.prior_information.get("start_milestone")
 
-        use_start_cell = False
-        if start_milestone is None:
-            logger.debug(f"start_milestone is None, try to use start cell('{start_cell}') to identify start milestone automatically")
+        # use_start_cell = False
+        # if start_milestone is None:
+        #     logger.debug(f"start_milestone is None, try to use start cell('{start_cell}') to identify start milestone automatically")
+        #     use_start_cell = True
+        # elif start_milestone not in trajectory_dict["milestone_wrapper"].id_list:
+        #     logger.debug(
+        #         f"start_milestone '{start_milestone}' not in milestone list, try to use start cell('{start_cell}') to identify start milestone automatically"
+        #     )
+        #     use_start_cell = True
+
+        if (start_milestone is None) or (start_milestone not in trajectory_dict["milestone_wrapper"].id_list):
             use_start_cell = True
-        elif start_milestone not in trajectory_dict["milestone_wrapper"].id_list:
-            logger.debug(
-                f"start_milestone '{start_milestone}' not in milestone list, try to use start cell('{start_cell}') to identify start milestone automatically"
-            )
-            use_start_cell = True
+        else:
+            use_start_cell = False
 
         if use_start_cell:
+            logger.debug("try to use start cell to identify start milestone automatically")
             start_cell = start_cell if start_cell else self.prior_information.get("start_cell")
             if start_cell is None:
                 raise Exception("start_milestone and start_cell are both None")
@@ -1662,7 +1608,6 @@ class FateAnnData(ad.AnnData):
         velocity_df = pd.DataFrame(velocity_df.to_list(), index=velocity_df.index)
         velocity_df = velocity_df.loc[self.obs.index]
         velocity_embedding = velocity_df.values
-
         return velocity_embedding
 
     def get_lineage(self, model_name):
@@ -1898,7 +1843,37 @@ class FateAnnData(ad.AnnData):
         logger.debug(f"remove {tmp_filename}")
         os.remove(tmp_filename)
 
+    def check_model_name():
+        pass
 
+    def check_cluster(self, cluster=None):
+        if cluster is None:
+            if "cluster" not in self.prior_information:
+                raise ValueError("parameter cluster is not provided and 'cluster' not found in self.prior_information")
+            else:
+                # extract from prior_information
+                cluster = self.prior_information.get("cluster")
+        else:
+            if cluster not in self.obs:
+                # check if cluster exists in self.obs
+                raise ValueError(f"parameter cluster '{cluster}' not found in self.obs")
+        return cluster
+
+    def check_basis(self, basis=None):
+        if basis is None:
+            if "basis" not in self.prior_information:
+                raise ValueError("parameter basis is not provided and 'basis' not found in self.prior_information")
+            else:
+                # extract from prior_information
+                basis = self.prior_information.get("basis")
+        else:
+            if basis not in self.obsm:
+                # check if basis exists in self.obsm
+                raise ValueError(f"parameter basis '{basis}' not found in self.obsm")
+        return basis
+
+
+# TODO: move to dataset.py
 def read_h5ad(*args, **kwargs):
     """
     read and parse MilestoneWrapper and WaypointWrapper object in trajectory_history_dict.

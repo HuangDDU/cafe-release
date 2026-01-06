@@ -12,12 +12,12 @@ from .fate_anndata import FateAnnData
 
 def _create_fadata_from_file(
     filename: str,
-    milestone_network: pd.DataFrame,
     cluster: str,
     basis: str,
     id: str = None,
     prior_information: dict = {},
     subsample_kwargs: dict = {},  # subsample args
+    milestone_network: pd.DataFrame = None,
 ) -> FateAnnData:
     logger.debug(f"Reading data from '{filename}'...")
     adata = sc.read_h5ad(filename)
@@ -47,12 +47,74 @@ def _create_fadata_from_file(
     #         fadata.add_prior_information(start_cell=start_cell)
     #     else:
     #         logger.warning(f"{start_cell} is not in '.obs.index', skip adding 'start_cell'", indent_level=2)
+    if milestone_network is not None:
+        logger.debug("add ref trajectory mannually...")
+        fadata.add_trajectory_mannually(
+            milestone_network=milestone_network,
+            cluster_key=cluster,
+            basis=basis,
+        )
+    return fadata
 
-    fadata.add_trajectory_mannually(
-        milestone_network=milestone_network,
-        cluster_key=cluster,
-        basis=basis,
-    )
+
+def read_dynverse_simulation_data(
+    filename=None,
+    **subsample_kwargs,
+):
+    # read dynverse simulation data and create FateAnnData object,
+    if filename is None:
+        filename = f"{settings.data_dir}/dynbenchmark/data/synthetic/dyntoy/bifurcating_1.rds"
+
+    import rpy2.robjects as ro
+
+    from ..util import rpy2_read  # rpy2 data structure transfer automatically
+
+    rpy2_read
+
+    r_script = f"""
+        dataset <- readRDS("{filename}")
+        dataset
+        """
+    dataset = ro.r(r_script)
+
+    # crreate FateAnnData object base expression and count matrix
+    layers = {}
+    if "expression" in dataset:
+        X = dataset["expression"]
+        layers["expression"] = dataset["expression"]
+    if "counts" in dataset:
+        X = dataset["counts"]
+        layers["counts"] = dataset["counts"]
+    fadata = FateAnnData(name=dataset["id"], X=X)
+    fadata.layers = layers
+
+    # other Anndata attributes
+    # if dataset.has_key("cell_info"):
+    #     fadata.obs = dataset["cell_info"]
+    fadata.obs = dataset.get("cell_info", fadata.obs)  # equal to above
+    fadata.obs.index = dataset["cell_ids"]
+    fadata.var = dataset.get("feature_info", fadata.obs)
+    fadata.var.index = dataset.get("feature_ids", fadata.var.index)
+
+    # call FateAnnData object method
+    if "prior_information" in dataset:
+        fadata.add_prior_information(**dataset["prior_information"])
+    if "milestone_network" in dataset:
+        milestone_network = dataset["milestone_network"].reset_index(drop=True)
+        milestone_percentages = dataset["milestone_percentages"]
+        divergence_regions = dataset["divergence_regions"]
+        # progressions = dataset["progressions"]
+        fadata.add_model_name("ref")
+        fadata.add_trajectory(
+            milestone_network=milestone_network,
+            divergence_regions=divergence_regions,
+            milestone_percentages=milestone_percentages,
+            # progressions=progressions # may cover milestone_percentages
+        )
+
+    if "grouping" in dataset:
+        fadata.obs["grouping"] = pd.Categorical(dataset["grouping"], dataset["group_ids"])
+    # TODO: waypoint add
     return fadata
 
 
@@ -70,12 +132,16 @@ def read_bifurcating_cellrank(
         ],
         columns=["from", "to"],
     )
-    prior_information = {}
+    prior_information = {
+        # "start_milestone": "sA -> sB",
+        "cluster": "lineage",
+        "basis": "X_umap",
+    }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster="lineage",
-        basis="X_umap",
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
         id="bifurcating_cellrank",
         prior_information=prior_information,
         subsample_kwargs=subsample_kwargs,
@@ -108,12 +174,14 @@ def read_bonemarrow(
     prior_information = {
         "start_milestone": "HSC_1",
         "start_cell": "cell_4823",
+        "cluster": "clusters",
+        "basis": "X_tsne",
     }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster="clusters",
-        basis="X_tsne",
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
         id="bonemarrow",
         prior_information=prior_information,
         subsample_kwargs=subsample_kwargs,
@@ -140,16 +208,46 @@ def read_erythroid_lineage(
     prior_information = {
         "start_cell": "cell_903",
         "end_cell": "cell_6099",
+        "cluster": "celltype",
+        "basis": "X_umap",
     }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster="celltype",
-        basis="X_umap",
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
         id="erythroid_lineage",
         prior_information=prior_information,
         subsample_kwargs=subsample_kwargs,
     )
+    return fadata
+
+
+def read_gastrulation(
+    filename=None,
+    **subsample_kwargs,
+):
+    """read case study dataset: gastrulation"""
+    if filename is None:
+        filename = f"{settings.data_dir}/Gastrulation/gastrulation.h5ad"
+
+    # TODO:
+    milestone_network = None
+    prior_information = {
+        "cluster": "celltype",
+        "basis": "X_umap",
+    }
+
+    fadata = _create_fadata_from_file(
+        filename=filename,
+        milestone_network=milestone_network,
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
+        id="gastrulation",
+        prior_information=prior_information,
+        subsample_kwargs=subsample_kwargs,
+    )
+
     return fadata
 
 
@@ -174,12 +272,16 @@ def read_pancreas(filename=None, **subsample_kwargs):
         ],
         columns=["from", "to"],
     )
-    prior_information = {"start_cell": "cell_1103"}
+    prior_information = {
+        "start_cell": "cell_1103",
+        "cluster": "clusters",
+        "basis": "X_umap",
+    }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster="clusters",
-        basis="X_umap",
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
         id="pancreas",
         prior_information=prior_information,
         subsample_kwargs=subsample_kwargs,
@@ -208,12 +310,16 @@ def read_pancreas_cellrank(filename=None, **subsample_kwargs):
         ],
         columns=["from", "to"],
     )
-    prior_information = {"start_cell": "cell_2366"}
+    prior_information = {
+        "start_cell": "cell_2366",
+        "cluster": "clusters",
+        "basis": "X_umap",
+    }
     fadata = _create_fadata_from_file(
         filename=filename,
         milestone_network=milestone_network,
-        cluster="clusters",
-        basis="X_umap",
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
         id="pancreas_cellrank",
         prior_information=prior_information,
         subsample_kwargs=subsample_kwargs,
