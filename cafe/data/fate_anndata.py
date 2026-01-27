@@ -78,6 +78,8 @@ class FateAnnData(ad.AnnData):
 
         self.check_result_dir()  # check result dir for method run result
 
+        self.embedding_cache = {}  # cache for basis/embedding data
+
     @property
     def milestone_wrapper(self):
         # return self._milestone_wrapper
@@ -1505,7 +1507,7 @@ class FateAnnData(ad.AnnData):
             logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"
-        if pseudotime_key in trajectory_dict.get("raw_wrapper_dict", {}):
+        if pseudotime_key in trajectory_dict:
             # return pseudotime from trajectory dict directly
             logger.debug(f"find key:'{pseudotime_key}' in trajectory dict, use it directly")
             return trajectory_dict[pseudotime_key]

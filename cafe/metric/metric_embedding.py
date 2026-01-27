@@ -3,7 +3,6 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.sparse.csgraph import minimum_spanning_tree
 from sklearn.cluster import KMeans
 from sklearn.metrics import f1_score, pairwise_distances, silhouette_score
 
@@ -16,39 +15,57 @@ from ..data import FateAnnData
 def get_embedding_graph(
     fadata: FateAnnData,
     basis: str,
+    graph_type: str = "geodesic",
     recompute_neighbors: bool = True,
     directed: bool = False,
-    n_neighbors: int = None,
+    n_neighbors: int = 5,
+    normalized: bool = True,
+    return_type: str = "graph",
 ):
     # get graph in embedding space
     if basis is None:
         basis = fadata.prior_information.get("basis")
 
-    embedding_graph_key = f"{basis}_graph"
+    embedding_graph_key = f"{basis}_{graph_type}_graph"
     if recompute_neighbors or (embedding_graph_key not in fadata.embedding_cache):
-        fadata_new = ad.AnnData(fadata.obsm[basis])
-        if n_neighbors is None:
-            logger.debug("n_neighbors is None, use default from fadata.uns")
-            n_neighbors = fadata.uns["neighbors"]["params"]["n_neighbors"][0]
-        sc.pp.neighbors(fadata_new, n_neighbors)
-        # build graph
-        if directed:
-            distances_matrix = fadata_new.obsp["distances"]
+        if graph_type == "euclidean":
+            logger.debug("build euclidean graph...")
+            emb = fadata.obsm[basis]
+            distances_matrix = pairwise_distances(emb, emb)
         else:
-            connectivities = fadata_new.obsp["connectivities"]
-            logger.debug(f"connectivities : {connectivities}")
-            rows, cols = connectivities.nonzero()
-            connectivities[rows, cols] = 1 / connectivities[rows, cols]
-            distances_matrix = connectivities
+            logger.debug("build geodesic graph...")
+            # compute neighbors on embedding
+            fadata_new = ad.AnnData(fadata.obsm[basis])
+            if n_neighbors is None:
+                n_neighbors = fadata.uns["neighbors"]["params"]["n_neighbors"][0]
+                logger.debug(f"n_neighbors is None, use default n_neighbors:{n_neighbors} from fadata.uns")
+
+            sc.pp.neighbors(fadata_new, n_neighbors=n_neighbors)
+            # build graph
+            if directed:
+                distances_matrix = fadata_new.obsp["distances"]
+            else:
+                connectivities = fadata_new.obsp["connectivities"]
+                logger.debug(f"connectivities : {connectivities}")
+                rows, cols = connectivities.nonzero()
+                connectivities[rows, cols] = 1 / connectivities[rows, cols]
+                distances_matrix = connectivities
+        if normalized:
+            # normalize distances to [0,1] to ignore different embedding scale
+            max_distance = distances_matrix.max()
+            min_distance = distances_matrix.min()
+            distances_matrix = (distances_matrix - min_distance) / (max_distance - min_distance)
         G = nx.Graph(distances_matrix, create_using=nx.DiGraph if directed else nx.Graph)
         # set graph into cache
-        fadata.embedding_cache[embedding_graph_key] = {
+        embedding_basis_cache = {
             "distances_matrix": distances_matrix,
-            "G": G,
+            "graph": G,
         }
+        fadata.embedding_cache[embedding_graph_key] = embedding_basis_cache
     else:
-        G = fadata.embedding_cache[embedding_graph_key]["G"]
-    return G
+        embedding_basis_cache = fadata.embedding_cache[embedding_graph_key]
+
+    return embedding_basis_cache[return_type]
 
 
 def calculate_euclidean_distance_pc(fadata: FateAnnData, basis: str = None, model_name: str = None):
@@ -62,9 +79,10 @@ def calculate_euclidean_distance_pc(fadata: FateAnnData, basis: str = None, mode
     # pseudotime calculation
     pseudotime = fadata.get_trajectory_pseudotime(model_name=model_name)
     # distance matrix calculation
-    emb = fadata.obsm[basis][:, :2]
-    distance_array = emb - emb[root_idx]
-    euclidean_distance_array = np.sqrt(np.sum(distance_array**2, axis=1))
+    # emb = fadata.obsm[basis][:, :2]
+    # distance_array = emb - emb[root_idx]
+    # euclidean_distance_array = np.sqrt(np.sum(distance_array**2, axis=1))
+    euclidean_distance_array = get_embedding_graph(fadata, basis, return_type="distances_matrix")[root_idx].A
     # correlation calculation
     result = np.corrcoef(euclidean_distance_array, pseudotime)[1, 0]
     return result
@@ -89,7 +107,9 @@ def calculate_geodesic_distance_pc(
     pseudotime = fadata.get_trajectory_pseudotime(model_name=model_name)
 
     # graph construction and get shortest path
-    G = get_embedding_graph(fadata, basis, recompute_neighbors, directed)  # the embedding graph is available for various trajectory method
+    G = get_embedding_graph(
+        fadata, basis, recompute_neighbors, directed, return_type="graph"
+    )  # the embedding graph is available for various trajectory method
     shortest_paths_length_dict = nx.single_source_dijkstra_path_length(G, source=root_idx)  # path legth from start cell, sorted by length
     # set unreachable cells to max distance
     max_distance = max(shortest_paths_length_dict.values())
@@ -237,8 +257,13 @@ def calculate_cluster_silhouette(
 def calculate_striped_score(
     fadata: FateAnnData,
     basis: str = None,
+    graph_type: str = "geodesic",
+    # graph_type: str = "euclidean",
+    use_weight: bool = False,
 ):
-    # calculate strip score based on embedding (Elongation Score)
+    # calculate strip score based on embedding
+    # TODO: strip score is only valid for embedding with main structure, like UMAP, tSNE, PCA. Random embedding also get high strip score, need fixed.
+
     if basis is None:
         basis = fadata.prior_information.get("basis")
     emb = fadata.obsm[basis]
@@ -267,25 +292,79 @@ def calculate_striped_score(
     # except Exception as e:
     #     logger.warning(f"Failed to calculate elongation score: {e}")
     #     score = np.nan
-    score = np.nan
-    dist_mat = pairwise_distances(emb, emb)
-    mst = minimum_spanning_tree(dist_mat)
-    mst_graph = nx.Graph(mst)
+    graph = get_embedding_graph(fadata, basis, graph_type=graph_type, return_type="graph")
+    mst_graph = nx.minimum_spanning_tree(graph)
 
     # calculate tree diameter
     if nx.is_connected(mst_graph):
         # get diameter from connected graph directly
-        diameter = nx.diameter(mst_graph)
+        diameter = nx.diameter(mst_graph, weight="weight" if use_weight else None)
     else:
         # get diameter from largest connected component
         largest_cc = max(nx.connected_components(mst_graph), key=len)
         subgraph = mst_graph.subgraph(largest_cc)
-        diameter = nx.diameter(subgraph)
+        diameter = nx.diameter(subgraph, weight="weight" if use_weight else None)
 
     n_nodes = emb.shape[0]
     score = diameter / (n_nodes - 1) if n_nodes > 1 else 0  # Normalized diameter [0, 1]
 
     return score
+
+
+def plot_mst_diameter(
+    fadata,
+    basis="X_umap",
+    graph_type: str = "geodesic",
+    # graph_type: str = "euclidean",
+    figsize=(8, 6),
+    cluster_key="clusters",
+    img_dir="figures",
+):
+    import matplotlib.pyplot as plt
+
+    ax = plt.subplots(figsize=figsize)[1]
+    # G = fadata.embedding_cache[f"{basis}_graph"]["G"]
+    G = get_embedding_graph(fadata, basis, graph_type, return_type="graph")
+    pos = fadata.obsm[basis][:, :2]
+    nx.draw_networkx_edges(G=G, pos=pos, alpha=0.5, edge_color="gray", width=0.5)
+    # MST
+    G_mst = nx.minimum_spanning_tree(G)
+    nx.draw_networkx_edges(G=G_mst, pos=pos, alpha=1, edge_color="black", width=1)
+    # diameter path
+
+    def get_diameter_path(tree):
+        """获取树的直径路径 (Longest Shortest Path)"""
+        # 处理非连通图的情况：取最大的连通分量
+        if not nx.is_connected(tree):
+            largest_cc = max(nx.connected_components(tree), key=len)
+            tree = tree.subgraph(largest_cc)
+
+        # 1. 第一次搜索：从任意点出发找最远点 u
+        start_node = next(iter(tree.nodes()))
+        lengths_from_start = nx.single_source_shortest_path_length(tree, start_node)
+        u = max(lengths_from_start, key=lengths_from_start.get)
+
+        # 2. 第二次搜索：从 u 出发找最远点 v
+        lengths_from_u = nx.single_source_shortest_path_length(tree, u)
+        v = max(lengths_from_u, key=lengths_from_u.get)
+
+        # 3. 获取 u 到 v 的路径
+        path = nx.shortest_path(tree, source=u, target=v)
+        return path
+
+    # --- 执行计算 ---
+    diameter_path = get_diameter_path(G_mst)
+    print(f"直径路径长度 (Edges): {len(diameter_path) - 1}")
+    print(f"路径节点数: {len(diameter_path)}")
+
+    # --- 可视化：在图上标出直径路径 (红色) ---
+    # 假设 pos 已经在之前的代码定义了，例如 pos = fadata.obsm[basis]
+    path_edges = list(zip(diameter_path, diameter_path[1:]))
+    # 在原有的绘图基础上叠加红色路径
+    nx.draw_networkx_edges(G=G_mst, pos=pos, edgelist=path_edges, edge_color="red", width=2)
+    sc.pl.embedding(fadata, color=cluster_key, basis=basis, frameon=False, show=False, legend_loc=None, title=basis, ax=ax, size=15)
+    plt.savefig(f"{img_dir}/mst_diameter_{basis}.pdf")
+    plt.show()
 
 
 def calculate_embedding_metric(
