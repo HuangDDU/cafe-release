@@ -151,6 +151,30 @@ class TestMilestoneWrapper:
         assert isinstance(milestone_color_dict, dict), "milestone_color_dict should be a dict"
         assert isinstance(cell_color_dict, dict), "cell_color_dict should be a dict"
 
+    def test_rename_milestone(self):
+        mw = self.milestone_wrapper
+        milestone_old2new = {
+            "W": "A",
+            "X": "B",
+            "Y": "C",
+            "Z": "D",
+            "A": "E",
+        }
+        mw.rename_milestone(milestone_old2new)
+        assert set(mw.id_list) == set(milestone_old2new.values())
+
+    def test_subset_by_cells(self):
+        mw = self.milestone_wrapper
+        cell_id_list = ["b", "c", "e"]
+        new_mw = mw.subset_by_cells(cell_id_list=cell_id_list)
+        assert set(new_mw.cell_id_list) == set(cell_id_list)
+
+    def test_subset_by_edges(self):
+        mw = self.milestone_wrapper
+        edge_list = [("X", "Z"), ("Z", "A")]
+        new_mw = mw.subset_by_edges(edge_list=edge_list)
+        assert set([tuple(i) for i in new_mw.milestone_network[["from", "to"]].values.tolist()]) == set(edge_list)
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

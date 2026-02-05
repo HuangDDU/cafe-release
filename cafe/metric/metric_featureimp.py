@@ -391,3 +391,51 @@ def calculate_featureimp_enrichment(
 
     # 都映射到[0,1]，越大越好
     return {"featureimp_ks": ks.pvalue, "featureimp_wilcox": 1.0 - wilc.pvalue}
+
+
+def plot_featureimp(featureimp_df, save=None):
+    import matplotlib.pyplot as plt
+
+    # 设定绘制范围（例如前 500 个基因，避免X轴过长）
+    plot_top_n = 2000
+    df_plot = featureimp_df.head(plot_top_n).reset_index(drop=True)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # 1. 绘制主要曲线（用排名作为 X 轴）
+    ax.scatter(df_plot.index, df_plot["importance"], s=5, color="black", alpha=0.8)
+
+    # 2. 设定需要高亮/标记的基因
+    # 自动选择前 5 个，或者您可以手动指定列表，如 gene_list = ["Ins1", "Gcg"]
+    # gene_list = df_plot["gene"].head(5).tolist()
+    gene_list = df_plot["gene"][[0, plot_top_n // 2, plot_top_n - 1]].tolist()
+    # gene_list = ["Pdx1"]
+
+    marker_indices = []
+    marker_labels = []
+
+    for gene in gene_list:
+        # 查找基因在排序后列表中的位置
+        match = df_plot[df_plot["gene"] == gene]
+        if not match.empty:
+            idx = match.index[0]
+            imp = match["importance"].values[0]
+
+            marker_indices.append(idx)
+            marker_labels.append(gene)
+
+            # 用红点高亮
+            ax.scatter([idx], [imp], s=25, color="red", zorder=10)
+
+    # 3. 自定义 X 轴刻度：只显示特定基因
+    ax.set_xticks(marker_indices)
+    ax.set_xticklabels(marker_labels, rotation=0, fontsize=10)
+
+    ax.set_xlabel("Genes (Ranked)")
+    ax.set_ylabel("Importance")
+    ax.set_title("Feature Importance Ranking")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    if save:
+        plt.savefig(save)
+    plt.show()

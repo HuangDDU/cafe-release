@@ -9,6 +9,7 @@ import pandas as pd
 import scanpy as sc
 
 from .._logging import logger
+from .._settings import settings
 from ..util import random_time_string
 from .fate_milestone_wrapper import MilestoneWrapper
 from .fate_waypoint_wrapper import WaypointWrapper
@@ -17,7 +18,7 @@ from .fate_waypoint_wrapper import WaypointWrapper
 
 
 class FateAnnData(ad.AnnData):
-    """AnnData object for CellFateExplorer, related data are stored in the object.uns["cafe"] attribute."""
+    """AnnData object for cafe(CelluAr Fate Explorer), related data are stored in the object.uns["cafe"] attribute."""
 
     def __init__(self, name: str = "FateAnnData", *args, **kwargs):
         """Initialize the FateAnnData class.
@@ -27,25 +28,55 @@ class FateAnnData(ad.AnnData):
         """
         super().__init__(*args, **kwargs)
 
-        id = self.uns.get("id")
-        if id is None:
-            id = random_time_string(name)
-            self.uns["id"] = id
-        self.id = id
-
-        # try to get the stored FateAnnData information
-        cafe_dict = self.uns.get("cafe", {})
-
         # prior information is frequently used with common value in various method function
         # such as cluster_key, basis, start_cell
-        self.prior_information = cafe_dict.get("prior_information", {})
         self.recognize_prior_information()  # recognize prior information dict automatically
-        cafe_dict["prior_information"] = self.prior_information
 
-        # milestone_wrapper and waypoint_wrapper for latest model
-        self.model_name = cafe_dict.get("model_name", "default")
+        # check result dir for method run result
+        self.check_result_dir()
 
-        # milestone_wrapper and waypoint_wrapper for all model
+        self.embedding_cache = {}  # cache for basis/embedding data
+
+    @property
+    def id(self):
+        if "id" not in self.uns:
+            self.uns["id"] = random_time_string("FateAnnData")
+        return self.uns["id"]
+
+    @id.setter
+    def id(self, value):
+        self.uns["id"] = value
+
+    @property
+    def cafe_dict(self):
+        if "cafe" not in self.uns:
+            self.uns["cafe"] = {}
+        return self.uns["cafe"]
+
+    @cafe_dict.setter
+    def cafe_dict(self, value):
+        self.uns["cafe"] = value
+
+    @property
+    def prior_information(self):
+        if "prior_information" not in self.cafe_dict:
+            self.cafe_dict["prior_information"] = {}
+        return self.cafe_dict["prior_information"]
+
+    @prior_information.setter
+    def prior_information(self, value):
+        self.cafe_dict["prior_information"] = value
+
+    @property
+    def model_name(self):
+        return self.cafe_dict.get("model_name", "default")
+
+    @model_name.setter
+    def model_name(self, value):
+        self.cafe_dict["model_name"] = value
+
+    @property
+    def trajectory_history_dict(self):
         # trajectory_history_dict
         # ├── ref                                                       # ref trajectory
         # │   └── ...
@@ -60,82 +91,83 @@ class FateAnnData(ad.AnnData):
         #     │       ├── wp_segments → DataFrame shape=(210, 9)
         #     │       └── milestone_positions → DataFrame shape=(14, 9)
         #     └── resource_usage → dict                                 # for benchmark
+        if "trajectory_history_dict" not in self.cafe_dict:
+            self.cafe_dict["trajectory_history_dict"] = {}
+        return self.cafe_dict["trajectory_history_dict"]
 
-        if "trajectory_history_dict" not in cafe_dict:
-            self.trajectory_history_dict = {}
-            cafe_dict["trajectory_history_dict"] = self.trajectory_history_dict
-        else:
-            self.trajectory_history_dict = cafe_dict["trajectory_history_dict"]
-
-        # NOTE: Other attributes will be added later.
-        self.wrapper_type = None
-        self.raw_wrapper_dict = {}
-        self.is_wrapped_with_trajectory = False
-        self.is_wrapped_with_waypoints = False
-
-        self.cafe_dict = cafe_dict
-        self.uns["cafe"] = cafe_dict  # TODO: Continuous synchronization with self.uns["cafe"] is required in the future
-
-        self.check_result_dir()  # check result dir for method run result
-
-        self.embedding_cache = {}  # cache for basis/embedding data
+    @trajectory_history_dict.setter
+    def trajectory_history_dict(self, value):
+        self.cafe_dict["trajectory_history_dict"] = value
 
     @property
     def milestone_wrapper(self):
         # return self._milestone_wrapper
-        model_dict = self.cafe_dict["trajectory_history_dict"].get(self.model_name, None)
-        if model_dict is not None:
-            return model_dict.get("milestone_wrapper")
-        else:
-            return None
+        # model_dict = self.trajectory_history_dict.get(self.model_name, None)
+        # if model_dict is not None:
+        #     return model_dict.get("milestone_wrapper")
+        # else:
+        #     return None
+        return self.trajectory_history_dict.get(self.model_name, {}).get("milestone_wrapper", None)
 
     @milestone_wrapper.setter
     def milestone_wrapper(self, value):
         # self._milestone_wrapper = value
-        model_dict = self.cafe_dict["trajectory_history_dict"].get(self.model_name, None)
+        model_dict = self.trajectory_history_dict.get(self.model_name, None)
         if model_dict is not None:
             model_dict["milestone_wrapper"] = value
         else:
-            self.cafe_dict["trajectory_history_dict"][self.model_name] = {"milestone_wrapper": value}
+            self.trajectory_history_dict[self.model_name] = {"milestone_wrapper": value}
 
     @property
     def waypoint_wrapper(self):
         # return self._waypoint_wrapper
-        model_dict = self.cafe_dict["trajectory_history_dict"].get(self.model_name, None)
-        if model_dict is not None:
-            return model_dict.get("waypoint_wrapper")
-        else:
-            return None
+        # model_dict = self.trajectory_history_dict.get(self.model_name, None)
+        # if model_dict is not None:
+        #     return model_dict.get("waypoint_wrapper")
+        # else:
+        #     return None
+        return self.trajectory_history_dict.get(self.model_name, {}).get("waypoint_wrapper", None)
 
     @waypoint_wrapper.setter
     def waypoint_wrapper(self, value):
         # self._waypoint_wrapper = value
-        model_dict = self.cafe_dict["trajectory_history_dict"].get(self.model_name, None)
+        model_dict = self.trajectory_history_dict.get(self.model_name, None)
         if model_dict is not None:
             model_dict["waypoint_wrapper"] = value
         else:
-            self.cafe_dict["trajectory_history_dict"][self.model_name] = {"waypoint_wrapper": value}
+            self.trajectory_history_dict[self.model_name] = {"waypoint_wrapper": value}
 
-    def parse_model_name(self, model_name: str = None):
-        model_name_list = self.get_all_model_name(parse=False)
-        if model_name is None:
-            model_name = self.model_name
-        elif model_name in model_name_list:
-            pass
+    @property
+    def raw_wrapper_dict(self):
+        return self.trajectory_history_dict.get(self.model_name, {}).get("raw_wrapper_dict", {})
+
+    @raw_wrapper_dict.setter
+    def raw_wrapper_dict(self, value):
+        model_dict = self.trajectory_history_dict.get(self.model_name, None)
+        if model_dict is not None:
+            model_dict["raw_wrapper_dict"] = value
         else:
-            # try match the parsed and raw trajectory ID
-            parsed_model_name_list = self.get_all_model_name(parse=True)
-            parsed2raw = dict(zip(parsed_model_name_list, model_name_list))
-            if model_name in parsed2raw.keys():
-                raw_model_name = parsed2raw[model_name]
-                logger.debug(f"match pased:'{model_name}' to raw:'{raw_model_name}'")
-                model_name = raw_model_name
+            self.trajectory_history_dict[self.model_name] = {"raw_wrapper_dict": value}
 
-        if model_name not in self.trajectory_history_dict:
-            logger.debug(f"model '{model_name}' not found in trajectory_history_dict")
-            return None
-        return model_name
+    @property
+    def wrapper_type(self):
+        return self.trajectory_history_dict.get(self.model_name, {}).get("wrapper_type", {})
 
+    @wrapper_type.setter
+    def wrapper_type(self, value):
+        self.cafe_dict["wrapper_type"] = value
+
+    # the readonly property
+    @property
+    def is_wrapped_with_trajectory(self):
+        return "milestone_wrapper" in self.trajectory_history_dict.get(self.model_name, {})
+
+    @property
+    def is_wrapped_with_waypoints(self):
+        return "waypoint_wrapper" in self.trajectory_history_dict.get(self.model_name, {})
+
+    # these above functions are properties for single trajectory management
+    # these following function: get_xxx and set_xxx methods can be used for multi-trajectory management
     def get_trajectory_dict(self, model_name: str = None):
         model_name = self.parse_model_name(model_name)
         if model_name is None:
@@ -176,6 +208,26 @@ class FateAnnData(ad.AnnData):
             return None
         else:
             return trajectory_dict["raw_wrapper_dict"]
+
+    def parse_model_name(self, model_name: str = None):
+        model_name_list = self.get_all_model_name(parse=False)
+        if model_name is None:
+            model_name = self.model_name
+        elif model_name in model_name_list:
+            pass
+        else:
+            # try match the parsed and raw trajectory ID
+            parsed_model_name_list = self.get_all_model_name(parse=True)
+            parsed2raw = dict(zip(parsed_model_name_list, model_name_list))
+            if model_name in parsed2raw.keys():
+                raw_model_name = parsed2raw[model_name]
+                logger.debug(f"match pased:'{model_name}' to raw:'{raw_model_name}'")
+                model_name = raw_model_name
+
+        if model_name not in self.trajectory_history_dict:
+            logger.debug(f"model '{model_name}' not found in trajectory_history_dict")
+            return None
+        return model_name
 
     @classmethod
     def from_anndata(cls, adata: ad.AnnData) -> "FateAnnData":
@@ -254,7 +306,7 @@ class FateAnnData(ad.AnnData):
 
     def add_model_name(self, model_name: str):
         self.model_name = model_name
-        self.cafe_dict["model_name"] = model_name
+        # self.cafe_dict["model_name"] = model_name
         self.trajectory_history_dict[self.model_name] = {}
 
     def get_parsed_model_name(self, model_name: str = None):
@@ -335,7 +387,6 @@ class FateAnnData(ad.AnnData):
             milestone_wrapper._generate_color(ref_color_dict=ref_color_dict)
 
         self.milestone_wrapper = milestone_wrapper
-        self.is_wrapped_with_trajectory = True
 
         # save multiple trajectory in cafe_dict
         if self.model_name not in self.trajectory_history_dict:
@@ -348,7 +399,8 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_mannually(
         self,
         milestone_network: pd.DataFrame,
-        cluster_key: str = "clusters",
+        wrapper_type: str = "projection",
+        cluster: str = None,
         basis: str = "X_umap",
         distance_metric: str = "euclidean",
         model_name: str = "ref",
@@ -357,36 +409,51 @@ class FateAnnData(ad.AnnData):
 
         Args:
             milestone_network (pd.DataFrame): milestone network
-            cluster_key (str, optional): _description_. Defaults to "clusters".
-            basis (str, optional):cell embedding key. Defaults to "X_umap".
-            distance_metric (str, optional): distance metric. Defaults to "euclidean".
-            model_name (str, optional): _description_. Defaults to "ref".
+            wrapper_type (str, optional): trajectory wrapper type, can be "projection" or "cluster".
+            cluster (str, optional): cluster key for cluster.
+            basis (str, optional): cell embedding key.
+            distance_metric (str, optional): distance metric.
+            model_name (str, optional): trajectory model name.
         """
-        # TODO: add divergence
-
-        from sklearn.metrics.pairwise import pairwise_distances
-
+        if cluster is None:
+            cluster = self.prior_information.get("cluster", "clusters")
         self.add_model_name(model_name)
 
-        obs = self.obs.reset_index()  # change index
-        milestone_id_list = list(obs[cluster_key].cat.categories)
-        X_emb = self.obsm[basis]
-        milestone_emb = np.array(list(obs.groupby(cluster_key).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
-        milestone_emb = pd.DataFrame(milestone_emb, index=milestone_id_list)
-        # self.obs = self.obs.set_index("index")
+        if wrapper_type == "projection":
+            from sklearn.metrics.pairwise import pairwise_distances
 
-        # milestone network
-        dis = pd.DataFrame(
-            pairwise_distances(milestone_emb, metric=distance_metric),
-            index=milestone_id_list,
-            columns=milestone_id_list,
-        )
-        milestone_network["length"] = milestone_network.apply(lambda row: dis.loc[row["from"], row["to"]], axis=1)
-        milestone_network["directed"] = True
+            obs = self.obs.reset_index()  # change index
+            milestone_id_list = list(obs[cluster].cat.categories)
+            X_emb = self.obsm[basis]
+            milestone_emb = np.array(list(obs.groupby(cluster).apply(lambda x: X_emb[list(x.index)].mean(axis=0))))
+            milestone_emb = pd.DataFrame(milestone_emb, index=milestone_id_list)
+            # self.obs = self.obs.set_index("index")
 
-        # progressions
-        self.wrapper_type = "directed"
-        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster_key)
+            # milestone network
+            dis = pd.DataFrame(
+                pairwise_distances(milestone_emb, metric=distance_metric),
+                index=milestone_id_list,
+                columns=milestone_id_list,
+            )
+            milestone_network["length"] = milestone_network.apply(lambda row: dis.loc[row["from"], row["to"]], axis=1)
+            milestone_network["directed"] = True
+
+            # progressions
+            self.wrapper_type = "projection"
+            self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
+        elif wrapper_type == "cluster":
+            if "length" not in milestone_network.columns:
+                milestone_network["length"] = 1
+            if "directed" not in milestone_network.columns:
+                milestone_network["directed"] = True
+            self.wrapper_type = "cluster"
+            self.add_trajectory_cluster(
+                milestone_network=milestone_network,
+                cluster=cluster,
+            )
+
+        else:
+            raise Exception(f"parameter wrapper_type '{wrapper_type}' not supported in add_trajectory_mannually")
 
     def add_trajectory_by_type(self, trajectory_dict: dict, **kwargs) -> None:
         """automatically add trajectory by wrapper type in trajectory_dict
@@ -472,12 +539,103 @@ class FateAnnData(ad.AnnData):
         # waypoint_wrapper.waypoint_geodesic_distances = waypoint_wrapper.waypoint_geodesic_distances.loc[:,self.obs.index] #
         # self.waypoint_wrapper = waypoint_wrapper
         # self.cafe_dict["waypoint_wrapper"] = waypoint_wrapper
-        self.is_wrapped_with_waypoints = True
+        # self.is_wrapped_with_waypoints = True
 
         # if model_name not in self.trajectory_history_dict:
         #     self.trajectory_history_dict[model_name] = {}
         # self.trajectory_history_dict[model_name]["waypoint_wrapper"] = waypoint_wrapper
         self.set_waypoint_wrapper(waypoint_wrapper, model_name)
+
+    def subset_trajectory(self, edge_list: list, model_name: str = None) -> "FateAnnData":
+        """
+        Subset the FateAnnData object based on trajectory edges.
+
+        Args:
+            edge_list (list): list of edge tuples [('from', 'to'), ...]
+            model_name (str): model name to subset. Defaults to current model.
+        """
+        if model_name is None:
+            model_name = self.model_name
+
+        mw = self.get_milestone_wrapper(model_name)
+        new_mw = mw.subset_by_edges(edge_list)
+
+        # subset adata
+        new_fadata = self[new_mw.cell_id_list].copy()
+
+        # update the wrapper in the new object
+        new_fadata.set_milestone_wrapper(new_mw, model_name=model_name)
+
+        # Remove waypoint wrapper for this model as it might be invalid now
+        # Or ideally, re-initialize it?
+        # For safety, let's remove it from the history of new_fadata
+        traj_dict = new_fadata.get_trajectory_dict(model_name)
+        if "waypoint_wrapper" in traj_dict:
+            del traj_dict["waypoint_wrapper"]
+            new_fadata.is_wrapped_with_waypoints = False
+
+        # todo: keep color with
+
+        return new_fadata
+
+    def splice_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
+        """
+        Splice a fine-grained trajectory (from fadata_sub) back into the coarse trajectory (self).
+
+        Args:
+            fadata_sub (FateAnnData): The subset FateAnnData object containing the fine-grained trajectory.
+            replace_edges (list): List of edges [('from', 'to')] in the current trajectory to be removed and replaced.
+            model_name (str): The model name to update. Defaults to current model.
+        """
+        if model_name is None:
+            model_name = self.model_name
+
+        global_mw = self.get_milestone_wrapper(model_name)
+        # Assuming fadata_sub uses its own default model
+        local_mw = fadata_sub.get_milestone_wrapper()
+
+        if local_mw is None:
+            raise ValueError("fadata_sub does not have a valid MilestoneWrapper.")
+
+        # 1. Merge Milestone Network
+        # Remove replaced edges from global
+        new_mn = global_mw.milestone_network.copy()
+        if replace_edges:
+            for u, v in replace_edges:
+                # remove rows where from=u and to=v
+                # Use boolean indexing for deletion
+                mask = (new_mn["from"] == u) & (new_mn["to"] == v)
+                new_mn = new_mn[~mask]
+
+        # Add local edges
+        local_mn = local_mw.milestone_network.copy()
+        new_mn = pd.concat([new_mn, local_mn], ignore_index=True).drop_duplicates()
+
+        # 2. Merge Progressions
+        sub_cell_ids = fadata_sub.obs_names
+        global_prog = global_mw.progressions
+
+        # Keep global progressions for cells NOT in sub
+        keep_mask = ~global_prog["cell_id"].isin(sub_cell_ids)
+        new_prog = global_prog[keep_mask].copy()
+
+        # Add local progressions
+        local_prog = local_mw.progressions.copy()
+        new_prog = pd.concat([new_prog, local_prog], ignore_index=True)
+
+        # 3. Create new MilestoneWrapper and update
+        # We reuse the add_trajectory machinery to handle wrapper creation and registration
+        self.add_trajectory(
+            milestone_network=new_mn,
+            progressions=new_prog,
+            # Let divergence_regions be re-calculated or lost if not maintained manually.
+            # Ideally we should merge them if present.
+            divergence_regions=None,
+            generate_color=False,  # Don't overwrite colors if not necessary, maybe?
+        )
+
+        logger.info(f"Successfully spliced trajectory from subset with {len(fadata_sub)} cells.")
+        return self
 
     # fix
     def __getitem__(self, index):
@@ -487,24 +645,78 @@ class FateAnnData(ad.AnnData):
         # 2. directly set it to FateAnndata
         new_adata.__class__ = FateAnnData
 
-        # 3. copy simple attribute from 'self' to 'new_adata'
+        # Decouple uns so that cafe_dict property writes don't affect parent
+        # We want to preserve other uns data, but isolate cafe data.
+        new_adata.uns = self.uns.copy()
+        if "cafe" in new_adata.uns:
+            new_adata.uns["cafe"] = new_adata.uns["cafe"].copy()
+        else:
+            new_adata.uns["cafe"] = {}
+
+        # 3. copy simple attribute/property from 'self' to 'new_adata'
         new_adata.id = self.id
-        new_adata.prior_information = self.prior_information
+        new_adata.prior_information = self.prior_information  # TODO: check
         new_adata.model_name = self.model_name
-        new_adata.wrapper_type = self.wrapper_type
-        new_adata.raw_wrapper_dict = self.raw_wrapper_dict
+
+        # 4. link complex trajectory attribute from 'self' to 'new_adata'
+        # New trajectory history dict construction
+        new_trajectory_history_dict = {}
+        for model_name, trajectory_history in self.trajectory_history_dict.items():
+            # Create copy to avoid modifying parent dict
+            th_copy = trajectory_history.copy()
+
+            if "milestone_wrapper" in th_copy:
+                mw = th_copy["milestone_wrapper"]
+                new_mw = mw.subset_by_cells(new_adata.obs_names.tolist())
+                th_copy["milestone_wrapper"] = new_mw
+
+            if "waypoint_wrapper" in th_copy:
+                del th_copy["waypoint_wrapper"]  # directly remove waypoint wrapper for safety
+
+            new_trajectory_history_dict[model_name] = th_copy
+
+        new_adata.trajectory_history_dict = new_trajectory_history_dict
+        new_adata.embedding_cache = {}
+
+        return new_adata
+
+    def copy(self, filename: str = None) -> "FateAnnData":
+        """
+        Full copy, optionally of some elements only.
+        """
+        # 1. Create a standard AnnData copy (this deep copies .uns)
+        new_adata = super().copy(filename)
+
+        # 2. Cast to FateAnnData
+        if not isinstance(new_adata, FateAnnData):
+            new_adata.__class__ = FateAnnData
+
+        # related properties are stored in the self.uns["cafe"] attribute. So no need to copy again.
+        return new_adata
+        # # 3. Initialize FateAnnData specific attributes
+        # new_adata.id = self.id
+
+        # # NOTE: cafe_dict and its derived properties (prior_information, etc.)
+        # # are automatically available via properties reading from new_adata.uns['cafe']
+
+        # # Copy other auxiliary attributes that might not be in uns
+        # # raw_wrapper_dict can be mutable, so we copy it
+        # new_adata.raw_wrapper_dict = self.raw_wrapper_dict.copy() if self.raw_wrapper_dict else {}
+        # new_adata.wrapper_type = self.wrapper_type
         # new_adata.is_wrapped_with_trajectory = self.is_wrapped_with_trajectory
         # new_adata.is_wrapped_with_waypoints = self.is_wrapped_with_waypoints
 
-        # 4. copy complex trajectory attribute from 'self' to 'new_adata'
-        # TODO: subset trajectory_dict
-        #  deep copy milestone_wrapper and waypoint_wrapper if exist
-        #  filter cells in milestone_wrapper and waypoint_wrapper if exist
-        new_adata.uns["cafe"] = self.uns["cafe"]
-        new_adata.cafe_dict = self.cafe_dict
-        new_adata.trajectory_history_dict = self.trajectory_history_dict
+        # # embedding_cache is transient, copy it
+        # new_adata.embedding_cache = self.embedding_cache.copy()
 
-        return new_adata
+        # return new_adata
+        # # #  deep copy milestone_wrapper and waypoint_wrapper if exist
+        # # #  filter cells in milestone_wrapper and waypoint_wrapper if exist
+        # # new_adata.uns["cafe"] = self.uns["cafe"]
+        # # new_adata.cafe_dict = self.cafe_dict
+        # # new_adata.trajectory_history_dict = self.trajectory_history_dict
+
+        # # return new_adata
 
     def add_trajectory_branch(self, branch_network: pd.DataFrame, branch_progressions: pd.DataFrame, branches: pd.DataFrame) -> None:
         """Add branch trajectory,such as PAGA
@@ -748,11 +960,14 @@ class FateAnnData(ad.AnnData):
             milestone_network (pd.DataFrame): milestone network.
             cluster (str | list): cluster key or list.
         """
-        if add_direction:
-            # TODO: fix for undirected graph
-            logger.debug("try to add direction for undirected graph use prior information: 'start_milestone' or 'start_cell'")
-            pass
-        cluster_list = cluster
+        # if add_direction:
+        #     # TODO: fix for undirected graph
+        #     logger.debug("try to add direction for undirected graph use prior information: 'start_milestone' or 'start_cell'")
+
+        if isinstance(cluster, str):
+            cluster_list = self.obs[cluster]
+        else:
+            cluster_list = pd.Series(cluster, index=self.obs.index)
         mn_ft = milestone_network[["from", "to"]]
         both_direction = pd.concat([mn_ft.assign(label=mn_ft["from"], percentage=0), mn_ft.assign(label=mn_ft["to"], percentage=1)])
 
@@ -1628,7 +1843,7 @@ class FateAnnData(ad.AnnData):
             trajectory_dict = self.get_trajectory_dict(model_name).copy()
             # transfer milestone object to dict
             milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
-            if milestone_wrapper is not None:
+            if milestone_wrapper is not None and isinstance(milestone_wrapper, MilestoneWrapper):
                 trajectory_dict["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
             # transfer waypoint object to dict
             waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
@@ -1663,7 +1878,7 @@ class FateAnnData(ad.AnnData):
         # h5ad: original method backend result, .h5ad.
         # image: plot function result, .png(easy), .pdf(for Adobe Illustrator)
         if dirname is None:
-            dirname = f".cafe/{self.id}"
+            dirname = os.path.join(settings.result_dir, ".cafe", self.id)
 
         subdirs = [
             "log",  # (.log)    all workflow log.

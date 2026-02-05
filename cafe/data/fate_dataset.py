@@ -1,3 +1,4 @@
+# TODO: config file for dataset in path cafe/data/dataset/...yaml
 import pandas as pd
 import scanpy as sc
 from scipy import sparse as sp
@@ -51,7 +52,7 @@ def _create_fadata_from_file(
         logger.debug("add ref trajectory mannually...")
         fadata.add_trajectory_mannually(
             milestone_network=milestone_network,
-            cluster_key=cluster,
+            cluster=cluster,
             basis=basis,
         )
     return fadata
@@ -223,16 +224,75 @@ def read_erythroid_lineage(
     return fadata
 
 
+# TODO: gastrulation_5000
+
+
+def read_gastrulation_5000(
+    filename=None,
+    **subsample_kwargs,
+):
+    """read case study dataset: gastrulation_5000"""
+    if filename is None:
+        filename = f"{settings.data_dir}/Gastrulation/gastrulation_5000.h5ad"
+
+    milestone_network = pd.DataFrame(
+        data=[
+            ["Epiblast", "Anterior Primitive Streak"],
+            ["Anterior Primitive Streak", "Primitive Streak"],
+            ["Blood progenitors 1", "Blood progenitors 2"],
+            ["Blood progenitors 2", "Erythroid1"],
+            ["Erythroid1", "Erythroid2"],
+            ["Erythroid2", "Erythroid3"],
+        ],
+        columns=["from", "to"],
+    )
+    prior_information = {
+        "cluster": "celltype",
+        "basis": "X_umap",
+    }
+    fadata = _create_fadata_from_file(
+        filename=filename,
+        milestone_network=milestone_network,
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
+        id="gastrulation_5000",
+        prior_information=prior_information,
+        subsample_kwargs=subsample_kwargs,
+    )
+
+    return fadata
+
+
 def read_gastrulation(
     filename=None,
     **subsample_kwargs,
 ):
     """read case study dataset: gastrulation"""
+    # 文献来源: https://www.nature.com/articles/s41586-019-1825-8
+    # 轨迹参考：https://github.com/MarioniLab/EmbryoTimecourse2018/blob/master/analysis_scripts/atlas/8_graph_abstraction/graph_abstraction.ipynb
+    # 其他资料：
+    #   维基百科：https://zh.wikipedia.org/wiki/原肠胚形成
+    #   YouTube视频：https://www.youtube.com/watch?v=w9tJ7UiLrQs
+    # 外胚层（Ectoderm）：外层, 发育为表皮、神经嵴，以及之后会发育为神经系统的组织
+    # 中胚层（Mesoderm）：中层，发育为真皮、脊髓、血管与血液、骨、肌肉，以及结缔组织
+    # 内胚层（Endoderm）：内层，发育为消化系统和呼吸系统的上皮，比如肝和胰腺
+    # 这里就能理解为何stavia要重新注释细胞了
+
     if filename is None:
         filename = f"{settings.data_dir}/Gastrulation/gastrulation.h5ad"
 
     # TODO:
-    milestone_network = None
+    milestone_network = pd.DataFrame(
+        data=[
+            ["Epiblast", "Anterior Primitive Streak"],
+            ["Anterior Primitive Streak", "Primitive Streak"],
+            ["Blood progenitors 1", "Blood progenitors 2"],
+            ["Blood progenitors 2", "Erythroid1"],
+            ["Erythroid1", "Erythroid2"],
+            ["Erythroid2", "Erythroid3"],
+        ],
+        columns=["from", "to"],
+    )
     prior_information = {
         "cluster": "celltype",
         "basis": "X_umap",

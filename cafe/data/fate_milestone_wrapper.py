@@ -34,6 +34,7 @@ class MilestoneWrapper(FateWrapper):
         progressions: pd.DataFrame = None,
         wrapper_type: str = None,
         name="MilestoneWrapper",
+        milestone_color_dict: dict = None,
     ):
         """Initialize the MilestoneWrapper class.
 
@@ -93,7 +94,7 @@ class MilestoneWrapper(FateWrapper):
         self.directed = milestone_network["directed"].any()
 
         # lazy load for color
-        self._milestone_color_dict = None
+        self._milestone_color_dict = milestone_color_dict
         self._cell_color_dict = None
 
         self.wrapper_type = wrapper_type
@@ -323,6 +324,116 @@ class MilestoneWrapper(FateWrapper):
 
         logger.info(f"successfully renamed milestones: {old2new}")
 
+    def subset_by_cells(self, cell_list: list, filter_milestone: bool = False):
+        """
+        Subset the milestone wrapper by keeping only specified cells.
+
+        Args:
+            cell_list (list): A list of cell IDs to keep.
+
+        Returns:
+            MilestoneWrapper: A new wrapper object containing the subset.
+        """
+        # 1. filter milestone_percentages
+        sub_percentages = self.milestone_percentages[self.milestone_percentages["cell_id"].isin(cell_list)].copy()
+        valid_cells = sub_percentages["cell_id"].unique()
+
+        # 2. filter progressions
+        sub_progressions = self.progressions[self.progressions["cell_id"].isin(valid_cells)].copy()
+
+        # 3. filter milestone_network
+        if filter_milestone:
+            valid_milestones = set(sub_percentages["milestone_id"].unique())
+            sub_network = self.milestone_network[
+                self.milestone_network["from"].isin(valid_milestones) & self.milestone_network["to"].isin(valid_milestones)
+            ].copy()
+        else:
+            valid_milestones = self.id_list
+            sub_network = self.milestone_network
+
+        # 4. filter divergence_regions
+        sub_div = pd.DataFrame(columns=self.divergence_regions.columns)
+        if hasattr(self, "divergence_regions") and self.divergence_regions is not None and not self.divergence_regions.empty:
+            sub_div = self.divergence_regions[self.divergence_regions["milestone_id"].isin(valid_milestones)].copy()
+
+        # 5. filter milestone color dict
+        milestone_color_dict = {milestone: self.milestone_color_dict[milestone] for milestone in valid_milestones}
+
+        # 6. create new wrapper
+        new_wrapper = MilestoneWrapper(
+            milestone_network=sub_network,
+            milestone_id_list=list(valid_milestones),
+            cell_id_list=list(valid_cells),
+            divergence_regions=sub_div,
+            milestone_percentages=sub_percentages,
+            progressions=sub_progressions,
+            wrapper_type=self.wrapper_type,
+            name=f"{self.id}_sub",
+            milestone_color_dict=milestone_color_dict,
+        )
+        return new_wrapper
+
+    def subset_by_edges(self, edge_list: list):
+        """
+        Subset the milestone wrapper by keeping only specified edges.
+
+        Args:
+            edge_list (list): A list of tuples, e.g. [('A', 'B'), ('B', 'C')].
+
+        Returns:
+            MilestoneWrapper: A new wrapper object containing the subset.
+        """
+        # 1. filter milestone_network
+        # ensure edge_list is a set of tuples for fast lookup
+        edge_set = set(tuple(edge) for edge in edge_list)
+        # check edges
+        self.milestone_network[["from", "to"]]
+        # optional_edge_set = set(self.milestone_network.apply(lambda row: (row["from"], row["to"]), axis=1).tolist())
+        optional_edge_set = set([tuple(i) for i in self.milestone_network[["from", "to"]].values.tolist()])
+        if len(edge_set & optional_edge_set) == 0:
+            # empty intersection
+            logger.error("edge set are all invalid, optional valid edge(s): {optional_edge_set}")
+        else:
+            invalid_edge_set = edge_set - optional_edge_set  # edges are in edges_set but not in optional_edge_set.
+            if len(invalid_edge_set) > 0:
+                logger.warning(f"edge(s): {invalid_edge_set} is invalid, optional valid edge(s): {optional_edge_set}")
+                edge_set = edge_set - invalid_edge_set
+        # filter network
+        mask_network = self.milestone_network.apply(lambda row: (row["from"], row["to"]) in edge_set, axis=1)
+        sub_network = self.milestone_network[mask_network].copy()
+
+        # 2. filter progressions
+        mask_prog = self.progressions.apply(lambda row: (row["from"], row["to"]) in edge_set, axis=1)
+        sub_progressions = self.progressions[mask_prog].copy()
+
+        valid_cells = sub_progressions["cell_id"].unique()
+
+        # 3. filter samples in milestone_percentages
+        sub_percentages = self.milestone_percentages[self.milestone_percentages["cell_id"].isin(valid_cells)].copy()
+
+        # 4. filter divergence_regions
+        valid_milestones = set(sub_network["from"]).union(set(sub_network["to"]))
+        sub_div = pd.DataFrame(columns=self.divergence_regions.columns)
+        if hasattr(self, "divergence_regions") and self.divergence_regions is not None and not self.divergence_regions.empty:
+            sub_div = self.divergence_regions[self.divergence_regions["milestone_id"].isin(valid_milestones)].copy()
+
+        # 5. filter milestone color dict
+        milestone_color_dict = {milestone: self.milestone_color_dict[milestone] for milestone in valid_milestones}
+
+        # 5. create new wrapper
+        new_wrapper = MilestoneWrapper(
+            milestone_network=sub_network,
+            milestone_id_list=list(valid_milestones),
+            cell_id_list=list(valid_cells),
+            divergence_regions=sub_div,
+            milestone_percentages=sub_percentages,
+            progressions=sub_progressions,
+            wrapper_type=self.wrapper_type,
+            name=f"{self.id}_sub",
+            milestone_color_dict=milestone_color_dict,
+        )
+        return new_wrapper
+
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges
     #     ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_trajectory_edges
@@ -349,13 +460,13 @@ class MilestoneWrapper(FateWrapper):
     #     group_df = self.milestone_percentages.groupby("cell_id").apply(get_nearest_milestone)
     #     return group_df
 
-    def gather_cells_at_milestones(self) -> None:
-        """Move cells to their nearest milestone
+    # def gather_cells_at_milestones(self) -> None:
+    #     """Move cells to their nearest milestone
 
-        ref: pydynverse/wrap/wrap_gather_cells_at_milestones.gather_cells_at_milestones
-        """
-        # gather all cells to their nearest milestone
-        pass
+    #     ref: pydynverse/wrap/wrap_gather_cells_at_milestones.gather_cells_at_milestones
+    #     """
+    #     # gather all cells to their nearest milestone
+    #     pass
 
 
 # TODO: read and write h5ad automatically. However, it will be error if the h5ad file is loaded in a new environment without cef moudle loaded.

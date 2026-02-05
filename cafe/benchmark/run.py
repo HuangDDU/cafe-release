@@ -26,7 +26,7 @@ def run(
     # load method parameter dict from yaml if not provided
     if method_parameter_dict is None:
         if method_yaml_file is None:
-            method_yaml_file = f".cafe/{fadata.id}/benchmark/methods.yaml"
+            method_yaml_file = os.path.join(fadata.benchmark_dir, "methods.yaml")
             logger.info(f"no method_parameter_dict or method_yaml_file provided, use default method yaml file({method_yaml_file})")
         logger.info(f"load method_parameter_dict from yaml file '{method_yaml_file}'")
         with open(method_yaml_file, "r") as f:
@@ -35,7 +35,7 @@ def run(
     # iterate over each method and its parameters
     for method_name, parameters in method_parameter_dict.items():
         # check if result already exists
-        result_path = f".cafe/{fadata.id}/trajectory_history/{method_name}.pkl"
+        result_path = os.path.join(fadata.trajectory_history_dir, f"{method_name}.pkl")
         if os.path.exists(result_path):
             if load_cached:
                 logger.info(f"result for {method_name} already exists, load cached result")
