@@ -21,6 +21,7 @@ from .fate_wrapper import FateWrapper
 # from anndata._types import GroupStorageType
 
 
+# TODO: add docs
 class MilestoneWrapper(FateWrapper):
     """Wrapper for trajectory milestones"""
 

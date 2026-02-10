@@ -6,6 +6,7 @@ from .. import logger
 from ..data import FateAnnData
 
 
+# TODO: add docs
 def plot_pie(
     fadata: FateAnnData,
     model_name: str = None,

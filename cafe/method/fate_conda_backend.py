@@ -16,6 +16,7 @@ from ..util import extract_external_data_dict_directly, parse_bash_resource_usag
 from .fate_backend import Backend
 
 
+# TODO: add docs
 class CondaBackend(Backend):
     """Specific implementation of abstract Backend class using Python functions."""
 
@@ -227,16 +228,32 @@ class CondaBackend(Backend):
         else:
             logger.info(f"successfully created conda environment '{self.conda_name}'.")
 
-    def export_conda_env(self, export_dir: str = None):
+    def export_conda_env(self, export_dir: str = None, rewrite=False, format="yaml") -> None:
         # export conda environment to yml file  in 'environment'
         if self.conda_name == "cafe":
-            logger.info("cafe conda env, no need to generate dockerfile.")
+            logger.info("cafe conda env, don'n need to generate external conda environment file.")
             return
 
         if export_dir is None:
             export_dir = f"{os.path.dirname(__file__)}/environment"
-        export_filename = f"{export_dir}/{self.conda_name}.yaml"
-        cmd = f"conda env export -n {self.conda_name} --no-builds > {export_filename}"
+
+        if format == "yml" or format == "yaml":
+            # yaml file
+            export_dir = export_dir if export_dir else f"{os.path.dirname(__file__)}/environment"  # yaml default dir in python packages
+            export_filename = f"{export_dir}/{self.conda_name}.yaml"
+            cmd = f"conda env export -n {self.conda_name} --no-builds > {export_filename}"
+        else:
+            # TODO: tar.gz file
+            export_dir = export_dir if export_dir else "."  # tar.gz file must be saved in specified dir
+            export_filename = f"{export_dir}/{self.conda_name}.tar.gz"
+            cmd = f"conda pack -n {self.conda_name} -o {export_filename}"
+
+        if os.path.exists(export_filename):
+            if rewrite:
+                logger.info(f"export conda environment file '{export_filename}' already exists, rewrite it.")
+            else:
+                logger.info(f"export conda environment file '{export_filename}' already exists, skip export.")
+                return
 
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         process.wait()  # very quick command, don't need reading log
@@ -249,7 +266,7 @@ class CondaBackend(Backend):
 
     def generate_dockerfile(self, conda_env_dir: str = None, pip_requirement_dir: str = None, docker_env_dir: str = None) -> None:
         if self.conda_name == "cafe":
-            logger.info("cafe conda env, no need to generate dockerfile.")
+            logger.info("cafe conda env, can't generate dockerfile automatically, need to add it manually.")
             return
 
         #  read from conda yaml file and generate dockerfile automatically

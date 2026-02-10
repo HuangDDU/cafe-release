@@ -22,6 +22,9 @@ except ImportError:
     version="0.0.1",
     description="Projection MST: projects cells onto a Minimum Spanning Tree constructed from cluster centers.",
     wrapper_type="projection",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def projection_mst(
     adata: ad.AnnData,

@@ -6,6 +6,7 @@ from .plot_pseudotime import plot_pseudotime_embedding, plot_pseudotime_stack
 from .plot_stack import plot_stack
 from .plot_stream import plot_stream
 from .plot_trajectory import plot_trajectory
+from .plot_velocity import plot_velocity
 from .plot_wrapper import plot_wrapper
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "plot_pseudotime_stack",
     "plot_stream",
     "plot_pie",
+    "plot_velocity",
 ]

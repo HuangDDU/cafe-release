@@ -26,7 +26,8 @@ def metrics(
     if metrics is None:
         metrics = metric_meta_df["metric_id"].tolist() + ["time", "time_text", "memory", "memory_text"]
     if metric_dir is None:
-        metric_dir = f".cafe/{fadata.id}/metric/"
+        metric_dir = fadata.metric_dir
+    benchmark_dir = fadata.benchmark_dir
 
     if cluster_edges is None:
         cluster_edges = fadata.get_milestone_wrapper("ref").milestone_network[["from", "to"]].values.tolist()
@@ -87,6 +88,11 @@ def metrics(
         new_metric_df.apply(lambda x: x.to_csv(f"{metric_dir}/{x.name}.csv"), axis=1)
         metric_df = pd.concat([metric_df, new_metric_df])
 
+    # order the metric dataframe
+    metric_df = metric_df.loc[:, metrics]
+    if if_save:
+        metric_df.to_csv(f"{benchmark_dir}/metrics.csv")  # save summary metric
+
     # normalize the metrics
     if if_normalize:
         metric_df_normalized = pd.DataFrame()
@@ -115,9 +121,6 @@ def metrics(
             metric_df_normalized[metric_name] = metric_normalized
         metric_df = metric_df_normalized
 
-    # order the metric dataframe
-    metric_df = metric_df.loc[:, metrics]
-
     if callable(overall_score_func):
         # custom overall score function
         metric_df["overall"] = metric_df.apply(overall_score_func, axis=1)
@@ -129,7 +132,7 @@ def metrics(
         pass
 
     if if_save:
-        metric_df.to_csv(f"{metric_dir}/summary.csv")  # save summary metric
+        metric_df.to_csv(f"{benchmark_dir}/metrics_normalized.csv")  # save summary metric
 
     return metric_df
 
@@ -137,6 +140,7 @@ def metrics(
 # default overall score function, need normalized before
 def default_overall_score_func(row):
     target_metrics = [
+        # TODO: need fix
         "pseudotime_correlation",
         "velocity_cbdir",
         "him",

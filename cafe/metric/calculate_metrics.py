@@ -8,6 +8,7 @@ from ..data import FateAnnData
 from . import (
     metric_cluster,
     metric_correlation,
+    metric_embedding,
     metric_featureimp,
     metric_position_predict,
     metric_pseudotime,
@@ -17,6 +18,7 @@ from . import (
 )
 
 
+# TODO: add docs
 def calculate_metrics(
     fadata: FateAnnData,
     now_models: Union[str, List[str]] = "all",
@@ -40,9 +42,11 @@ def calculate_metrics(
     if fi_method is None:
         fi_method = metric_featureimp.fi_ranger_rf_lite()
 
-    # 默认严格指标集合（按你要求）
+    # 默认严格指标集合
     if metrics is None:
         metrics = [
+            "euclidean_distance_pc",
+            "geodesic_distance_pc",
             "pseudotime_correlation",
             "velocity_cbdir",
             "velocity_icvcoh",
@@ -133,6 +137,7 @@ def calculate_metrics(
         net_pred = _get_milestone_network(pred, simplify)
 
         # 缓存机制，避免重复计算
+        _embedding_cache = None
         _velocity_cache = None
         _position_cache = None
         _featureimp_cache = None
@@ -140,31 +145,45 @@ def calculate_metrics(
 
         for metric in metrics:
             try:
+                if metric in ("euclidean_distance_pc", "geodesic_distance_pc"):
+                    # emebdding metric, need cache
+                    _embedding_cache = metric_embedding.calculate_embedding_metric(fadata, pre_trajectory=False, post_trajectory=False)
+                    val = _embedding_cache[metric]
                 if metric == "pseudotime_correlation":
+                    # pseudotim
                     val = metric_pseudotime.calculate_pseudotime_correlation(fadata, ref_model=ref_model, pred_model=pred)
                 elif metric == "velocity_cbdir" or metric == "velocity_icvcoh":
+                    # velocity, need cache
                     if _velocity_cache is None:
                         _velocity_cache = metric_velocity.calculate_velocity_metrics(
                             fadata, cluster_edges=cluster_edges, model_name=pred
                         )  # dont't need ref model
                     val = _velocity_cache[metric]
                 elif metric == "isomorphic":
+                    # topology-isomorphic metric
                     val = metric_topology.calculate_isomorphic(net_ref, net_pred)
                 elif metric == "edge_flip":
+                    # topology-edge_flip metric
                     val = metric_topology.calculate_edge_flip(net_ref, net_pred, simplify=False)
                 elif metric == "him":
+                    # topology-him metric
                     val = metric_topology.calculate_him(net_ref, net_pred, simplify=False)
                 elif metric == "correlation":
+                    # correlation metric
                     val = metric_correlation.calculate_correlation(fadata, ref_model=ref_model, pred_model=pred)
                 elif metric == "F1_milestones":
+                    # cluster-milestone metric
                     val = metric_cluster.calculate_mapping_milestones(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
                 elif metric == "F1_branches":
+                    # cluster-branch metric
                     val = metric_cluster.calculate_mapping_branches(fadata, ref_model=ref_model, pred_model=pred, simplify=simplify)
                 elif metric in ("rf_mse", "rf_nmse", "rf_rsq", "lm_mse", "lm_rsq", "lm_nmse"):
+                    # position metric
                     if _position_cache is None:
                         _position_cache = metric_position_predict.calculate_position_predict(fadata, ref_model=ref_model, pred_model=pred)
                     val = _position_cache["summary"][metric]
                 elif metric in ("featureimp_cor", "featureimp_wcor"):
+                    # feature imp metric, need cache
                     if _featureimp_cache is None:
                         _featureimp_cache = metric_featureimp.calculate_featureimp_cor(
                             fadata,
@@ -175,6 +194,7 @@ def calculate_metrics(
                         )
                     val = _featureimp_cache[metric]
                 elif metric in ["time", "time_text", "memory", "memory_text"]:
+                    # time metric, need cache
                     if _resource_cache is None:
                         _resource_cache = metric_resource.calculate_resource_usage(fadata, model_name=pred, format_text=True)
                     val = _resource_cache[metric]

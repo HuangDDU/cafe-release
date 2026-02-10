@@ -19,6 +19,9 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1101/2022.09.12.507691",
     github_url="https://github.com/pinellolab/pyrovelocity",
+    use_gpu=True,
+    cpu_parallelization=True,
+    available=True,
 )
 def pyrovelocity(
     adata: ad.AnnData,

@@ -18,6 +18,9 @@ except ImportError:
     version="0.0.1",
     description="State_Comp: baseline for probability and lineage wrapper, state transition probability based on embedded components",
     wrapper_type="probability",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def state_comp(
     adata: ad.AnnData,

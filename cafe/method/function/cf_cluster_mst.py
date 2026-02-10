@@ -21,6 +21,9 @@ except ImportError:
     version="0.0.1",
     description="Cluster MST: baseline for cluster wrapper, creating a Minimum Spanning Tree (MST) on cluster centers.",
     wrapper_type="cluster",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def cluster_mst(
     adata: ad.AnnData,

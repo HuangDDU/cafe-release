@@ -17,6 +17,9 @@ except ImportError:
     wrapper_type=["linear", "probability", "lineage"],
     doi="10.1038/s41587-019-0068-4",
     github_url="https://github.com/dpeerlab/Palantir",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def palantir(
     adata: ad.AnnData,

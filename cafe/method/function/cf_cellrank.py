@@ -25,6 +25,7 @@ except ImportError:
     github_url="https://github.com/theislab/cellrank",
     use_gpu=False,
     cpu_parallelization=True,
+    available=True,
 )
 def cellrank(
     adata: ad.AnnData,

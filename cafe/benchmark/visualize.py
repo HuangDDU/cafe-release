@@ -83,4 +83,4 @@ def visualize(benchmark_df, save="benchmark_heatmap.pdf", figsize=(32, 24)):
         if isinstance(save, bool) and save:
             save = ".cafe/img/benchmark_funkyheatmap.png"
         plt.savefig(save, bbox_inches="tight")
-        logger.debug(f"save trajectory plot to '{save}'")
+        logger.debug(f"save benchmark plot to '{save}'")

@@ -1,6 +1,7 @@
 from ..data import FateAnnData
 
 
+# TODO: add docs
 def calculate_resource_usage(fadata: FateAnnData, model_name: str, format_text: bool = True):
     resource_usage = fadata.get_resource_usage(model_name)
     out = {}

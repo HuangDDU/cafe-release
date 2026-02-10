@@ -7,6 +7,7 @@ from .._logging import logger
 from ..data import FateAnnData
 
 
+# TODO: add docs
 def plot_stack(
     fadata: FateAnnData,
     pseudotime_key: str = None,

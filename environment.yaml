@@ -1,5 +1,0 @@
-name: base
-dependencies:
-  - pygraphviz=1.9
-  - pip:
-      - -r requirements.txt

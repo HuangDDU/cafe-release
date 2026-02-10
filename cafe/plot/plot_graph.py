@@ -14,6 +14,7 @@ from ..data import FateAnnData
 
 
 # TODO: two layer loop for model_name and color can be optimized by copy plot among ax
+# TODO: add docs
 def plot_graph(
     fadata: FateAnnData,
     model_name: str | Sequence[str] = None,
@@ -100,13 +101,19 @@ def plot_graph(
             # milestone_embedding = fadata.get_milestone_embedding(model_name=model_name)  # # TODO: save in fadata
             pass
 
-        # may lose some cells in cell_emb_df
-        if fadata.shape[0] != cell_emb_df.shape[0]:
-            logger.warning(f"cell number mismatch when plot graph for model '{model_name}', skip this model.")
-            fadata = fadata[cell_emb_df.index]
-            fadata.obsm[basis] = cell_emb_df.values
-        else:
+        fadata_index_set = set(fadata.obs.index)
+        emb_index_set = set(cell_emb_df.index)
+        if fadata.shape[0] == cell_emb_df.shape[0] and fadata_index_set == emb_index_set:
             fadata.obsm[basis] = cell_emb_df.loc[fadata.obs.index].values
+        else:
+            # may lose some cells in cell_emb_df
+            valid_cell_set = fadata_index_set & emb_index_set
+            missing_cell_set = fadata_index_set - emb_index_set
+            new_cell_emb_df = pd.DataFrame(index=fadata.obs.index, columns=cell_emb_df.columns)
+            new_cell_emb_df.loc[valid_cell_set] = cell_emb_df.loc[valid_cell_set]
+            new_cell_emb_df.loc[missing_cell_set] = 0.0  # set missing cell emb to zero
+            fadata.obsm[basis] = new_cell_emb_df.values
+            logger.warning(f"cell ids are mismatch between fadata.index and cell_emb_df '{model_name}', missing cells: {missing_cell_set}.")
 
         for j, color in enumerate(color_list):
             if layout_by_row == "model":
@@ -154,7 +161,7 @@ def plot_graph(
             if divergence_regions.shape[0] > 0:
                 plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin
 
-            del fadata.obsm[basis]
+        del fadata.obsm[basis]
 
     if save is not None:
         if isinstance(save, bool) and save:

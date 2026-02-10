@@ -4,6 +4,7 @@ import pandas as pd
 from . import _metric_topology
 
 
+# TODO: add docs
 def calculate_isomorphic(net1: pd.DataFrame, net2: pd.DataFrame):
     """Judge if two milestone network are  isomorphic
 

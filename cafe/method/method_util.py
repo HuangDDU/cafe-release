@@ -36,7 +36,7 @@ def get_function_method_info(function_obj):
     return method_info
 
 
-def scan_method(return_type="dataframe"):
+def scan_method(keep_available_only=True):
     methods_dict = {}
     function_dir = f"{os.path.dirname(__file__)}/function/"  # scan th dir
 
@@ -53,11 +53,11 @@ def scan_method(return_type="dataframe"):
         method_info["parameter"] = parameter_dict
 
         methods_dict[function_name] = method_info
+
         # TODO: Github star and google scholar citations statistics
+    method_df = pd.DataFrame(methods_dict).T
+    method_df["available"] = method_df["available"].fillna("False")
+    if keep_available_only:
+        method_df = method_df.query("available==True")
 
-    if return_type == "dataframe":
-        result = pd.DataFrame(methods_dict).T
-    else:
-        result = methods_dict
-
-    return result
+    return method_df

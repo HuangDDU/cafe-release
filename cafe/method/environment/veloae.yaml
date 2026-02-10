@@ -16,6 +16,7 @@ dependencies:
     - scvelo==0.2.5
     - torch==2.8.0
     - torch-geometric==2.6.1
-    - veloae=0.2.0
+    # - veloae==0.2.0
+    # TODO: need fix
 
 prefix: /root/miniconda3/envs/veloae

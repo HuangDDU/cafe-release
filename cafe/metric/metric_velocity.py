@@ -14,6 +14,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from .._logging import logger
 
 
+# TODO: add docs
 def summary_scores(all_scores):
     """Summarize group scores.
 

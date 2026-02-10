@@ -17,6 +17,9 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1038/s41587-023-01728-5",
     github_url="https://github.com/GuangyuWangLab2021/cellDancer",
+    use_gpu=True,
+    cpu_parallelization=True,
+    available=True,
 )
 def celldancer(
     adata: ad.AnnData,

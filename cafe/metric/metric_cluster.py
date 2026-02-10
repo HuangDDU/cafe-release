@@ -4,6 +4,7 @@ import pandas as pd
 from cafe.data import FateAnnData
 
 
+# TODO: add docs
 def calculate_mapping(
     fadata: FateAnnData,
     grouping: str = "milestones",

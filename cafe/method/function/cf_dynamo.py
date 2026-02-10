@@ -25,6 +25,7 @@ except ImportError:
     github_url="https://github.com/aristoteleo/dynamo-release",
     use_gpu=False,
     cpu_parallelization=True,
+    available=True,
 )
 def dynamo(
     adata: ad.AnnData,

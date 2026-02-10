@@ -19,6 +19,9 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1073/pnas.2105859118",
     github_url="https://github.com/qiaochen/VeloAE",
+    use_gpu=True,
+    cpu_parallelization=True,
+    available=True,
 )
 def veloae(
     adata: ad.AnnData,

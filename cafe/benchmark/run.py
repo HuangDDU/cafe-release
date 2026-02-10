@@ -25,9 +25,13 @@ def run(
 
     # load method parameter dict from yaml if not provided
     if method_parameter_dict is None:
+        logger.debug("read parameter dict from yaml file")
         if method_yaml_file is None:
             method_yaml_file = os.path.join(fadata.benchmark_dir, "methods.yaml")
             logger.info(f"no method_parameter_dict or method_yaml_file provided, use default method yaml file({method_yaml_file})")
+            if not os.path.exists(method_yaml_file):
+                logger.info(f"generate default parameter yaml file {method_yaml_file}")
+                # TODO: generate yaml file
         logger.info(f"load method_parameter_dict from yaml file '{method_yaml_file}'")
         with open(method_yaml_file, "r") as f:
             method_parameter_dict = yaml.safe_load(f)

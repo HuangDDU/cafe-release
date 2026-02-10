@@ -5,6 +5,7 @@ from ..data import FateAnnData
 from ._wrapper_plots import PLOTTER_MODULE_REGISTRY
 
 
+# TODO: add docs
 def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str = None, mode: str = None, save: bool | str = None, **kwargs) -> None:
     """plot original wrapper data
 

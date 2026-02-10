@@ -20,6 +20,9 @@ except ImportError:
     wrapper_type="cluster",
     doi="10.1186/s13059-024-03347-y",
     github_url="https://github.com/ShobiStassen/VIA",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def stavia(
     adata: ad.AnnData,

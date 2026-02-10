@@ -16,6 +16,9 @@ except ImportError:
     version="0.0.1",
     description="Comp1: baseline for linear wrapper, extract an embedded component pseudotime method",
     wrapper_type="linear",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def comp1(
     adata: ad.AnnData,

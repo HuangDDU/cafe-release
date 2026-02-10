@@ -17,6 +17,7 @@ from .fate_waypoint_wrapper import WaypointWrapper
 # from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
 
 
+# TODO: add docs
 class FateAnnData(ad.AnnData):
     """AnnData object for cafe(CelluAr Fate Explorer), related data are stored in the object.uns["cafe"] attribute."""
 

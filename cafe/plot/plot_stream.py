@@ -19,12 +19,13 @@ from .._logging import logger
 from ..data import FateAnnData
 
 
+# TODO: add docs
 def plot_stream(
     fadata: FateAnnData,
     model_name: str = None,
     mode: str = "cell",
     color: Union[str, List[str]] = None,
-    embedding_basis: str = "X_umap",
+    basis: str = None,
     fig_size: Tuple[float, float] = (10, 6),
     fig_legend_ncol: int = 1,
     show_text: bool = True,
@@ -50,7 +51,7 @@ def plot_stream(
         Plotting mode, "cell" for single-cell scatter plot, "density" for density stream plot. Default "cell".
     color : str or list of str, optional
         Column name(s) for coloring (obs column or gene name), defaults to cluster column.
-    embedding_basis : str, optional
+    basis : str, optional
         Embedding used for computing node positions. Default "X_umap".
     fig_size : tuple, optional
         Figure size. Default (10, 6).
@@ -101,11 +102,20 @@ def plot_stream(
     elif isinstance(color, str):
         color = [color]
 
+    if basis is None:
+        basis = fadata.prior_information.get("basis")
+
+    if "start_milestone" in fadata.prior_information:
+        root_node = fadata.prior_information["start_milestone"]
+    else:
+        start_cell = fadata.prior_information["start_cell"]
+        root_node = fadata.get_start_milestone(start_cell=start_cell)
+
     # Create adapter
     adapter = StreamPlotAdapter(fadata, model_name=model_name)
 
     # Prepare data
-    adapter.prepare_adata_for_stream(embedding_basis=embedding_basis)
+    adapter.prepare_adata_for_stream(embedding_basis=basis, root_node=root_node)
 
     # Call different plotting functions based on mode
     if mode == "cell":
@@ -130,7 +140,7 @@ def plot_stream(
         )
 
     # Handle save parameter (plot_trajectory style)
-    if save is not None:
+    if save:
         if isinstance(save, bool) and save:
             # Generate default save path
             color_str = "_".join(color) if color else "default"

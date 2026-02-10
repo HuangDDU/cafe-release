@@ -14,6 +14,9 @@ except ImportError:
     wrapper_type="linear",
     doi="10.1093/nar/gkae340",
     github_url="https://github.com/hailinphysics/sctc",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def sctc(
     adata: ad.AnnData,

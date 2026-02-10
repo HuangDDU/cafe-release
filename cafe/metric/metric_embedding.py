@@ -68,6 +68,7 @@ def get_embedding_graph(
     return embedding_basis_cache[return_type]
 
 
+# TODO: add docs
 def calculate_euclidean_distance_pc(fadata: FateAnnData, basis: str = None, model_name: str = None):
     # calculate correlation between euclidean distance(from specific cell) and pseudotime
 
@@ -88,6 +89,7 @@ def calculate_euclidean_distance_pc(fadata: FateAnnData, basis: str = None, mode
     return result
 
 
+# TODO: add docs
 def calculate_geodesic_distance_pc(
     fadata: FateAnnData,
     basis: str = None,
@@ -221,6 +223,7 @@ def calc_cluster_f1(true_label_list, predict_label_list, merge_strategy="multipl
 # ============================================================================================
 
 
+# TODO: add docs
 def calculate_cluster_silhouette(
     fadata: FateAnnData,
     basis: str = None,
@@ -254,6 +257,7 @@ def calculate_cluster_silhouette(
     return score
 
 
+# TODO: add docs
 def calculate_striped_score(
     fadata: FateAnnData,
     basis: str = None,
