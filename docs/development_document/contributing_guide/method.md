@@ -1,5 +1,8 @@
 # Method
 
+> [!CAUTION]  
+> This document has been deprecated. The new version will be released soon.
+
 > This article will use the addition of a classic velocity wrapper `velovi` as an example to illustrate how developers can contribute new trajectory inference methods to this project. You should develop new trajectory inference method in `cfe/method` directory. Additionally, test case, document and environment management are required.
 
 > You can see the file change example in git commit `73f6ba1978a0677292cdc84b1f3933ce6ff9586f`.

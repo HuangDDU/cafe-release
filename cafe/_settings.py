@@ -8,7 +8,11 @@ import warnings
 class CellFateExplorerConfig:
     def __init__(self):
         # data settings
-        self.data_dir = "/root/PyCode/scRNA/data"
+        # Allow overriding via environment variable CAFE_DATA_DIR
+        self.data_dir = os.environ.get("CAFE_DATA_DIR", "/root/PyCode/scRNA/data")
+
+        # result directory for .cafe output, allow override via CAFE_RESULT_DIR
+        self.result_dir = os.environ.get("CAFE_RESULT_DIR", ".")
 
         # backend settings
         # ["python_function", "cafe_docker", "dynverse_docker", "conda"]

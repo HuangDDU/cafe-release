@@ -25,12 +25,13 @@ except ImportError:
     github_url="https://github.com/theislab/cellrank",
     use_gpu=False,
     cpu_parallelization=True,
+    available=True,
 )
 def cellrank(
     adata: ad.AnnData,
+    cluster: str,
     repreprocess: bool = True,
     wrapper_type: str = "probability",
-    cluster: str = "clusters",
     kernel: str = "connectivity",
     kernel_params: dict = {},
     initial_states=None,

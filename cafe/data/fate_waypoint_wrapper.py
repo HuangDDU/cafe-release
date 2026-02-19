@@ -23,6 +23,7 @@ from .fate_milestone_wrapper import MilestoneWrapper
 from .fate_wrapper import FateWrapper
 
 
+# TODO: add docs
 class WaypointWrapper(FateWrapper):
     """Wrapper for trajectory waypoint"""
 

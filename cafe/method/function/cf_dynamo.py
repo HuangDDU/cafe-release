@@ -25,12 +25,13 @@ except ImportError:
     github_url="https://github.com/aristoteleo/dynamo-release",
     use_gpu=False,
     cpu_parallelization=True,
+    available=True,
 )
 def dynamo(
     adata: ad.AnnData,
+    basis: str,
     repreprocess: bool = True,
     repreprocess_kwargs: dict = {},
-    basis: str = "X_umap",
     moment: bool = True,
     n_neighbors: int = 30,
     dynamics_kwargs: dict = {},

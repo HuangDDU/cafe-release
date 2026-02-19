@@ -19,6 +19,9 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1038/s41467-022-34188-7",
     github_url="https://github.com/StatBiomed/UniTVelo",
+    use_gpu=True,
+    cpu_parallelization=True,
+    available=True,
 )
 def unitvelo(
     adata: ad.AnnData,

@@ -3,6 +3,7 @@ from ...util import temporary_obsm_key
 DEFAULT_MODE = "embedding"  # embedding, grid, stream
 
 
+# TODO: use ..plot_velocity
 def plot_velocity(fadata, basis=None, model_name: str = None, style="scvelo", mode="stream"):
     if basis is None:
         basis = fadata.prior_information.get("basis")

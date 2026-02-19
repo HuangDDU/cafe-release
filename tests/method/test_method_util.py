@@ -6,7 +6,7 @@ import pytest
 def test_scan_method():
     from cafe.method.method_util import scan_method
 
-    result = scan_method(return_type="dataframe")
+    result = scan_method()
 
     assert isinstance(result, pd.DataFrame)
     assert "comp1" in result.index

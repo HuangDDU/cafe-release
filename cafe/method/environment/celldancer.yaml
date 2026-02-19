@@ -1,0 +1,20 @@
+name: celldancer
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/pro
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - defaults
+dependencies:
+  - python=3.7.16
+  - pip
+  - pip:
+      - numpy==1.26.4
+      - pandas==1.5.3
+      - torch==1.10.0
+      - scanpy==1.9.3
+      - scvelo==0.2.5
+      - celldancer==1.1.7
+
+prefix: /home/huang/.conda/envs/celldancer

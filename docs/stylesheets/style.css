@@ -1,15 +1,12 @@
-/* 加宽主要内容区域 */
 .md-grid {
-    max-width: 60%;  /* 默认通常为60%-70%，可调整至90%或1200px等 */
+    max-width: 90%;  /* 默认通常为60%-70%，可调整至90%或1200px等 */
 }
 
-/* 调整代码块的宽度 */
 .md-typeset pre {
     width: 100%;
     margin: 0 auto;
 }
 
-/* 若使用Material主题，可调整导航栏宽度 */
 .md-sidebar {
     width: 12rem;  /* 默认约10rem */
 }

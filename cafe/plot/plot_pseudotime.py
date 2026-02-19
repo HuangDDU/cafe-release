@@ -5,9 +5,16 @@ import scanpy as sc
 
 from .._logging import logger
 from ..data import FateAnnData
+from .util import save_fig
 
 
-def plot_pseudotime_embedding(fadata, model_name: str = None, basis: str = None, pseudotime_key: str = None):
+def plot_pseudotime_embedding(
+    fadata,
+    model_name: str = None,
+    basis: str = None,
+    pseudotime_key: str = None,
+    save: bool | str = None,
+):
     if basis is None:
         basis = fadata.prior_information.get("basis", "X_umap")
 
@@ -20,7 +27,9 @@ def plot_pseudotime_embedding(fadata, model_name: str = None, basis: str = None,
         pseudotime_key = "_trajectory_pseudotime"
         fadata.obs[pseudotime_key] = pseudotime
 
-    sc.pl.embedding(fadata, color=pseudotime_key, basis=basis, cmap="viridis")
+    ax = sc.pl.embedding(fadata, color=pseudotime_key, basis=basis, cmap="viridis", show=False)
+
+    save_fig(save, default_filename=f".cafe/{fadata.id}/img/pseudotime_embedding_{model_name}.png", ax=ax)
 
 
 def plot_pseudotime_stack(

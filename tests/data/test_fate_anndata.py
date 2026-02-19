@@ -87,9 +87,21 @@ class TestFateAnnData:
         model_name_list = self.fadata.get_all_model_name()
         assert sorted(model_name_list) == sorted(["first model", "second model"])
 
+    def test_subset_trajectory(self):
+        self.test_add_trajectory()
+        edge_list = [("X", "Z"), ("Z", "A")]
+        fadata_subset = self.fadata.subset_trajectory(edge_list=edge_list)
+        mw = fadata_subset.milestone_wrapper
+        assert set([tuple(i) for i in mw.milestone_network[["from", "to"]].values.tolist()]) == set(edge_list)
+
     def test_get_item(self):
         # test obs index
-        pass
+        self.test_add_trajectory()
+        self.fadata[:3]  # first 3 cells
+
+    def test_get_copy(self):
+        self.test_add_trajectory()
+        self.fadata.copy()
 
     def test_add_prior_information(self):
         fadata = self.fadata

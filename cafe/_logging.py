@@ -10,25 +10,27 @@ mode = "dev"  # dev, test, prod
 
 def _setup_logger() -> "logging.Logger":
     logger = logging.getLogger("cafe")
+    # 检查是否已经配置过，避免重复添加 handler 导致日志重复输出
+    if logger.handlers:
+        return logger
     logger.setLevel(logging.INFO)
-    # console logger
-    console_handler = Console(width=200, force_terminal=True)
-    if console_handler.is_jupyter is True:
-        console_handler.is_jupyter = False
+    # 阻止日志传播到 root logger
+    logger.propagate = False
+    # console logger - 使用 force_jupyter=False 禁用 Jupyter 特殊处理，避免重复输出
+    console = Console(width=200, force_jupyter=False)
     if mode == "dev":
         # int development stage, too much time info is tedious
-        console_handler = RichHandler(show_time=False, show_path=False, console=console_handler)
+        rich_handler = RichHandler(show_time=False, show_path=False, console=console)
     elif mode == "test":
         # test or benchmark need time
-        console_handler = RichHandler(log_time_format="[%m/%d/%Y %I:%M:%S]", show_path=False, console=console_handler)
+        rich_handler = RichHandler(log_time_format="[%m/%d/%Y %I:%M:%S]", show_path=False, console=console)
     else:
         # production simple output
-        console_handler = RichHandler(show_time=False, show_path=False, show_level=False, console=console_handler)
-    logger.addHandler(console_handler)
+        rich_handler = RichHandler(show_time=False, show_path=False, show_level=False, console=console)
+    logger.addHandler(rich_handler)
     # file logger
     set_log_file(".cafe/cafe_debug.log", logger)  # default log file
 
-    logger.propagate = False  # this prevents double outputs
     return logger
 
 

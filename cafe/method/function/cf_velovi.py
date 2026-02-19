@@ -18,6 +18,9 @@ except ImportError:
     wrapper_type="velocity",
     doi="10.1038/s41592-023-01994-w",
     github_url="https://github.com/yoseflab/velovi",
+    use_gpu=True,
+    cpu_parallelization=True,
+    available=True,
 )
 def velovi(
     adata: ad.AnnData,

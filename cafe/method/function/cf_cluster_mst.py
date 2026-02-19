@@ -21,12 +21,15 @@ except ImportError:
     version="0.0.1",
     description="Cluster MST: baseline for cluster wrapper, creating a Minimum Spanning Tree (MST) on cluster centers.",
     wrapper_type="cluster",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def cluster_mst(
     adata: ad.AnnData,
     repreprocess: bool = True,
     basis: str = "X_pca",
-    recluster: bool = True,
+    recluster: bool = False,
     cluster: str = "clusters",
     distance_metric: Optional[Literal["euclidean", "cosine", "manhattan", "cityblock", "l1", "l2"]] = "euclidean",
 ):

@@ -15,6 +15,7 @@ from .fate_function_backend import FunctionBackend
 # import yaml
 
 
+# TODO: add docs
 class FateMethod:
     """FateMethod, available backend: python_function, cafe_docker, dynverse_docker"""
 
@@ -128,7 +129,7 @@ class FateMethod:
             self.id = random_time_string(f"{self.method_name}-{self.backend}") if id is None else id
             self.method_backend.id = self.id
         if settings.seperate_log_file:
-            set_log_file(f".cafe/{fadata.id}/log/{self.id}.log")
+            set_log_file(f"{fadata.log_dir}/{self.id}.log")
         if rewrite:
             fadata.add_model_name(self.id)
 

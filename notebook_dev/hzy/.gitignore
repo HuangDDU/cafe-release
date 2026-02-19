@@ -1,5 +1,6 @@
 img
 *.pdf
+*.txt
 
 # cytotrace2 middle file
 cytotrace2_results
@@ -15,3 +16,12 @@ cellDancer*
 # cellfateexplorer middle file
 .cfe 
 .cafe
+
+# todo script for next version (need in confidential folder)
+to_do_script
+
+# todo notebook for waddington waterfall model
+(TODO)*.ipynb
+
+# tmp notebook
+(TMP)*.ipynb

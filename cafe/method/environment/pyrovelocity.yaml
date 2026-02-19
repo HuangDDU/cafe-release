@@ -1,0 +1,25 @@
+name: pyrovelocity
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/pro
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - defaults
+dependencies:
+  - python=3.11.13
+  - pip
+  - pip:
+      - torch==2.1.2
+      - pyrovelocity==0.4.5
+      - numpy==1.26.4
+      - anndata==0.10.9
+      - scvi-tools==1.1.1
+      - flytekit==1.13.3
+      - flax==0.8.1
+      - jaxlib==0.4.27
+      - jax==0.4.27
+      - mlflow==2.13.1
+      - dulwich==0.24.2
+
+prefix: /usr/local/conda/envs/pyrovelocity

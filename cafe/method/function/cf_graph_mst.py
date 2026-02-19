@@ -16,6 +16,9 @@ except ImportError:
     version="0.0.1",
     description="Graph MST: baseline for graph wrapper, creating a Minimum Spanning Tree (MST) on cluster centers.",
     wrapper_type="graph",
+    use_gpu=False,
+    cpu_parallelization=True,
+    available=True,
 )
 def graph_mst(
     adata: ad.AnnData,

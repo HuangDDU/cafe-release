@@ -1,4 +1,5 @@
 import anndata as ad
+import numpy as np
 import scanpy as sc
 
 from .._logging import logger
@@ -7,16 +8,17 @@ from .._logging import logger
 def subsample(
     adata: ad.AnnData,
     n_obs: int = -1,
+    # fraction=0,
     save_cell_list: list = [],
     save_cluster_key: str = None,
 ):
-    """subsample from adata, save sa
+    """subsample from adata, save specific id or cell in every cluster
 
     Args:
-        adata (ad.AnnData): raw AnnData
-        n_obs (int, optional): _description_. Defaults to -1.
-        save_cell_list (list, optional): key cells such as start and end point.
-        save_cluster_key (str, optional): _description_. Defaults to None.
+        adata (ad.AnnData): raw AnnData.
+        n_obs (int, optional): number of cell should be saved
+        save_cell_list (list, optional): sepecific key cells such as start and end point.
+        save_cluster_key (str, optional): cluster key where at least one cell is saved in every cluster.
 
     Returns:
         adata: subsample AnnData
@@ -62,6 +64,17 @@ def subsample(
         return adata
 
 
+def subsample_fadata(
+    fadata,
+    n_obs=-1,
+    # fraction=0,
+):
+    index = np.random.choice(fadata.shape[0], n_obs, replace=False)
+    fadata = fadata[index]
+
+    return fadata
+
+
 def subsample_milestone():
     # TODO: subsample cells from milestone: percentage, progression
     pass
@@ -69,4 +82,9 @@ def subsample_milestone():
 
 def subsample_waypoint():
     # TODO: subsample cells from waypoint: ???
+    pass
+
+
+def subsample_metacell():
+    # TODO: subsample meta cell
     pass

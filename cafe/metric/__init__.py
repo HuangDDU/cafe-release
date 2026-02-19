@@ -8,6 +8,7 @@ from .metric_topology import calculate_edge_flip, calculate_isomorphic
 from .metric_velocity import calculate_velocity_metrics
 
 metrics = pd.read_csv(f"{os.path.dirname(__file__)}/metrics.csv", sep="\t")
+metrics.index = metrics["metric_id"]
 
 __all__ = [
     "metrics",
