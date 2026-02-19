@@ -1,6 +1,7 @@
 from ._simplify_networkx_network import simplify_networkx_network
-from .fate_anndata import FateAnnData, read_h5ad
+from .fate_anndata import FateAnnData
 from .fate_dataset import (
+    read_h5ad,
     read_bifurcating_cellrank,
     read_bonemarrow,
     read_dentategyrus,

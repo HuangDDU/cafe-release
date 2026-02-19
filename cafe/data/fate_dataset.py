@@ -7,11 +7,59 @@ from .. import settings
 from .._logging import logger
 from ..preprocess import subsample
 from .fate_anndata import FateAnnData
-
+from .fate_milestone_wrapper import MilestoneWrapper
+from .fate_waypoint_wrapper import WaypointWrapper
 # data_dir = settings.data_dir # need delay binding for data dir
 
+def read_h5ad(*args, **kwargs):
+    """Read a FateAnnData object from an h5ad file.
 
-# TODO: add docs
+    This function wraps `scanpy.read_h5ad` to read the data and then converts it
+    into a `FateAnnData` object. It also handles the deserialization of
+    `trajectory_history_dict` (reconstructing `MilestoneWrapper` and `WaypointWrapper`
+    objects from dictionaries).
+
+    Args:
+        *args: Variable length argument list passed to `scanpy.read_h5ad`.
+        **kwargs: Arbitrary keyword arguments passed to `scanpy.read_h5ad`.
+
+    Returns:
+        FateAnnData: The loaded FateAnnData object with restored trajectory information.
+    """
+    adata = sc.read_h5ad(*args, **kwargs)
+    fadata = FateAnnData.from_anndata(adata)
+
+    def unserialize_trajectory_dict(fadata, model_name=None, recovery_raw_wrapper_dict=False):
+        logger.debug(f"unserialize trajectory dict: '{model_name}'")
+        trajectory_dict = fadata.get_trajectory_dict(model_name).copy()
+        # parse milestone_wrapper
+        milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
+        if isinstance(milestone_wrapper, dict):
+            # use object.__new__ to avoid __init__ function
+            logger.debug(f"parse 'MilestoneWrapper' object for {model_name}")
+            milestone_wrapper_obj = object.__new__(MilestoneWrapper)
+            for k, v in milestone_wrapper.items():
+                milestone_wrapper_obj[k] = v
+            trajectory_dict["milestone_wrapper"] = milestone_wrapper_obj
+        # parse waypoint_wrapper
+        waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
+        if (waypoint_wrapper is not None) and isinstance(waypoint_wrapper, dict):
+            logger.debug(f"parse 'WaypointWrapper' object for {model_name}")
+            waypoint_wrapper_obj = object.__new__(WaypointWrapper)
+            for k, v in waypoint_wrapper.items():
+                waypoint_wrapper_obj[k] = v
+            trajectory_dict["waypoint_wrapper"] = waypoint_wrapper_obj
+        # raw_wrapper_dict is complex, skip it
+        if recovery_raw_wrapper_dict and "raw_wrapper_dict" in trajectory_dict:
+            logger.debug(f"skip recovery raw_wrapper_dict in serialized trajectory dict: '{model_name}'")
+        return trajectory_dict
+
+    for k in fadata.get_all_model_name(parse=False):
+        utd = unserialize_trajectory_dict(fadata, k)
+        fadata.set_trajectory_dict(utd, k)
+
+    return fadata
+
 def _create_fadata_from_file(
     filename: str,
     cluster: str,
@@ -21,6 +69,25 @@ def _create_fadata_from_file(
     subsample_kwargs: dict = {},  # subsample args
     milestone_network: pd.DataFrame = None,
 ) -> FateAnnData:
+    """Create a FateAnnData object from a file with specific configuration.
+
+    This helper function reads a file (supporting h5ad), applies subsampling,
+    sets up prior information (like cluster and basis keys), and optionally
+    adds a manual reference trajectory based on a milestone network.
+
+    Args:
+        filename (str): Path to the input file (e.g., .h5ad).
+        cluster (str): The key in `.obs` representing cell clusters/types.
+        basis (str): The key in `.obsm` representing the embedding (e.g., 'X_umap').
+        id (str, optional): Unique identifier for the dataset. Defaults to None.
+        prior_information (dict, optional): Dictionary of prior information to add to the object. Defaults to {}.
+        subsample_kwargs (dict, optional): Arguments for subsampling (e.g., {'n_obs': 1000}). Defaults to {}.
+        milestone_network (pd.DataFrame, optional): A DataFrame defining the topology of a reference trajectory.
+            If provided, a manual trajectory will be added. Defaults to None.
+
+    Returns:
+        FateAnnData: The initialized FateAnnData object.
+    """
     logger.debug(f"Reading data from '{filename}'...")
     adata = sc.read_h5ad(filename)
     adata = subsample(adata, **subsample_kwargs)

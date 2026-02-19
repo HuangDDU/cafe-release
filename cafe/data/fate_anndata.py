@@ -17,15 +17,29 @@ from .fate_waypoint_wrapper import WaypointWrapper
 # from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
 
 
-# TODO: add docs
 class FateAnnData(ad.AnnData):
-    """AnnData object for cafe(CelluAr Fate Explorer), related data are stored in the object.uns["cafe"] attribute."""
+    """
+    AnnData object for cafe (CelluAr Fate Explorer).
+
+    Stores data related to cell fate exploration in the `object.uns["cafe"]` attribute.
+    This class extends `anndata.AnnData` to provide specialized functionality for
+    trajectory inference, visualization, and benchmarking.
+
+    Attributes:
+        cafe_dict (dict): A dictionary stored in `uns["cafe"]` containing all Cafe-specific data.
+        id (str): A unique identifier for the FateAnnData object.
+        prior_information (dict): Dictionary storing prior knowledge for trajectory inference (e.g., start cells, clusters).
+        model_name (str): The name of the currently active trajectory model.
+        trajectory_history_dict (dict): Dictionary storing results from different trajectory inference methods.
+    """
 
     def __init__(self, name: str = "FateAnnData", *args, **kwargs):
         """Initialize the FateAnnData class.
 
         Args:
-            name (str, optional): name of the FateAnnData object.
+            name (str, optional): Name of the FateAnnData object. Defaults to "FateAnnData".
+            *args: Variable length argument list passed to `anndata.AnnData`.
+            **kwargs: Arbitrary keyword arguments passed to `anndata.AnnData`.
         """
         super().__init__(*args, **kwargs)
 
@@ -1837,6 +1851,16 @@ class FateAnnData(ad.AnnData):
         self.uns["cafe"] = self.cafe_dict
 
     def write_h5ad(self, filename):
+        """Write the FateAnnData object to an h5ad file.
+
+        This method temporarily serializes complex objects (like `MilestoneWrapper` and
+        `WaypointWrapper` in `trajectory_history_dict`) into dictionaries/strings so they
+        can be stored in the AnnData `.uns` slot, writes the file, and then restores the
+        original objects.
+
+        Args:
+            filename (str): The filename to write to.
+        """
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
         def serialize_trajectory_dict(self, model_name=None, delete_raw_wrapper_dict=True):
             # serialize trajectory for h5ad save
@@ -1905,6 +1929,16 @@ class FateAnnData(ad.AnnData):
         self.benchmark_dir = os.path.join(dirname, "benchmark")
 
     def write_trajectory_dict(self, dirname=None, model_name_list=None):
+        """Save trajectory dictionaries to pickle files.
+
+        This method persists the trajectory history for specified models (or all valid models)
+        into pickle files within the `trajectory_history` subdirectory of the result directory.
+
+        Args:
+            dirname (str, optional): The directory to save results in. If None, uses `self.result_dir`.
+            model_name_list (list, optional): List of model names to save. If None, saves all models
+                returned by `get_all_model_name(parse=False)`.
+        """
         # save all trajectory, one trajectory is a pkl file: .cafe/{self.id}/trajectory_history/{model_name}.pkl
         # TODO: move to check_result_dir
         if dirname is None:
@@ -1927,6 +1961,19 @@ class FateAnnData(ad.AnnData):
                 pickle.dump(trajectory_dict, f)
 
     def load_trajectory_dict(self, model_name_list: list[str] | str = None, dirname: str = None, backend: str = None):
+        """Load trajectory dictionaries from pickle files.
+
+        Restores trajectory history data from previously saved pickle files.
+
+        Args:
+            model_name_list (list[str] | str, optional): List of model names (or a single name) to load.
+                If None/empty, attempts to load all .pkl files in the trajectory directory.
+            dirname (str, optional): The directory to load results from. If None, uses `self.result_dir`.
+            backend (str, optional): Backend to use (e.g., 'pickle'). Currently only supports pickle structure.
+
+        Raises:
+            FileNotFoundError: If the user-specified dirname does not exist or contain a 'trajectory_history' folder.
+        """
         if dirname is None:
             dirname = self.trajectory_history_dir
         if not os.path.exists(dirname):
@@ -1989,6 +2036,17 @@ class FateAnnData(ad.AnnData):
         pass
 
     def launch_cellxgene(self, tmp_filename=None, trajectory=False, port=5005, conda_env="cafe"):  # if show trajectory
+        """Launch cellxgene to visualize the FateAnnData object.
+
+        This function saves the current object to a temporary h5ad file and launches cellxgene
+        for interactive visualization. It supports a custom mode for trajectory visualization.
+
+        Args:
+            tmp_filename (str, optional): Path for the temporary h5ad file. Defaults to "current_dir/.tmp.h5ad".
+            trajectory (bool, optional): Whether to launch in trajectory visualization mode (requires special dev environment). Defaults to False.
+            port (int, optional): Port to run the cellxgene server on. Defaults to 5005.
+            conda_env (str, optional): Conda environment name to run cellxgene in. Defaults to "cafe".
+        """
         import os
         import subprocess
         import threading
@@ -2089,43 +2147,3 @@ class FateAnnData(ad.AnnData):
                 # check if basis exists in self.obsm
                 raise ValueError(f"parameter basis '{basis}' not found in self.obsm")
         return basis
-
-
-# TODO: move to dataset.py
-def read_h5ad(*args, **kwargs):
-    """
-    read and parse MilestoneWrapper and WaypointWrapper object in trajectory_history_dict.
-    """
-    adata = sc.read_h5ad(*args, **kwargs)
-    fadata = FateAnnData.from_anndata(adata)
-
-    def unserialize_trajectory_dict(fadata, model_name=None, recovery_raw_wrapper_dict=False):
-        logger.debug(f"unserialize trajectory dict: '{model_name}'")
-        trajectory_dict = fadata.get_trajectory_dict(model_name).copy()
-        # parse milestone_wrapper
-        milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
-        if isinstance(milestone_wrapper, dict):
-            # use object.__new__ to avoid __init__ function
-            logger.debug(f"parse 'MilestoneWrapper' object for {model_name}")
-            milestone_wrapper_obj = object.__new__(MilestoneWrapper)
-            for k, v in milestone_wrapper.items():
-                milestone_wrapper_obj[k] = v
-            trajectory_dict["milestone_wrapper"] = milestone_wrapper_obj
-        # parse waypoint_wrapper
-        waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
-        if (waypoint_wrapper is not None) and isinstance(waypoint_wrapper, dict):
-            logger.debug(f"parse 'WaypointWrapper' object for {model_name}")
-            waypoint_wrapper_obj = object.__new__(WaypointWrapper)
-            for k, v in waypoint_wrapper.items():
-                waypoint_wrapper_obj[k] = v
-            trajectory_dict["waypoint_wrapper"] = waypoint_wrapper_obj
-        # raw_wrapper_dict is complex, skip it
-        if recovery_raw_wrapper_dict and "raw_wrapper_dict" in trajectory_dict:
-            logger.debug(f"skip recovery raw_wrapper_dict in serialized trajectory dict: '{model_name}'")
-        return trajectory_dict
-
-    for k in fadata.get_all_model_name(parse=False):
-        utd = unserialize_trajectory_dict(fadata, k)
-        fadata.set_trajectory_dict(utd, k)
-
-    return fadata
