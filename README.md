@@ -2,40 +2,50 @@
 
 [![test](https://github.com/HuangDDU/CellFateExplorer/actions/workflows/test.yml/badge.svg)](https://github.com/HuangDDU/CellFateExplorer/actions/workflows/test.yml)
 [![document](https://readthedocs.org/projects/cellfateexplorer/badge/?version=latest)](https://cellfateexplorer.readthedocs.io/en/latest/)
+[![PyPI](https://img.shields.io/pypi/v/cafe-release.svg)](https://pypi.org/project/cafe-release)
+[![License](https://img.shields.io/github/license/HuangDDU/CellFateExplorer)](https://github.com/HuangDDU/CellFateExplorer/blob/main/LICENSE)
+
 
 # Cafe: An integrated platform for exploring cell fate
 
-**Cafe (Cellular Fate Explorer)** is an integration platform for *inferring*, *visualizing* and *benchmarking* cell fate trajectory for single-cell RNA-seq data.😁
+**Cafe (Cellular Fate Explorer)** is a modular framework to study cellular dynamics based on single-cell RNA-seq data. It provides an integrated platform for *inferring*, *visualizing* and *benchmarking* cell fate trajectories.
 
 ## Framework
 
 ![Cafe Framework](./docs/img/framework.png)
 
-## Installation
+## Key Applications
 
-See [here](./docs/installation.md)
+- **Trajectory Inference**: Infer cell fate trajectories using various backend methods (including Python-based, Docker-based, and Conda-based backends).
+- **Visualization**: Visualize trajectories, embeddings, pseudotime, and velocity fields with high-quality plots.
+- **Benchmarking**: Compare different trajectory inference methods using comprehensive metrics including topology, cluster, and feature importance.
+- **Data Management**: Manage complex single-cell data structures with `FateAnnData`, extending the capabilities of AnnData for trajectory analysis.
 
-## Quick Start
+## Documentation
 
-You can run the [quickstart.ipynb](https://cellfateexplorer.readthedocs.io/en/latest/tutorial/quickstart/) using jupyter noboker to learn the basic function of tools quickly.
+Comprehensive documentation is available at [here](https://cafe-release.readthedocs.io/en/latest/), including installation, tutorial, API and so on.
 
-## Project shedule
+## Project Schedule
 
 - [x] Main framework code
-- [x] Document construction: intsruction, tutorial, API
-- [x] [🔗](./docs/development_document/shedule/data.md)Data module: FateAnnData data structure, data collection.
-- [ ] [🔗](./docs/development_document/shedule/method.md)Methods module: 4 backend, trajectory methods for 8 wrapper.
-- [ ] [🔗](./docs/development_document/shedule/benchmark.md)Benchmark: comprehensive metric and benchmark.
-- [ ] [🔗](./docs/development_document/shedule/plot.md)Plot: beautiful plot.
-- [ ] [🔗](./docs/development_document/shedule/downstream_analysis.md)Downstream analysis module: Interactive web platform, driver gene and GRN.
+- [x] Document construction: instruction, tutorial, API
+- [x] [Data module](./docs/development_document/shedule/data.md): FateAnnData data structure, data collection.
+- [x] [Methods module](./docs/development_document/shedule/method.md): 4 backends, trajectory methods for 8 wrappers.
+- [ ] [Benchmark](./docs/development_document/shedule/benchmark.md): Comprehensive metrics and benchmarking.
+- [x] [Plot](./docs/development_document/shedule/plot.md): Beautiful plotting capabilities.
+- [ ] [Downstream analysis](./docs/development_document/shedule/downstream_analysis.md): Interactive web platform, driver gene, and GRN analysis.
 
-## Document
+## Citation
 
-1. Links: For [`User`](https://cellfateexplorer-cellfateexplorer.readthedocs-hosted.com/en/latest/api/), for [`Developer`](https://cellfateexplorer-cellfateexplorer.readthedocs-hosted.com/en/latest/api/)
+If you use Cafe in your research, please cite:
 
-2. If you want to build the docs locally, run the following command in now conda environment.
-
-    ```bash
-    pip install -r docs/requirements.txt
-    mkdocs serve
-    ```
+```bibtex
+@article{huang2025cellfateexplorer,
+    title={CellFateExplorer: An integrated platform for exploring cell fate},
+    author={Huang, Zhaoyang and Ma, Haonan and Peng, Yuchuan and Zhao, Chenguang and Yu, Liang},
+    journal={bioRxiv},
+    pages={2025--02},
+    year={2025},
+    publisher={Cold Spring Harbor Laboratory}
+}
+```

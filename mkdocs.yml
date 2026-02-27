@@ -7,28 +7,49 @@ nav:
 - Installation: installation.md
 
 - Tutorial:
-  - Tutorial Summary: tutorial.md
+  - tutorial/index.md
   - Quick Start: tutorial/quickstart.ipynb
   - Benchmark: tutorial/benchmark.ipynb
+  - CXGXF: img/cxgxf preview.gif
 
 - API:
-  - API Summary: api.md
-  - Data:
-    - FateAnnData: api/data/fate_anndata.md
-    - MilestoneWrapper: api/data/fate_milestone_wrapper.md
-    - WaypointWrapper: api/data/fate_waypoint_wrapper.md
-  - Method:
-    - FateMethod: api/method/fate_method.md
-    - MethodList: api/method/method_list.md
-  - Metric:
-    - TopologyMetric: api/metric/metric_topology.md
-    - ClusterMetric: api/metric/metric_cluster.md
-  - Plot:
-    - plot_trajectory: api/plot/plot_trajectory.md
-- Development document:
+  - api/index.md
+  - data:
+    - cafe.data.FateAnnData: api/data/fate_anndata.md
+    - cafe.data.MilestoneWrapper: api/data/fate_milestone_wrapper.md
+    - cafe.data.WaypointWrapper: api/data/fate_waypoint_wrapper.md
+    - Dataset: api/data/fate_dataset.md
+  - method:
+    - cafe.method.FateMethod: api/method/fate_method.md
+    - cafe.method.CondaBackend: api/method/fate_conda_backend.md
+    - cafe.method.FunctionBackend: api/method/fate_function_backend.md
+    - cafe.method.CFEDockerBackend: api/method/fate_cafe_docker_backend.md
+    - cafe.method.DynverseDockerBackend: api/method/fate_dynverse_docker_backend.md
+    - Method List: api/method/method_list.md
+  - metric:
+    - cafe.metric.calculate_metrics: api/metric/calculate_metrics.md
+    - cafe.metric.metric_pseudotime: api/metric/metric_pseudotime.md
+    - cafe.metric.metric_velocity: api/metric/metric_velocity.md
+    - cafe.metric.metric_embedding: api/metric/metric_embedding.md
+    - cafe.metric.metric_topology: api/metric/metric_topology.md
+    - cafe.metric.metric_cluster: api/metric/metric_cluster.md
+    - cafe.metric.metric_correlation: api/metric/metric_correlation.md
+    - cafe.metric.metric_featureimp: api/metric/metric_featureimp.md
+  - plot:
+    - cafe.plot.plot_trajectory: api/plot/plot_trajectory.md
+    - cafe.plot.plot_graph: api/plot/plot_graph.md
+    - cafe.plot.plot_stream: api/plot/plot_stream.md
+    - cafe.plot.plot_wrapper: api/plot/plot_wrapper.md
+    - cafe.plot.plot_pie: api/plot/plot_pie.md
 
-  - Contributing guide:
+- Development Document:
+  - development_document/index.md
+  - Contributing Guide:
     - Method: development_document/contributing_guide/method.md
+    - Data: development_document/contributing_guide/data.md
+    - Metric: development_document/contributing_guide/metric.md
+    - Visualization: development_document/contributing_guide/visualization.md
+    - Document: development_document/contributing_guide/document.md
   - Shedule:
     # - Shedule Summary: shedule.md
     - Data: development_document/shedule/data.md
@@ -36,7 +57,7 @@ nav:
     - Plot: development_document/shedule/plot.md
     - Benchmark: development_document/shedule/benchmark.md
     - Downstream Analysis: development_document/shedule/downstream_analysis.md
-- Change Log: change_log.md
+  - Change Log:  development_document/change_log/index.md
 
 extra_css:
 - stylesheets/style.css
@@ -47,16 +68,21 @@ theme:
   custom_dir: docs/overrides/
   logo: img/logo.png
   features:
-  # - navigation.expand
-  - navigation.tracking
-  - content.code.annotate # 优化代码块显示
+    # - navigation.expand
+    - navigation.tracking
+    - navigation.indexes
+    - content.code.annotate
   palette:
   - media: "(prefers-color-scheme: light)"
+    primary: green
+    accent: deep purple
     scheme: default
     toggle:
       icon: material/toggle-switch-off-outline
       name: Switch to dark mode
   - media: "(prefers-color-scheme: dark)"
+    primary: green
+    accent: deep purple
     scheme: slate
     toggle:
       icon: material/toggle-switch
