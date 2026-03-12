@@ -9,7 +9,9 @@ from ..preprocess import subsample
 from .fate_anndata import FateAnnData
 from .fate_milestone_wrapper import MilestoneWrapper
 from .fate_waypoint_wrapper import WaypointWrapper
+
 # data_dir = settings.data_dir # need delay binding for data dir
+
 
 def read_h5ad(*args, **kwargs):
     """Read a FateAnnData object from an h5ad file.
@@ -59,6 +61,7 @@ def read_h5ad(*args, **kwargs):
         fadata.set_trajectory_dict(utd, k)
 
     return fadata
+
 
 def _create_fadata_from_file(
     filename: str,
@@ -441,6 +444,39 @@ def read_pancreas_cellrank(filename=None, **subsample_kwargs):
     prior_information = {
         "start_cell": "cell_2366",
         "cluster": "clusters",
+        "basis": "X_umap",
+    }
+    fadata = _create_fadata_from_file(
+        filename=filename,
+        milestone_network=milestone_network,
+        cluster=prior_information["cluster"],
+        basis=prior_information["basis"],
+        id="pancreas_cellrank",
+        prior_information=prior_information,
+        subsample_kwargs=subsample_kwargs,
+    )
+    return fadata
+
+
+def read_hematopoiesis(filename=None, **subsample_kwargs):
+    if filename is None:
+        filename = f"{settings.data_dir}/Hematopoiesis/hematopoiesis_raw.h5ad"
+
+    milestone_network = pd.DataFrame(
+        data=[
+            ["HSC", "GMP-like"],
+            ["HSC", "MEP-like"],
+            ["GMP-like", "Mon"],
+            ["GMP-like", "Neu"],
+            ["MEP-like", "Bas"],
+            ["MEP-like", "Ery"],
+            ["MEP-like", "Meg"],
+        ],
+        columns=["from", "to"],
+    )
+    prior_information = {
+        "start_cell": "cell_1042",
+        "cluster": "cell_type",
         "basis": "X_umap",
     }
     fadata = _create_fadata_from_file(

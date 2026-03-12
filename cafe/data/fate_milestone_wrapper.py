@@ -4,6 +4,7 @@
 
 # import h5py
 import matplotlib.colors as mcolors
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -51,7 +52,7 @@ class MilestoneWrapper(FateWrapper):
             ValueError: Exactly one of milestone_percentages or progressions, must be defined, the other should be None
         """
         self.id = random_time_string(name)
-        self.milestone_network = milestone_network
+        self.milestone_network = self._check_milestone_network(milestone_network)
         # if there is a discrete milestone, milestone id should be specified
         if milestone_id_list is None:
             self.id_list = milestone_network[["from", "to"]].stack().unique().tolist()
@@ -389,7 +390,7 @@ class MilestoneWrapper(FateWrapper):
         edge_set = set(tuple(edge) for edge in edge_list)
         # check edges
         self.milestone_network[["from", "to"]]
-        # optional_edge_set = set(self.milestone_network.apply(lambda row: (row["from"], row["to"]), axis=1).tolist())
+        # optional_edge_set = set(self.milestone_network.apply(lambda row: (row["from"], row["to"]), axis=1).tolist()))
         optional_edge_set = set([tuple(i) for i in self.milestone_network[["from", "to"]].values.tolist()])
         if len(edge_set & optional_edge_set) == 0:
             # empty intersection
@@ -434,6 +435,33 @@ class MilestoneWrapper(FateWrapper):
             milestone_color_dict=milestone_color_dict,
         )
         return new_wrapper
+
+    def _check_milestone_network(self, milestone_network, default_length=1.0):
+        """
+        Check the milestone network for invalid values in the "length" column and replace them with the average length.
+
+        Args:
+            milestone_network (pd.DataFrame): The milestone network dataframe with a "length" column.
+
+        Returns:
+            pd.DataFrame: The validated and corrected milestone network.
+        """
+        if "length" in milestone_network.columns:
+            valid_lengths = milestone_network["length"].replace([np.inf, -np.inf], np.nan).dropna()
+            if valid_lengths.empty:
+                raise ValueError("All values in the 'length' column are invalid. Cannot compute a valid average.")
+            mean_length = valid_lengths.mean()
+            if milestone_network["length"].isnull().any():
+                logger.warning("milestone_network has missing values in 'length' column, filling with average length.")
+                milestone_network["length"].fillna(mean_length, inplace=True)
+            if milestone_network["length"].isin([np.inf, -np.inf]).any():
+                logger.warning("milestone_network has infinite values in 'length' column, replacing with average length.")
+                milestone_network["length"].replace([np.inf, -np.inf], mean_length, inplace=True)
+        else:
+            milestone_network["length"] = default_length
+            logger.debug(f"milestone_network does not have 'length' column, adding with default length({default_length}).")
+
+        return milestone_network
 
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges

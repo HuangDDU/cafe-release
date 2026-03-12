@@ -1782,7 +1782,7 @@ class FateAnnData(ad.AnnData):
 
             # save pseudotime
             logger.debug(f"save pseudotime to trajectory dict with key: `{pseudotime_key}`")
-            trajectory_dict[pseudotime_key] = pseudotime
+            trajectory_dict[pseudotime_key] = pseudotime.tolist()
             return pseudotime
 
     def get_trajectory_pseudo_velocity(self, basis=None, model_name=None):
@@ -1861,6 +1861,7 @@ class FateAnnData(ad.AnnData):
         Args:
             filename (str): The filename to write to.
         """
+
         # the h5ad file will not only be read by CellFateExplorer, but also by scanpy.
         def serialize_trajectory_dict(self, model_name=None, delete_raw_wrapper_dict=True):
             # serialize trajectory for h5ad save
@@ -2118,6 +2119,11 @@ class FateAnnData(ad.AnnData):
         # 3. delete tmp.h5ad
         logger.debug(f"remove {tmp_filename}")
         os.remove(tmp_filename)
+
+    def print_trajectory_data(self):
+        from ..util.print_dict import print_dict
+
+        print_dict(self.uns["cafe"], name="cafe")
 
     def check_model_name():
         pass

@@ -10,7 +10,8 @@ nav:
   - tutorial/index.md
   - Quick Start: tutorial/quickstart.ipynb
   - Benchmark: tutorial/benchmark.ipynb
-  - CXGXF: img/cxgxf preview.gif
+  - Visualization: tutorial/visualization.ipynb
+  - "Cafe web: cellxgene-cafe" : tutorial/cellxgene-cafe.ipynb
 
 - API:
   - api/index.md
