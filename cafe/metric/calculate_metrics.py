@@ -42,8 +42,8 @@ def calculate_metrics(
     if fi_method is None:
         fi_method = metric_featureimp.fi_ranger_rf_lite()
 
-    # 默认严格指标集合
     if metrics is None:
+        # default metrics
         metrics = [
             "euclidean_distance_pc",
             "geodesic_distance_pc",
@@ -70,15 +70,11 @@ def calculate_metrics(
             "memory_text",
         ]
 
-    # 获得存在的模型名
-    hist = fadata.uns.get("cafe", {}).get("trajectory_history_dict", {})
-    # 检查参考模型是否存在
-    if ref_model not in hist:
-        raise ValueError(f"参考模型 '{ref_model}' 不在 fadata.uns['cafe']['trajectory_history_dict'] 中。可用模型：{list(hist.keys())}")
+    # check available methods, fiter invalid models
+    available_models = fadata.get_all_model_name(parse=False)  # need original model name for metric calculation and matching because mhn code style
+    if ref_model not in available_models:
+        raise ValueError(f"ref model('{ref_model}') not in available models: {available_models}")
 
-    available_models = list(hist.keys())
-
-    # 构建预测模型名
     if isinstance(now_models, list):
         pred_models = now_models
     elif isinstance(now_models, str) and now_models == "all":
@@ -86,8 +82,7 @@ def calculate_metrics(
     else:
         pred_models = [now_models]
 
-    # 过滤掉不存在的模型
-    pred_models = [m for m in pred_models if m in hist]
+    pred_models = [m for m in pred_models if m in available_models]
     if len(pred_models) == 0:
         return pd.DataFrame(columns=metrics, index=[])
 
@@ -102,8 +97,7 @@ def calculate_metrics(
                 mw_simpl = fadata.simplify_trajectory(model_name)
                 return mw_simpl.milestone_network
             else:
-                md = hist.get(model_name, {})
-                mw = md.get("milestone_wrapper")
+                mw = fadata.get_milestone_wrapper(model_name)
                 if mw is None:
                     return None
                 if isinstance(mw, dict):
@@ -119,9 +113,13 @@ def calculate_metrics(
 
     net_ref = _get_milestone_network(ref_model, simplify)  # common ref net
 
+    if cluster_edges is None:
+        logger.debug(f"cluster_edges not provided, trying to get from milestone network of trajectory('{ref_model}').")
+        cluster_edges = fadata.get_milestone_wrapper(ref_model).milestone_network[["from", "to"]].values.tolist()
+
     if ("velocity_cbdir" in metrics) and (cluster_edges is None):
         logger.warning("velocity metric calculation need parameter 'cluster_edges', skip it.")
-        metrics = metrics.remove("velocity_cbdir")
+        metrics.remove("velocity_cbdir")
 
     if (("velocity_cbdir" in metrics) or ("velocity_icvcoh" in metrics)) and ("neighbors" not in fadata.uns):
         logger.info("neighbors not found in fadata.uns, computing neighbors for velocity metric calculation.")
