@@ -561,7 +561,13 @@ class FateAnnData(ad.AnnData):
         # self.trajectory_history_dict[model_name]["waypoint_wrapper"] = waypoint_wrapper
         self.set_waypoint_wrapper(waypoint_wrapper, model_name)
 
-    def subset_trajectory(self, edge_list: list, model_name: str = None) -> "FateAnnData":
+    def subset_trajectory(
+        self,
+        edge_list: list,
+        model_name: str = None,
+        cluster: str = None,
+        keep_color_cluster: str = None,
+    ) -> "FateAnnData":
         """
         Subset the FateAnnData object based on trajectory edges.
 
@@ -573,10 +579,18 @@ class FateAnnData(ad.AnnData):
             model_name = self.model_name
 
         mw = self.get_milestone_wrapper(model_name)
-        new_mw = mw.subset_by_edges(edge_list)
+        new_mw = mw.subset_by_edges(edge_list)  # milestone keep here
 
         # subset adata
         new_fadata = self[new_mw.cell_id_list].copy()
+        # keep cell and milestone color with raw fadata if possible
+        if keep_color_cluster is not None:
+            cluster = keep_color_cluster
+        else:
+            cluster = self.prior_information.get("cluster")
+        if set(new_fadata.obs[cluster].unique()) == set(new_mw.id_list):
+            new_fadata.obs[cluster] = pd.Categorical(new_fadata.obs[cluster], categories=new_mw.id_list)  # ensure the category order
+            new_fadata.uns[f"{cluster}_colors"] = [new_mw.milestone_color_dict[k] for k in new_mw.id_list]
 
         # update the wrapper in the new object
         new_fadata.set_milestone_wrapper(new_mw, model_name=model_name)
@@ -589,11 +603,9 @@ class FateAnnData(ad.AnnData):
             del traj_dict["waypoint_wrapper"]
             new_fadata.is_wrapped_with_waypoints = False
 
-        # todo: keep color with
-
         return new_fadata
 
-    def splice_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
+    def merge_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
         """
         Splice a fine-grained trajectory (from fadata_sub) back into the coarse trajectory (self).
 
@@ -648,6 +660,7 @@ class FateAnnData(ad.AnnData):
             divergence_regions=None,
             generate_color=False,  # Don't overwrite colors if not necessary, maybe?
         )
+        # TODO: scale the edge length in new_mn if needed, to maintain consistency with global trajectory
 
         logger.info(f"Successfully spliced trajectory from subset with {len(fadata_sub)} cells.")
         return self
@@ -1692,6 +1705,7 @@ class FateAnnData(ad.AnnData):
         }
 
     def get_start_milestone(self, start_cell, model_name=None):
+        # get start milestone based on start cell, find the milestone with highest percentage for the cell
         trajectory_dict = self.get_trajectory_dict(model_name)
 
         milestone_wrapper = trajectory_dict["milestone_wrapper"]
@@ -1707,7 +1721,7 @@ class FateAnnData(ad.AnnData):
 
         return start_milestone
 
-    def get_trajectory_pseudotime(self, start_milestone=None, start_cell=None, model_name=None):
+    def _check_start_milestone(self, start_milestone=None, start_cell=None, model_name=None):
         trajectory_dict = self.get_trajectory_dict(model_name)
 
         start_milestone = start_milestone if start_milestone else self.prior_information.get("start_milestone")
@@ -1735,6 +1749,14 @@ class FateAnnData(ad.AnnData):
             else:
                 start_milestone = self.get_start_milestone(start_cell, model_name=model_name)
             logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
+
+        return start_milestone
+
+    def get_trajectory_pseudotime(self, start_milestone=None, start_cell=None, model_name=None):
+        # get trajectory pseudotime based on start_milestone
+
+        start_milestone = self._check_start_milestone(start_milestone=start_milestone, start_cell=start_cell, model_name=model_name)
+        trajectory_dict = self.get_trajectory_dict(model_name)
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"
         if pseudotime_key in trajectory_dict:
@@ -1842,9 +1864,55 @@ class FateAnnData(ad.AnnData):
         velocity_embedding = velocity_df.values
         return velocity_embedding
 
-    def get_lineage(self, model_name):
+    def get_lineages(self, start_milestone=None, start_cell=None, target_milestone_list=None, model_name=None, return_element_type="obs_index"):
         # TODO: DFS from root to find all lineage for downstream driver gene search
-        pass
+        # ref: notebook_dev/hzy/downstream_lineage_dev.ipynb
+        # 1. check start milestone, target milestone list
+        start_milestone = self._check_start_milestone(start_milestone=start_milestone, start_cell=start_cell, model_name=model_name)
+
+        mw = self.get_milestone_wrapper(model_name)
+        G = mw.milestone_network_G
+
+        # available target milestone is the leaf node milestone in the same subgraph with start_milestone
+        available_target_milestone_list = [node for node in G.nodes if nx.has_path(G, start_milestone, node) and G.out_degree(node) == 0]
+        if target_milestone_list is None:
+            target_milestone_list = available_target_milestone_list
+        else:
+            # check target_milstone
+            invalid_target_milestone_list = set(available_target_milestone_list) - set(target_milestone_list)
+            if len(invalid_target_milestone_list) > 0:
+                logger.warning(f"invalid target milestone found: {invalid_target_milestone_list}, they will be ignored")
+                # remove invalid target milestone from target_milestone_list
+                for i in invalid_target_milestone_list:
+                    target_milestone_list.remove(i)
+
+        # 2. DFS to find all lineage from start_milestone to target_milestone_list
+        lineage_dict = {}
+        for target_milestone in target_milestone_list:
+            # find shortest path of start_milestone to target_milestone as lineage
+            sp = nx.shortest_path(G, source=start_milestone, target=target_milestone, weight="length")
+            spl_dict = {start_milestone: 0}
+            for i in range(len(sp) - 1):
+                spl_dict[sp[i + 1]] = spl_dict[sp[i]] + G[sp[i]][sp[i + 1]].get("length", 1)
+            logger.debug(f"shortest path from '{start_milestone}' to '{target_milestone}': {sp}")
+
+            # extract cells along the lineage
+            df_list = []
+            for i in range(len(sp) - 1):
+                df = mw.progressions.query(f"`from` == '{sp[i]}' & `to` == '{sp[i+1]}'")
+                df_list.append(df)
+            lineage_progressions = pd.concat(df_list)
+            lineage_cell_id_list = lineage_progressions["cell_id"].tolist()
+
+            lineage_dict[target_milestone] = lineage_cell_id_list
+
+        # simple case: binary tree structure, lineage: A->B->C, A->B->D
+        # lineage_dict = {
+        #     "Alpha": [0, 1, 2],
+        #     "Beta": [0, 1, 3],
+        # }
+
+        return lineage_dict
 
     def update_uns_cafe(self):
         # update .uns["cafe"]

@@ -4,6 +4,7 @@
 
 # import h5py
 import matplotlib.colors as mcolors
+import networkx as nx
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -53,6 +54,7 @@ class MilestoneWrapper(FateWrapper):
         """
         self.id = random_time_string(name)
         self.milestone_network = self._check_milestone_network(milestone_network)
+        self.milestone_network_G = self._convert_milestone_network_to_graph(self.milestone_network)  #
         # if there is a discrete milestone, milestone id should be specified
         if milestone_id_list is None:
             self.id_list = milestone_network[["from", "to"]].stack().unique().tolist()
@@ -462,6 +464,16 @@ class MilestoneWrapper(FateWrapper):
             logger.debug(f"milestone_network does not have 'length' column, adding with default length({default_length}).")
 
         return milestone_network
+
+    def _convert_milestone_network_to_graph(self, milestone_network):
+        G = nx.from_pandas_edgelist(
+            milestone_network,
+            source="from",
+            target="to",
+            edge_attr=True,
+            create_using=nx.DiGraph if milestone_network["directed"].any() else nx.Graph,
+        )
+        return G
 
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges

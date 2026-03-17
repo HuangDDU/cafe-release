@@ -139,12 +139,7 @@ def plot_trajectory(
             directed = milestone_wrapper["directed"]
 
             if show_milestone_labels or not curve:
-                G = nx.from_pandas_edgelist(
-                    milestone_wrapper["milestone_network"],
-                    source="from",
-                    target="to",
-                    create_using=nx.DiGraph if directed else nx.Graph,
-                )
+                G = milestone_wrapper["milestone_network_G"]
                 # get milestone positions
 
                 def get_milestone(row):

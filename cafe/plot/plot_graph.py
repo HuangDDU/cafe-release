@@ -68,20 +68,12 @@ def plot_graph(
     for i, model_name in enumerate(model_name_list):
         milestone_wrapper = fadata.get_milestone_wrapper(model_name=model_name)  # extract milestone network
         milestone_id_list = milestone_wrapper.id_list
-        milestone_network = milestone_wrapper.milestone_network
         milestone_percentages = milestone_wrapper.milestone_percentages
         divergence_regions = milestone_wrapper.divergence_regions
-        is_directed = milestone_wrapper["directed"]
         milestone_embedding = None
         if recompute_milestone_embedding or milestone_embedding is None:
             logger.debug(f"calculate new milestone embedding for model_name:{model_name}.")
-            G = nx.from_pandas_edgelist(
-                milestone_network,
-                source="from",
-                target="to",
-                edge_attr=True,
-                create_using=nx.DiGraph if is_directed else nx.Graph,
-            )
+            G = milestone_wrapper.milestone_network_G.copy()  # use pre-converted graph, but it may lose the isolated node if there is any
             for descrete_node in set(milestone_id_list) - set(G.nodes):
                 # descrete node need external addition
                 G.add_node(descrete_node)

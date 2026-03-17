@@ -139,7 +139,7 @@ class TestFateAnnData:
             ],
             columns=["from", "to"],
         )
-        self.fadata.add_trajectory_mannually(milestone_network=milestone_network, cluster_key="clusters", basis="X_emb")
+        self.fadata.add_trajectory_mannually(milestone_network=milestone_network, cluster="clusters", basis="X_emb")
 
         assert self.fadata.is_wrapped_with_trajectory
 
@@ -176,6 +176,12 @@ class TestFateAnnData:
         self.fadata.add_prior_information(basis="X_emb")
         pseudo_velocity = self.fadata.get_trajectory_pseudo_velocity()  # extract start_cell from prior information
         assert pseudo_velocity.shape == self.fadata.obsm["X_emb"].shape
+
+    def test_get_lineages(self):
+        self.test_add_trajectory_mannually()
+        self.fadata.add_prior_information(start_cell="a")
+        lineage_dict = self.fadata.get_lineages()
+        assert 3 in lineage_dict.keys()
 
     def test_write(self):
         self.test_add_waypoints()
