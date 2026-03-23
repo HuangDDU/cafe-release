@@ -48,7 +48,7 @@ def veloae(
         "--lr",
         "1e-6",
         "--n-epochs",
-        "10",
+        "100",
         "--g-rep-dim",
         "100",
         "--k-dim",

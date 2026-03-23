@@ -38,6 +38,60 @@ def setup_method_data():
     return fadata
 
 
+# test data for "merge_milestone_trajectory"
+
+
+def get_merge_milestone_trajectory_fadata():
+    from .test_fate_milestone_wrapper import get_merge_milestone_trajectory_mw
+
+    test_data = get_merge_milestone_trajectory_mw()
+    global_milestone_wrapper = test_data["global_milestone_wrapper"]
+    local_milestone_wrapper = test_data["local_milestone_wrapper"]
+    replace_milestone = test_data["replace_milestone"]
+
+    # global fadata
+    counts = np.array(
+        [
+            [10, 3],
+            [10, 12],
+            [5, 20],
+            [15, 20],
+            [0, 27],
+            [20, 27],
+        ]
+    )
+    counts = csc_matrix(counts)
+    fadata = cafe.data.FateAnnData(X=counts)
+    fadata.obs.index = ["a", "b1", "b2", "b3", "c", "d"]
+    coarse_cluster_list = ["A", "B", "B", "B", "C", "D"]
+    # fine_cluster_list = ["A", "B1", "B2", "B3", "C", "D"]
+    fadata.obs["coarse_clusters"] = coarse_cluster_list
+    fadata.obs["coarse_clusters"] = fadata.obs["coarse_clusters"].astype("category")
+    fadata.var.index = ["g1", "g2"]
+    fadata.layers["counts"] = counts
+    fadata.layers["expression"] = counts.copy()
+    fadata.obsm["X_emb"] = counts.toarray().copy()
+    fadata.add_model_name("ref")
+    fadata.add_trajectory(
+        milestone_network=global_milestone_wrapper.milestone_network,
+        progressions=global_milestone_wrapper.progressions,
+        divergence_regions=global_milestone_wrapper.divergence_regions,
+    )
+
+    # local fadata
+    fadata_sub = fadata[["b1", "b2", "b3"]].copy()
+    fadata_sub.add_model_name("ref")
+    fadata_sub.add_trajectory(
+        milestone_network=local_milestone_wrapper.milestone_network,
+        progressions=local_milestone_wrapper.progressions,
+        divergence_regions=local_milestone_wrapper.divergence_regions,
+    )
+
+    data = {"fadata": fadata, "fadata_sub": fadata_sub, "replace_milestone": replace_milestone}
+
+    return data
+
+
 class TestFateAnnData:
     def setup_method(self):
         self.fadata = setup_method_data()
@@ -93,6 +147,29 @@ class TestFateAnnData:
         fadata_subset = self.fadata.subset_trajectory(edge_list=edge_list)
         mw = fadata_subset.milestone_wrapper
         assert set([tuple(i) for i in mw.milestone_network[["from", "to"]].values.tolist()]) == set(edge_list)
+
+    def test_merge_edge_trajectory(self):
+        # TODO:
+        pass
+
+    def test_merge_milestone_trajectory(self):
+        test_data = get_merge_milestone_trajectory_fadata()
+        fadata = test_data["fadata"]
+        fadata_sub = test_data["fadata_sub"]
+        replace_milestone = test_data["replace_milestone"]
+
+        fadata.merge_milestone_trajectory(
+            fadata_sub=fadata_sub,
+            replace_milestone=replace_milestone,
+            model_name="ref",
+            sub_model_name="ref",
+            save_model_name="merge",
+        )
+        merged_mw = fadata.get_milestone_wrapper("merge")
+        # the value is tested in test case for MilestoneWrapper.merge_milestone_trajectory, only check existance here.
+        assert merged_mw.milestone_network is not None
+        assert merged_mw.progressions is not None
+        assert merged_mw.divergence_regions is not None
 
     def test_get_item(self):
         # test obs index

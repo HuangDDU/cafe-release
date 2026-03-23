@@ -33,7 +33,10 @@ def read_h5ad(*args, **kwargs):
 
     def unserialize_trajectory_dict(fadata, model_name=None, recovery_raw_wrapper_dict=False):
         logger.debug(f"unserialize trajectory dict: '{model_name}'")
-        trajectory_dict = fadata.get_trajectory_dict(model_name).copy()
+        trajectory_dict = fadata.get_trajectory_dict(model_name)
+        if trajectory_dict is None:
+            return {}
+        trajectory_dict = trajectory_dict.copy()
         # parse milestone_wrapper
         milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
         if isinstance(milestone_wrapper, dict):

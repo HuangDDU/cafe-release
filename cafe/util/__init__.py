@@ -1,6 +1,7 @@
 from .anndata_attribute import AnndataAttribute, extract_external_data_dict_directly
 from .available_metadata import get_available_method_df
 from .context import temporary_obsm_key
+from .find_edge_feature_gene import find_edge_feature_gene
 from .parse_benchmark import (
     parse_bash_resource_usage_string,
     parse_docker_resource_usage_string_list,
@@ -18,4 +19,5 @@ __all__ = [
     "temporary_obsm_key",
     "AnndataAttribute",
     "extract_external_data_dict_directly",
+    "find_edge_feature_gene",
 ]

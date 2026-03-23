@@ -8,6 +8,54 @@ from scipy.ndimage import gaussian_filter1d
 from .util import save_fig
 
 
+def _fit_curve_gaussian(pseudotime, expression, sigma=5.0, with_ci=True):
+    """Fit smoothed curve by Gaussian filter and optional CI."""
+    smooth_expr = gaussian_filter1d(expression, sigma=sigma)
+
+    if not with_ci:
+        return smooth_expr, None, None
+
+    df = pd.DataFrame({"pt": pseudotime, "expr": expression})
+    window = max(int(len(pseudotime) * 0.1), 5)
+    rolling_std = df["expr"].rolling(window=window, center=True, min_periods=2).std().fillna(0).values
+    smooth_std = gaussian_filter1d(rolling_std, sigma=sigma)
+
+    window_size_actual = np.clip(np.ones_like(pseudotime) * window, 1, len(pseudotime))
+    sem = smooth_std / np.sqrt(window_size_actual)
+    ci = 1.96 * sem
+    ci_lower = smooth_expr - ci
+    ci_upper = smooth_expr + ci
+    return smooth_expr, ci_lower, ci_upper
+
+
+def _fit_curve_pygam(pseudotime, expression, with_ci=True):
+    """Fit smoothed curve by pygam and optional CI."""
+    try:
+        from pygam import LinearGAM, s
+    except ImportError:
+        raise ImportError("Please install pygam (`pip install pygam`) to use curve_mode='pygam'")
+
+    gam = LinearGAM(s(0)).fit(pseudotime.reshape(-1, 1), expression)
+    smooth_expr = gam.predict(pseudotime.reshape(-1, 1))
+
+    if not with_ci:
+        return smooth_expr, None, None
+
+    ci_intervals = gam.confidence_intervals(pseudotime.reshape(-1, 1), width=0.95)
+    ci_lower = ci_intervals[:, 0]
+    ci_upper = ci_intervals[:, 1]
+    return smooth_expr, ci_lower, ci_upper
+
+
+def _fit_expression_curve(pseudotime, expression, curve_mode="gaussian", sigma=5.0, with_ci=True):
+    """Unified interface for expression curve fitting."""
+    if curve_mode == "gaussian":
+        return _fit_curve_gaussian(pseudotime, expression, sigma=sigma, with_ci=with_ci)
+    if curve_mode == "pygam":
+        return _fit_curve_pygam(pseudotime, expression, with_ci=with_ci)
+    raise ValueError(f"Unknown curve_mode: '{curve_mode}'. Supported modes are 'gaussian' and 'pygam'.")
+
+
 def plot_gene_trends(
     fadata,
     genes,
@@ -19,7 +67,7 @@ def plot_gene_trends(
     cell_color_key=None,
     figsize=None,
     return_fig=False,
-    curve_mode="gaussian",  # gaussian or pygam
+    curve_mode="pygam",  # gaussian or pygam
     n_cols=4,
     sigma=5.0,
     save=None,
@@ -192,39 +240,13 @@ def plot_gene_trends(
             lineage_pseudotime = lineage_pseudotime[sort_idx]
             lineage_expression = lineage_expression[sort_idx]
 
-            if curve_mode == "gaussian":
-                # Smooth expression using gaussian filter
-                df = pd.DataFrame({"pt": lineage_pseudotime, "expr": lineage_expression})
-                smooth_expr = gaussian_filter1d(lineage_expression, sigma=sigma)
-
-                # Estimate confidence interval using rolling window std
-                window = max(int(len(lineage_pseudotime) * 0.1), 5)
-                rolling_std = df["expr"].rolling(window=window, center=True, min_periods=2).std().fillna(0).values
-                smooth_std = gaussian_filter1d(rolling_std, sigma=sigma)
-
-                # Standard error of the mean (SEM) for confidence interval
-                window_size_actual = np.clip(np.ones_like(lineage_pseudotime) * window, 1, len(lineage_pseudotime))
-                sem = smooth_std / np.sqrt(window_size_actual)
-                ci = 1.96 * sem
-                ci_lower = smooth_expr - ci
-                ci_upper = smooth_expr + ci
-
-            elif curve_mode == "pygam":
-                try:
-                    from pygam import LinearGAM, s
-                except ImportError:
-                    raise ImportError("Please install pygam (`pip install pygam`) to use curve_mode='pygam'")
-
-                # Fit Generalized Additive Model
-                gam = LinearGAM(s(0)).fit(lineage_pseudotime.reshape(-1, 1), lineage_expression)
-
-                # Predict smoothed expression and confidence intervals
-                smooth_expr = gam.predict(lineage_pseudotime.reshape(-1, 1))
-                ci_intervals = gam.confidence_intervals(lineage_pseudotime.reshape(-1, 1), width=0.95)
-                ci_lower = ci_intervals[:, 0]
-                ci_upper = ci_intervals[:, 1]
-            else:
-                raise ValueError(f"Unknown curve_mode: '{curve_mode}'. Supported modes are 'gaussian_filter1d' and 'pygam'.")
+            smooth_expr, ci_lower, ci_upper = _fit_expression_curve(
+                lineage_pseudotime,
+                lineage_expression,
+                curve_mode=curve_mode,
+                sigma=sigma,
+                with_ci=True,
+            )
 
             color = lineage_colors[lineage_name]
             line_handle = ax.plot(lineage_pseudotime, smooth_expr, label=lineage_name, color=color, linewidth=2)[0]
@@ -284,3 +306,129 @@ def plot_gene_trends(
         return fig, axes
     else:
         plt.show()
+
+
+def plot_gene_linear_trends(
+    fadata,
+    genes,
+    model_name=None,
+    pseudotime_key=None,
+    start_milestone=None,
+    # show_cell=False, # TODO: show expression on plot for every gene
+    # seperate_graph=False, # TODO: seprate graph and show expression for every gene
+    figsize=(8, 5),
+    return_fig=False,
+    curve_mode="gaussian",  # gaussian or pygam
+    sigma=5.0,
+    linewidth=2.0,
+    with_ci=True,
+    ci_alpha=0.12,
+    legend_loc="best",
+    save=None,
+    **kwargs,
+):
+    """Plot multiple gene trends in ONE subplot for linear trajectory.
+
+    This function does not separate cells by lineage. It fits all selected genes
+    on the same pseudotime axis and overlays their curves in one axes with
+    different colors.
+
+    Parameters
+    ----------
+    fadata : FateAnnData
+        The FateAnnData object.
+    genes : str or list of str
+        One or more genes to plot in the same axes.
+    model_name : str, optional
+        Trajectory model name.
+    pseudotime_key : str, optional
+        Key in ``fadata.obs`` for pseudotime. If None, compute by trajectory.
+    start_milestone : str, optional
+        Start milestone used when computing pseudotime.
+    show_cell: bool, optional
+        Whether to show individual cell expression as scatter points.
+    figsize : tuple, optional
+        Figure size.
+    return_fig : bool, optional
+        Whether to return figure and axes.
+    curve_mode : {"gaussian", "pygam"}, optional
+        Curve fitting mode.
+    sigma : float, optional
+        Gaussian smoothing parameter.
+    linewidth : float, optional
+        Curve line width.
+    with_ci : bool, optional
+        Whether to draw confidence interval band.
+    ci_alpha : float, optional
+        Alpha value for confidence interval band.
+    legend_loc : str, optional
+        Legend location for matplotlib.
+    save : str, optional
+        Output figure path.
+    """
+    if isinstance(genes, str):
+        genes = [genes]
+    if len(genes) == 0:
+        raise ValueError("`genes` is empty.")
+
+    # pseudotime
+    if pseudotime_key is None:
+        pseudotime = fadata.get_trajectory_pseudotime(start_milestone=start_milestone, model_name=model_name)
+        if hasattr(pseudotime, "values"):
+            pseudotime = pseudotime.values
+        elif isinstance(pseudotime, list):
+            pseudotime = np.array(pseudotime)
+    else:
+        if pseudotime_key not in fadata.obs.columns:
+            raise ValueError(f"`pseudotime_key` '{pseudotime_key}' not found in fadata.obs")
+        pseudotime = fadata.obs[pseudotime_key].astype(float).values
+
+    # keep only valid pseudotime once
+    valid_pt_mask = ~pd.isna(pseudotime)
+    pt = pseudotime[valid_pt_mask]
+    if len(pt) == 0:
+        raise ValueError("No valid pseudotime values after filtering NaNs.")
+
+    sort_idx = np.argsort(pt)
+    pt = pt[sort_idx]
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    rc = plt.rcParams["axes.prop_cycle"]
+    default_colors = rc.by_key()["color"]
+
+    for i, gene in enumerate(genes):
+        if gene not in fadata.var_names:
+            raise ValueError(f"Gene '{gene}' not found in fadata.var_names")
+
+        expr = fadata[:, gene].X
+        if hasattr(expr, "toarray"):
+            expr = expr.toarray()
+        expr = np.asarray(expr).flatten()
+
+        expr = expr[valid_pt_mask][sort_idx]
+
+        smooth_expr, ci_lower, ci_upper = _fit_expression_curve(
+            pt,
+            expr,
+            curve_mode=curve_mode,
+            sigma=sigma,
+            with_ci=with_ci,
+        )
+
+        color = default_colors[i % len(default_colors)]
+        ax.plot(pt, smooth_expr, color=color, linewidth=linewidth, label=str(gene))
+        if with_ci:
+            ax.fill_between(pt, ci_lower, ci_upper, color=color, alpha=ci_alpha)
+
+    ax.set_title("Gene linear trends")
+    ax.set_xlabel("pseudotime" if pseudotime_key is None else pseudotime_key)
+    ax.set_ylabel("expression")
+    ax.grid(True, linestyle="-", alpha=0.5)
+    ax.legend(loc=legend_loc, frameon=False)
+    plt.tight_layout()
+
+    save_fig(save, default_filename=f".cafe/{fadata.id}/img/pseudotime_linear_trends_({model_name}-{genes}).png", ax=ax)
+
+    if return_fig:
+        return fig, ax
+    plt.show()

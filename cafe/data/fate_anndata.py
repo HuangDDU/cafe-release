@@ -583,6 +583,9 @@ class FateAnnData(ad.AnnData):
 
         # subset adata
         new_fadata = self[new_mw.cell_id_list].copy()
+        new_fadata.id = f"{self.id}_subset_{edge_list}"
+        new_fadata.check_result_dir()
+
         # keep cell and milestone color with raw fadata if possible
         if keep_color_cluster is not None:
             cluster = keep_color_cluster
@@ -605,9 +608,10 @@ class FateAnnData(ad.AnnData):
 
         return new_fadata
 
-    def merge_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
+    # TODO: core operation should move to MilestoneWrapper, the interface should refer to the next function
+    def merge_edge_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
         """
-        Splice a fine-grained trajectory (from fadata_sub) back into the coarse trajectory (self).
+        Merge a fine-grained trajectory (from fadata_sub) back into the coarse trajectory (self).
 
         Args:
             fadata_sub (FateAnnData): The subset FateAnnData object containing the fine-grained trajectory.
@@ -662,10 +666,84 @@ class FateAnnData(ad.AnnData):
         )
         # TODO: scale the edge length in new_mn if needed, to maintain consistency with global trajectory
 
-        logger.info(f"Successfully spliced trajectory from subset with {len(fadata_sub)} cells.")
+        logger.info(f"Successfully merged edge trajectory from subset with {len(fadata_sub)} cells.")
+        return self
+
+    # TODO
+    # def merge_edge_trajectory(
+    #     self,
+    #     fadata_sub: "FateAnnData",
+    #     replace_edge: str,
+    #     model_name: str = None,
+    #     sub_model_name: str = None,
+    #     save_model_name: str = "merge",
+    #     scale_local_edge_length: bool = True,
+    # ):
+    #     target_model_name = self.parse_model_name(model_name)
+    #     if target_model_name is None:
+    #         raise ValueError(f"model '{model_name}' not found in current trajectory history")
+    #     target_sub_model_name = fadata_sub.parse_model_name(sub_model_name)
+    #     if target_sub_model_name is None:
+    #         raise ValueError(f"sub model '{sub_model_name}' not found in fadata_sub trajectory history")
+    #     missing_cell_list = list(set(fadata_sub.obs.index) - set(self.obs.index))
+    #     if len(missing_cell_list) > 0:
+    #         raise ValueError(f"fadata_sub has {len(missing_cell_list)} cells not in self: {missing_cell_list}")
+
+    #     mw = self.get_milestone_wrapper(target_model_name)
+    #     sub_mw = fadata_sub.get_milestone_wrapper(target_sub_model_name)
+    #     new_mw = mw.merge_edge_trajectory(
+    #         sub_mw=sub_mw,
+    #         replace_edge=replace_edge,
+    #         scale_local_edge_length=scale_local_edge_length,
+    #     )
+
+    #     self.add_model_name(save_model_name)
+    #     self.add_trajectory(
+    #         milestone_network=new_mw.milestone_network,
+    #         progressions=new_mw.progressions,
+    #         divergence_regions=new_mw.divergence_regions,
+    #         generate_color=False,
+    #     )
+    #     return self
+
+    def merge_milestone_trajectory(
+        self,
+        fadata_sub: "FateAnnData",
+        replace_milestone: str,
+        model_name: str = None,
+        sub_model_name: str = None,
+        save_model_name: str = "merge",
+        scale_local_edge_length: bool = True,
+    ):
+        target_model_name = self.parse_model_name(model_name)
+        if target_model_name is None:
+            raise ValueError(f"model '{model_name}' not found in current trajectory history")
+        target_sub_model_name = fadata_sub.parse_model_name(sub_model_name)
+        if target_sub_model_name is None:
+            raise ValueError(f"sub model '{sub_model_name}' not found in fadata_sub trajectory history")
+
+        missing_cell_list = list(set(fadata_sub.obs.index) - set(self.obs.index))
+        if len(missing_cell_list) > 0:
+            raise ValueError(f"fadata_sub has {len(missing_cell_list)} cells not in self: {missing_cell_list}")
+
+        mw = self.get_milestone_wrapper(target_model_name)
+        sub_mw = fadata_sub.get_milestone_wrapper(target_sub_model_name)
+        new_mw = mw.merge_milestone_trajectory(
+            sub_mw=sub_mw,
+            replace_milestone=replace_milestone,
+            scale_local_edge_length=scale_local_edge_length,
+        )
+        self.add_model_name(save_model_name)
+        self.add_trajectory(
+            milestone_network=new_mw.milestone_network,
+            progressions=new_mw.progressions,
+            divergence_regions=new_mw.divergence_regions,
+            generate_color=False,
+        )
         return self
 
     # fix
+
     def __getitem__(self, index):
         # 1. call Anndata __getitem__ to get the sliced AnnData object
         new_adata = super().__getitem__(index)
@@ -682,9 +760,10 @@ class FateAnnData(ad.AnnData):
             new_adata.uns["cafe"] = {}
 
         # 3. copy simple attribute/property from 'self' to 'new_adata'
-        new_adata.id = self.id
         new_adata.prior_information = self.prior_information  # TODO: check
         new_adata.model_name = self.model_name
+        # new_adata.id = f"{self.id}_subset"  # update id for subset
+        # new_adata.check_result_dir()
 
         # 4. link complex trajectory attribute from 'self' to 'new_adata'
         # New trajectory history dict construction
@@ -1938,6 +2017,9 @@ class FateAnnData(ad.AnnData):
             # transfer milestone object to dict
             milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
             if milestone_wrapper is not None and isinstance(milestone_wrapper, MilestoneWrapper):
+                if hasattr(milestone_wrapper, "_milestone_network_G"):
+                    # networkX.Graph object cannot be serialized, need to be remove from attribute.
+                    delattr(milestone_wrapper, "_milestone_network_G")
                 trajectory_dict["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
             # transfer waypoint object to dict
             waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
