@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 # import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import pandas as pd
 import scanpy as sc
 
@@ -22,6 +23,11 @@ def plot_graph(
     layout_by_row: str = "color",
     nx_draw_kwargs: dict = {},
     recompute_milestone_embedding: bool = True,
+    adjust_edge_length_for_layout: bool = False,
+    edge_length_range: tuple[float, float] = (1.0, 4.0),
+    layout_rankdir: str = "TB",
+    layout_ranksep: float = 0.45,
+    layout_nodesep: float = 0.25,
     save: bool | str = None,
     **sc_pl_embedding_kwargs,
 ):
@@ -35,6 +41,11 @@ def plot_graph(
         nx_draw_kwargs (dict, optional): additional keyword arguments for networkx draw.
         sc_pl_embedding_kwargs (dict, optional): additional keyword arguments for scanpy embedding plot.
         recompute_milestone_embedding (bool, optional): whether to recompute milestone embedding.
+        adjust_edge_length_for_layout (bool, optional): whether to adjust edge length for layout.
+        edge_length_range (tuple[float, float], optional): min/max edge length used for layout scaling.
+        layout_rankdir (str, optional): graphviz rank direction, e.g. "TB" or "LR".
+        layout_ranksep (float, optional): graphviz rank separation.
+        layout_nodesep (float, optional): graphviz node separation.
         save (bool | str, optional): path to save the plot.
         sc_pl_embedding_kwargs (dict, optional): additional keyword arguments for scanpy embedding plot.
 
@@ -73,11 +84,39 @@ def plot_graph(
         milestone_embedding = None
         if recompute_milestone_embedding or milestone_embedding is None:
             logger.debug(f"calculate new milestone embedding for model_name:{model_name}.")
-            G = milestone_wrapper.milestone_network_G.copy()  # use pre-converted graph, but it may lose the isolated node if there is any
+            if adjust_edge_length_for_layout:
+                mn_for_layout = milestone_wrapper.adjust_edge_length(
+                    min_length=edge_length_range[0],
+                    max_length=edge_length_range[1],
+                    inplace=False,
+                )
+            else:
+                mn_for_layout = milestone_wrapper.milestone_network.copy()
+
+            G = nx.from_pandas_edgelist(
+                mn_for_layout,
+                source="from",
+                target="to",
+                edge_attr=True,
+                create_using=nx.DiGraph if mn_for_layout["directed"].any() else nx.Graph,
+            )
             for descrete_node in set(milestone_id_list) - set(G.nodes):
                 # descrete node need external addition
                 G.add_node(descrete_node)
-            milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot")  # position
+
+            if adjust_edge_length_for_layout:
+                # for fr, to, attr in G.edges(data=True):
+                for _, _, attr in G.edges(data=True):  # for flake8 format
+                    edge_len = float(attr.get("length", 1.0))
+                    attr["minlen"] = max(1, int(np.round(edge_len)))
+
+            graphviz_args = f"-Grankdir={layout_rankdir} -Granksep={layout_ranksep} -Gnodesep={layout_nodesep}"
+            try:
+                milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot", args=graphviz_args)
+            except Exception as e:
+                logger.warning(f"graphviz layout with args failed: {e}. fallback to default dot layout.")
+                milestone_emb_dict = nx.nx_agraph.graphviz_layout(G, prog="dot")
+
             # position fo cell
             milestone_emb_df = pd.DataFrame(milestone_emb_dict).T
 
@@ -132,7 +171,7 @@ def plot_graph(
             sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, ax=ax, **sc_pl_embedding_kwargs)
 
             # legend remove
-            if color == "milestone" or (layout_by_row == "color" and i < len(model_name) - 1):
+            if color == "milestone" or (layout_by_row == "color" and i < len(model_name_list) - 1):
                 # remove legend for color with milestone, but it waste time for show and remove
                 ax.legend().remove()
 
@@ -160,6 +199,7 @@ def plot_graph(
             save = f".cafe/{fadata.id}/img/graph_{basis}_{'_'.join(model_name_list)}.png"
         plt.savefig(save)
         logger.debug(f"save trajectory plot to '{save}'")
+
     return axes
 
 

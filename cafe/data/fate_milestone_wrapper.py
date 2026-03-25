@@ -798,6 +798,110 @@ class MilestoneWrapper(FateWrapper):
         )
         return merged_mw
 
+    def adjust_edge_length(
+        self,
+        min_length: float = 0.6,
+        max_length: float = 3.0,
+        clip_quantile: tuple[float, float] = (0.05, 0.95),
+        power: float = 0.75,
+        inplace: bool = True,
+    ):
+        """Adjust edge length according to edge-level cell load.
+
+        Rules:
+        1) More cells on an edge -> longer edge.
+        2) Cells collapsed on milestone (``from == to``) are evenly distributed to all
+           incident milestone edges of that milestone.
+
+        Args:
+            min_length (float, optional): Minimum scaled edge length. Defaults to 0.6.
+            max_length (float, optional): Maximum scaled edge length. Defaults to 3.0.
+            clip_quantile (tuple[float, float], optional): Robust clipping quantiles for
+                edge load before normalization. Defaults to (0.05, 0.95).
+            power (float, optional): Nonlinear compression factor for normalization.
+                Use ``power < 1`` to reduce extreme stretching. Defaults to 0.75.
+            inplace (bool, optional): Whether to update ``self.milestone_network``.
+                Defaults to True.
+
+        Returns:
+            pd.DataFrame | MilestoneWrapper:
+                - if ``inplace=True`` return ``self``;
+                - else return a new milestone network dataframe with updated ``length``.
+        """
+        if min_length <= 0 or max_length <= 0:
+            raise ValueError("min_length and max_length should be positive.")
+        if max_length < min_length:
+            raise ValueError("max_length should be greater than or equal to min_length.")
+        if not (0 <= clip_quantile[0] <= clip_quantile[1] <= 1):
+            raise ValueError("clip_quantile should satisfy 0 <= q_low <= q_high <= 1.")
+
+        mn = self.milestone_network.copy()
+        if "length" not in mn.columns:
+            mn["length"] = 1.0
+
+        def _edge_key(fr, to):
+            return f"{fr}__EDGE__{to}"
+
+        # Build index for existing edges only.
+        edge_df = mn[["from", "to"]].copy()
+        edge_df["edge_key"] = edge_df.apply(lambda r: _edge_key(r["from"], r["to"]), axis=1)
+        edge_load = pd.Series(0.0, index=edge_df["edge_key"].tolist())
+
+        prog = self.progressions.copy()
+        if prog.empty:
+            logger.warning("progressions is empty; skip edge-length adjustment.")
+            return self if inplace else mn
+
+        # 1) Non-self progression contributes to its own edge load.
+        non_self = prog.query("`from` != `to`").copy()
+        if not non_self.empty:
+            non_self["edge_key"] = non_self.apply(lambda r: _edge_key(r["from"], r["to"]), axis=1)
+            # weighted by progression percentage as effective cell amount
+            non_self_load = non_self.groupby("edge_key")["percentage"].sum()
+            common_idx = edge_load.index.intersection(non_self_load.index)
+            edge_load.loc[common_idx] = edge_load.loc[common_idx] + non_self_load.loc[common_idx]
+
+        # 2) Self-loop progression (cells collapsed on milestone) is evenly split to
+        # all incident edges around that milestone.
+        self_loop = prog.query("`from` == `to`").copy()
+        if not self_loop.empty:
+            milestone_self_load = self_loop.groupby("from")["percentage"].sum().to_dict()
+            for milestone, load in milestone_self_load.items():
+                incident_mask = (mn["from"] == milestone) | (mn["to"] == milestone)
+                incident_edges = mn.loc[incident_mask, ["from", "to"]]
+                if incident_edges.empty:
+                    continue
+                share = float(load) / float(len(incident_edges))
+                for fr, to in incident_edges.itertuples(index=False):
+                    key = _edge_key(fr, to)
+                    if key in edge_load.index:
+                        edge_load.loc[key] = float(edge_load.loc[key]) + share
+
+        # Convert load to scaled length.
+        load_values = edge_load.values.astype(float)
+        if np.allclose(load_values, 0):
+            logger.warning("all edge loads are zero; use uniform edge length.")
+            scaled_length = pd.Series(min_length, index=edge_load.index)
+        else:
+            q_low, q_high = np.quantile(load_values, clip_quantile)
+            if np.isclose(q_high, q_low):
+                norm = np.ones_like(load_values)
+            else:
+                clipped = np.clip(load_values, q_low, q_high)
+                norm = (clipped - q_low) / (q_high - q_low)
+            norm = np.power(norm, power)
+            scaled = min_length + norm * (max_length - min_length)
+            scaled_length = pd.Series(scaled, index=edge_load.index)
+
+        mn["length"] = [float(scaled_length.loc[_edge_key(fr, to)]) for fr, to in zip(mn["from"], mn["to"], strict=False)]
+
+        if inplace:
+            self.milestone_network = self._check_milestone_network(mn)
+            # refresh cached graph
+            self._milestone_network_G = self._convert_milestone_network_to_graph(self.milestone_network)
+            return self
+        return mn
+
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges
     #     ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_trajectory_edges
