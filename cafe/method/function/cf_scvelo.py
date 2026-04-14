@@ -12,7 +12,7 @@ except ImportError:
 
 
 @method_info(
-    name="scvelo",
+    name="scVelo",
     version="0.0.1",
     description="scVelo: RNA velocity generalized through dynamical modeling",
     wrapper_type="velocity",

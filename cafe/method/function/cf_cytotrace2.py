@@ -12,7 +12,7 @@ except ImportError:
 
 
 @method_info(
-    name="cytotrace2",
+    name="Cytotrace2",
     version="0.0.1",
     description="Cytotrace2: cellular potency categories and absolute developmental potential",
     wrapper_type="linear",

@@ -1,4 +1,5 @@
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 from ..._settings import settings
@@ -31,8 +32,10 @@ def plot_embedding(fadata, model_name: str = None, basis=None):
     probability_df = _get_probability_df(fadata, model_name=model_name)
     end_state_list = probability_df.columns.tolist()
     fadata.obs[end_state_list] = probability_df.values
-    sc.pl.embedding(fadata, color=end_state_list, basis=basis)
+    ax = sc.pl.embedding(fadata, color=end_state_list, basis=basis, show=False)
     fadata.obs.drop(columns=end_state_list, inplace=True)
+
+    return ax
 
 
 def plot_star(fadata, model_name: str = None, terminal_palette=settings.sns_palette):
@@ -63,4 +66,9 @@ def plot_star(fadata, model_name: str = None, terminal_palette=settings.sns_pale
     fadata.obsm["lineages_fwd"] = probability_df.values
 
     # plot
-    cr.pl.circular_projection(fadata, keys=["clusters"], legend_loc="right")
+    ax = cr.pl.circular_projection(fadata, keys=["clusters"], legend_loc="right")
+
+    if ax is None:
+        ax = plt.gca()
+
+    return ax

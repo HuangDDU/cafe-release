@@ -46,7 +46,11 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
 
     # --- 4. Dispatch to the specific plot function ---
     logger.debug(f"Dispatching to plotter '{wrapper_type}' with mode '{mode}'.")
-    plot_function(fadata=fadata, model_name=model_name, **kwargs)
+    ax = plot_function(
+        fadata=fadata, model_name=model_name, **kwargs
+    )  # need return ax for further use, e.g., savefig, or plot more things on the same ax
+    if ax is None:
+        ax = plt.gca()
 
     # --- 5. Save the figure if requested ---
     if save is not None:
@@ -54,3 +58,5 @@ def plot_wrapper(fadata: FateAnnData, wrapper_type: str = None, model_name: str 
             save = f".cafe/{fadata.id}/img/wrapper_{model_name}.png"
         plt.savefig(save)
         logger.debug(f"save trajectory plot to '{save}'")
+
+    return ax

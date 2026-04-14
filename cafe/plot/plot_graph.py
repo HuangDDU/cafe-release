@@ -48,7 +48,6 @@ def plot_graph(
         layout_nodesep (float, optional): graphviz node separation.
         save (bool | str, optional): path to save the plot.
         sc_pl_embedding_kwargs (dict, optional): additional keyword arguments for scanpy embedding plot.
-
     Returns:
         axes: axes
     """
@@ -103,6 +102,9 @@ def plot_graph(
             for descrete_node in set(milestone_id_list) - set(G.nodes):
                 # descrete node need external addition
                 G.add_node(descrete_node)
+
+            # remove self-loops to avoid Bezier curve error in nx.draw with arrowstyle
+            G.remove_edges_from(list(nx.selfloop_edges(G)))
 
             if adjust_edge_length_for_layout:
                 # for fr, to, attr in G.edges(data=True):
@@ -167,7 +169,8 @@ def plot_graph(
             # base scanpy embedding scatter plot
             # plot single str for color parameter
             # zorder: 1: line, 2: cell(scanpy), 3: milestone
-            sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
+            if "title" not in sc_pl_embedding_kwargs:
+                sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
             sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, ax=ax, **sc_pl_embedding_kwargs)
 
             # legend remove
@@ -177,15 +180,19 @@ def plot_graph(
 
             # TODO: nx plot keep unchange in the color loop, but it should plot for every ax.
             milestone_color_dict = milestone_wrapper["milestone_color_dict"]
-            nx.draw(
-                G,
-                milestone_emb_dict,
-                with_labels=True,
-                node_color=[milestone_color_dict[node] for node in G.nodes],
+            default_nx_draw_kwargs = dict(
                 width=5,
                 edge_color="gray",
                 arrowstyle="simple",
                 arrowsize=30,
+                with_labels=True,
+                node_color=[milestone_color_dict[node] for node in G.nodes],
+            )
+            default_nx_draw_kwargs.update(nx_draw_kwargs)
+            nx_draw_kwargs = default_nx_draw_kwargs
+            nx.draw(
+                G,
+                milestone_emb_dict,
                 ax=ax,
                 **nx_draw_kwargs,
             )

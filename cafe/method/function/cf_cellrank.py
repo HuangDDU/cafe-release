@@ -17,7 +17,7 @@ except ImportError:
 
 
 @method_info(
-    name="cellrank",
+    name="CellRank",
     version="0.0.1",
     description="CellRank 2: unified fate mapping in multiview single-cell data",
     wrapper_type="velocity",
@@ -51,7 +51,7 @@ def cellrank(
     """
     # 1.  preprocess
     if repreprocess:
-        preprocess_pipeline(adata, style="scanpy")
+        preprocess_pipeline(adata, style="scvelo")
 
     # 2. execute method
     # kernel
@@ -59,8 +59,12 @@ def cellrank(
         kernel_obj = cr.kernels.ConnectivityKernel(adata, **kernel_params)
     elif kernel == "velocity":
         if "velocity" not in adata.layers:
-            # TODO: check and calculate velocity adata.layer["velocity"] first
-            raise ValueError("adata.layers['velocity'] not found, please calculate velocity first.")
+            # # TODO: check and calculate velocity adata.layer["velocity"] first
+            # raise ValueError("adata.layers['velocity'] not found, please calculate velocity first.")
+            import scvelo as scv
+
+            scv.tl.velocity(adata, mode="dynamical")
+            scv.tl.velocity_graph(adata)
         kernel_obj = cr.kernels.VelocityKernel(adata, **kernel_params).compute_transition_matrix()
     else:
         # TODO: Other kernel in parameters

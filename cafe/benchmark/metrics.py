@@ -25,6 +25,11 @@ def metrics(
 
     if metrics is None:
         metrics = metric_meta_df["metric_id"].tolist() + ["time", "time_text", "memory", "memory_text"]
+        # TODO: EDPC and GDPC are not calculated in current version, need to remove them from default metric list, but keep them in metric metadata for future use when they are implemented
+        if "edpc" in metrics:
+            metrics.remove("edpc")
+        if "gdpc" in metrics:
+            metrics.remove("gdpc")
     if metric_dir is None:
         metric_dir = fadata.metric_dir
     benchmark_dir = fadata.benchmark_dir
@@ -131,6 +136,8 @@ def metrics(
         # for False or None
         pass
 
+    _check_resource(metric_df, fadata_id=fadata.id)  # check and complete resource usage
+
     if if_save:
         metric_df.to_csv(f"{benchmark_dir}/metrics_normalized.csv")  # save summary metric
 
@@ -161,3 +168,23 @@ def default_overall_score_func(row):
         overall = 0
 
     return overall
+
+
+def _check_resource(benchmark_df, fadata_id):
+    from .util import parse_resource_from_log
+
+    bool_series = (benchmark_df[["time", "memory"]] == 0).any(axis=1)
+    method_list = bool_series[bool_series].index.tolist()
+    logger.warning(f"Found methods with zero time or memory: {method_list}")
+
+    for method in method_list:
+        log_file = f".cafe/{fadata_id}/log/{method}.log"
+        if os.path.exists(log_file):
+            resource_dict = parse_resource_from_log(log_file)
+            benchmark_df.loc[method, "time"] = resource_dict.get("time", 0)
+            benchmark_df.loc[method, "memory"] = resource_dict.get("memory", 0)
+            benchmark_df.loc[method, "time_text"] = resource_dict.get("time_text", "0s")
+            benchmark_df.loc[method, "memory_text"] = resource_dict.get("memory_text", "0M")
+            logger.info(f"updated resource usage for method '{method}' from log file.")
+        else:
+            logger.warning(f"log file '{log_file}' not found for method '{method}', can't update resource usage.")

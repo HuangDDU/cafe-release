@@ -31,6 +31,8 @@ def plot_velocity(
             # TODO: dynamo style
             import dynamo as dyn
 
-            dyn.pl.streamline_plot(fadata, color=cluster, basis=basis[2:])
+            ax = dyn.pl.streamline_plot(fadata, color=cluster, basis=basis[2:])
     # TODO: save
     save_fig(save, default_filename=f".cafe/{fadata.id}/img/velocity_{model_name}.png", ax=ax)
+
+    return ax

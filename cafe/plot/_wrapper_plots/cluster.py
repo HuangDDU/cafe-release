@@ -29,6 +29,7 @@ def plot_embedding(fadata, model_name: str = None, basis=None):
         basis=basis,
         curve=False,
         show_milestone_labels=True,
+        # legend_loc="none",
     )
     ax = axes.flatten()[0]
 
@@ -48,6 +49,8 @@ def plot_embedding(fadata, model_name: str = None, basis=None):
     pos.update(milestone_positions.apply(list, axis=1).to_dict())  # add milestone node pos
     # plot edges
     nx.draw_networkx_edges(G, pos=pos, ax=ax, alpha=0.5, edge_color="gray", width=0.5)
+
+    return ax
 
 
 plot_pie = plot_pie

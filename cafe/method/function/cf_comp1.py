@@ -12,7 +12,7 @@ except ImportError:
 
 
 @method_info(
-    name="comp1",
+    name="Comp1",
     version="0.0.1",
     description="Comp1: baseline for linear wrapper, extract an embedded component pseudotime method",
     wrapper_type="linear",

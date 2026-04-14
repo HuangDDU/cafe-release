@@ -1,4 +1,5 @@
 from ..data import FateAnnData
+from ..util import format_memory, format_time
 
 
 # TODO: add docs
@@ -14,18 +15,7 @@ def calculate_resource_usage(fadata: FateAnnData, model_name: str, format_text: 
 
     # formatted text
     if format_text:
-        if time < 60:
-            time_text = f"{time:.0f}s"
-        elif time < 3600:
-            time_text = f"{time/60:.0f}min"
-        else:
-            time_text = f"{time/3600:.0f}h"
-        out["time_text"] = time_text
-    if format_text:
-        if memory < 1024:
-            memory_text = f"{memory:.0f}M"
-        else:
-            memory_text = f"{memory/1024:.0f}G"
-        out["memory_text"] = memory_text
+        out["time_text"] = format_time(time)
+        out["memory_text"] = format_memory(memory)
 
     return out

@@ -13,7 +13,7 @@ except ImportError:
 
 
 @method_info(
-    name="pyrovelocity",
+    name="PyroVelocity",
     version="0.0.1",
     description="PyroVelocity: probabilistic modeling of RNA velocity",
     wrapper_type="velocity",

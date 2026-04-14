@@ -379,7 +379,7 @@ class MilestoneWrapper(FateWrapper):
             divergence_regions=sub_div,
             milestone_percentages=sub_percentages,
             progressions=sub_progressions,
-            wrapper_type=self.wrapper_type,
+            wrapper_type=self.wrapper_type if hasattr(self, "wrapper_type") else None,
             name=f"{self.id}_sub",
             milestone_color_dict=milestone_color_dict,
         )

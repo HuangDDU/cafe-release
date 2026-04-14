@@ -43,3 +43,5 @@ def plot_embedding(fadata, model_name: str = None, basis: str = None):
 
     # plot edges
     nx.draw_networkx_edges(G, pos=pos, ax=ax, alpha=0.5, edge_color="gray", width=0.5)
+
+    return ax

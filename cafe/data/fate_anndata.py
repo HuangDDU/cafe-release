@@ -1310,7 +1310,7 @@ class FateAnnData(ad.AnnData):
         probability: pd.DataFrame,
         cluster_key: str = None,
         new_cluster_list: list = None,
-        strategy: str = "base",  # base, graph_fusion, hierarchical_clustering
+        strategy: str = "graph_fusion",  # base, graph_fusion, hierarchical_clustering
         **strategy_kwargs,
     ):
         # TODO: for palantir, cellrank

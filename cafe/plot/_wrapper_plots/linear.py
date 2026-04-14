@@ -2,7 +2,7 @@
 
 from ..plot_pseudotime import plot_pseudotime_embedding, plot_pseudotime_stack
 
-DEFAULT_MODE = "embedding"
+DEFAULT_MODE = "stack"
 
 
 # def plot_embedding(fadata, model_name: str = None, basis: str = None, **kwargs):

@@ -13,7 +13,7 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="VeloAE",
     version="0.0.1",
     description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
     wrapper_type="velocity",

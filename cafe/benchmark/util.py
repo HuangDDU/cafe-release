@@ -116,3 +116,28 @@ def get_available_docker_backend():
     except (subprocess.CalledProcessError, FileNotFoundError):
         logger.warning("Failed to list docker images. Is docker installed and running?")
         return []
+
+
+def parse_resource_from_log(log_file_path, format_text=True):
+    # read method log file, extract and parse resource usage string, return resource usage dict with time(s) and memory(MB)
+    from ..util import format_memory, format_time, parse_bash_resource_usage_string
+
+    if os.path.exists(log_file_path):
+        with open(log_file_path, "r", encoding="utf-8", errors="ignore") as f:
+            text = f.read()
+        usage_dict = parse_bash_resource_usage_string(text)
+    else:
+        logger.warning(f"log file not found: {log_file_path}, set time and memory to 0.")
+        usage_dict = {"time": 0, "memory": 0}
+
+    out = {}
+    time = usage_dict["time"]  # seconds, S
+    memory = usage_dict["memory"]  # KB
+    out["time"] = time
+    out["memory"] = memory
+
+    if format_text:
+        out["time_text"] = format_time(time)
+        out["memory_text"] = format_memory(memory)
+
+    return out

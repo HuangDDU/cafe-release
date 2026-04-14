@@ -12,7 +12,7 @@ except ImportError:
 
 
 @method_info(
-    name="velovi",
+    name="VeloVI",
     version="0.0.1",
     description="VeloVI: Deep generative modeling of transcriptional dynamics for RNA velocity analysis in single cells",
     wrapper_type="velocity",

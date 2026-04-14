@@ -3,6 +3,8 @@ from .available_metadata import get_available_method_df
 from .context import temporary_obsm_key
 from .find_edge_feature_gene import find_edge_feature_gene
 from .parse_benchmark import (
+    format_memory,
+    format_time,
     parse_bash_resource_usage_string,
     parse_docker_resource_usage_string_list,
 )
@@ -16,6 +18,8 @@ __all__ = [
     "project_to_segments",
     "parse_bash_resource_usage_string",
     "parse_docker_resource_usage_string_list",
+    "format_time",
+    "format_memory",
     "temporary_obsm_key",
     "AnndataAttribute",
     "extract_external_data_dict_directly",

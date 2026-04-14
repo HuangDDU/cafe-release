@@ -6,13 +6,13 @@ from .. import logger
 def save_fig(
     save: bool | str = None,
     default_filename: str = None,
-    ax: plt.Axes = None,
+    ax: plt.Axes | plt.Figure = None,
 ):
     # save the figure to the specified path
     if save is not None:
         if isinstance(save, bool) and save:
             save = default_filename
-        if ax is None:
+        if ax is None or isinstance(ax, plt.Figure):
             plt.savefig(save, bbox_inches="tight")
         else:
             ax.figure.savefig(save, bbox_inches="tight")

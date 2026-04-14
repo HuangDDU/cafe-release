@@ -15,7 +15,7 @@ def plot_stack(
     cluster: str = None,
     n_bins: int = 100,
     ax: plt.Axes = None,
-    legend_loc: str = "center left",
+    legend_loc: str = "None",
     bbox_to_anchor: tuple = (1, 0.5),
     save: str | bool = None,
     return_proportions: bool = False,

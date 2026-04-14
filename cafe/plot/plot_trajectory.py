@@ -125,7 +125,8 @@ def plot_trajectory(
                 fadata.uns["milestone_colors"] = [cell_color_dict[i] if i in cell_color_dict else missing_cell_color for i in fadata.obs.index]
 
             # base scanpy embedding scatter plot
-            sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
+            if "title" not in sc_pl_embedding_kwargs:
+                sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
             sc.pl.embedding(fadata, color=color, basis=basis, ax=ax, show=False, **sc_pl_embedding_kwargs)  # base cell embedding
 
             # legend remove
