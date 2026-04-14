@@ -63,6 +63,9 @@ def plot_waddington_landscape_3d(
     trajectory_model="ref",
     show_trajectory=True,
     start_milestone=None,
+    auto_rescale_z=True,
+    target_z_to_xy_ratio=0.45,
+    z_scale=None,
     cols=3,
     camera_eye={"x": 1.5, "y": 1.5, "z": 0.5},
     figsize=(1000, 1000),
@@ -108,6 +111,14 @@ def plot_waddington_landscape_3d(
         Whether to overlay trajectory lines, arrows, and milestone points.
     start_milestone : str or None, default=None
         Starting milestone used when `z_mode="layer"`.
+    auto_rescale_z : bool, default=True
+        Whether to automatically rescale Z values so height is visually
+        distinguishable relative to embedding span.
+    target_z_to_xy_ratio : float, default=0.45
+        Target ratio of Z span to XY span when `auto_rescale_z=True` and
+        `z_scale` is None.
+    z_scale : float or None, default=None
+        Manual multiplier for Z values. If provided, overrides auto scaling.
     cols : int, default=3
         Number of columns in subplot layout.
     camera_eye : dict, default={"x": 1.5, "y": 1.5, "z": 0.5}
@@ -169,7 +180,7 @@ def plot_waddington_landscape_3d(
     # Waddington landscape is typically interpreted from high to low potential.
     if z_mode == "pseudotime":
         # pseudotime (continuous)
-        pseudotime = -fadata.obs[pseudotime_key].values
+        pseudotime = fadata.obs[pseudotime_key].values
         # Optional pseudotime smoothing with embedding geometry
         if smooth_pseudotime:
             pseudotime = smooth_pseudotime_with_emb(
@@ -196,6 +207,30 @@ def plot_waddington_landscape_3d(
         z_all = -fadata.obs[cluster_key].apply(lambda x: m_spl_dict.get(x, 0)).astype("float")
     else:
         raise ValueError("z_mode must be 'pseudotime' or 'layer'")
+
+    # Rescale Z for better visual contrast against embedding span.
+    # This preserves ordering/shape while expanding vertical discrimination.
+    if z_scale is not None and z_scale <= 0:
+        raise ValueError("z_scale should be positive when provided.")
+    if target_z_to_xy_ratio <= 0:
+        raise ValueError("target_z_to_xy_ratio should be positive.")
+
+    x_span = float(np.nanmax(x_all) - np.nanmin(x_all)) if len(x_all) > 0 else 0.0
+    y_span = float(np.nanmax(y_all) - np.nanmin(y_all)) if len(y_all) > 0 else 0.0
+    xy_span = max(x_span, y_span, 1e-8)
+    z_min = float(np.nanmin(z_all)) if len(z_all) > 0 else 0.0
+    z_max = float(np.nanmax(z_all)) if len(z_all) > 0 else 0.0
+    z_span = max(z_max - z_min, 1e-8)
+
+    if z_scale is None and auto_rescale_z:
+        z_scale_eff = (xy_span * target_z_to_xy_ratio) / z_span
+    elif z_scale is None:
+        z_scale_eff = 1.0
+    else:
+        z_scale_eff = float(z_scale)
+
+    z_center = 0.5 * (z_min + z_max)
+    z_all = (z_all - z_center) * z_scale_eff + z_center
 
     # Get cell type labels and colors
     if cluster_key in fadata.obs:
