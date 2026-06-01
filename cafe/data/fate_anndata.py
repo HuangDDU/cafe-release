@@ -2196,7 +2196,6 @@ class FateAnnData(ad.AnnData):
             tmp_filename (str, optional): Path for the temporary h5ad file. Defaults to "current_dir/.tmp.h5ad".
             trajectory (bool, optional): Whether to launch in trajectory visualization mode (requires special dev environment). Defaults to False.
             port (int, optional): Port to run the cellxgene server on. Defaults to 5005.
-            conda_env (str, optional): Conda environment name to run cellxgene in. Defaults to "cafe".
         """
         import os
         import subprocess
@@ -2219,32 +2218,34 @@ class FateAnnData(ad.AnnData):
         logger.debug("-" * 50)
 
         # 2. launch cellxgene
-        # construct command
-        if trajectory:
-            # TODO: local frontend and backend development version need be packaged
-            # TODO: cxgxf打包后要能够一键执行
-            # client_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-frontend"
-            # subprocess.Popen(client_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # frontend: react, ignore output
-            # server_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-server"
-            # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
-            # logger.info("cellxgene with trajectory must run on port: 3000")
-            # port = 3000
-            # conda_env = "cafe" # 在当前环境下
-            # cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
-            # cmd = f"DATASET={tmp_filename}"  # dataset
-            # cmd += f" & CXG_SERVER_PORT={5005}"  # server port
-            # cmd += f" & CXG_CLIENT_PORT={port}"  # client port, web interface port
-            # cmd += " & cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene"
-            # cmd += " & make start-dev"
-            # cellxgene with trajectory need use local development version
-            cmd = "cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene && "
-            cmd += f"DATASET={tmp_filename} CXG_SERVER_PORT={5005} CXG_CLIENT_PORT={port} make start-dev"
-        else:
-            conda_env = "cellxgene"
-            cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
-            # conda activate + conda_env (usually use but not valid here)
-            # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
-        # execuate command (NOTE: python_function can be executed in this way by conda)
+        # TODO: detect if cellxgene-cafe plugin is available, if not, launch normal cellxgene
+        cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch --port {port} {tmp_filename}"  # conda run
+        # # construct command
+        # if trajectory:
+        #     # TODO: local frontend and backend development version need be packaged
+        #     # TODO: cxgxf打包后要能够一键执行
+        #     # client_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-frontend"
+        #     # subprocess.Popen(client_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # frontend: react, ignore output
+        #     # server_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-server"
+        #     # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
+        #     # logger.info("cellxgene with trajectory must run on port: 3000")
+        #     # port = 3000
+        #     # conda_env = "cafe" # 在当前环境下
+        #     # cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+        #     # cmd = f"DATASET={tmp_filename}"  # dataset
+        #     # cmd += f" & CXG_SERVER_PORT={5005}"  # server port
+        #     # cmd += f" & CXG_CLIENT_PORT={port}"  # client port, web interface port
+        #     # cmd += " & cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene"
+        #     # cmd += " & make start-dev"
+        #     # cellxgene with trajectory need use local development version
+        #     cmd = "cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene && "
+        #     cmd += f"DATASET={tmp_filename} CXG_SERVER_PORT={5005} CXG_CLIENT_PORT={port} make start-dev"
+        # else:
+        #     conda_env = "cellxgene"
+        #     cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+        #     # conda activate + conda_env (usually use but not valid here)
+        #     # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
+        # # execuate command (NOTE: python_function can be executed in this way by conda)
         logger.debug(f"execute command: {cmd}")
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         threading.Thread(target=print_output, args=(process.stdout, "[stdout]"), daemon=True).start()
