@@ -230,7 +230,7 @@ def plot_trajectory(
                     if scanpy_legend:
                         scanpy_legend.set_title("Cells")
                         ax.add_artist(scanpy_legend)
-                        bbox_to_anchor = (1.3, 0.5)  # shift latter legene
+                        bbox_to_anchor = (1.3, 0.5)  # shift latter legend
                     else:
                         bbox_to_anchor = (1.0, 0.5)
                     # Add milestone legend below the existing one
@@ -241,7 +241,7 @@ def plot_trajectory(
 
     if save is not None:
         if isinstance(save, bool) and save:
-            save = f".cafe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
+            save = f"{fadata.image_dir}/trajectory_{basis}_[{','.join(model_name_list)}].png"
         plt.savefig(save, bbox_inches="tight")
         logger.debug(f"save trajectory plot to '{save}'")
     return axes

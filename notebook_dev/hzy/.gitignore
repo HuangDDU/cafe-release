@@ -29,3 +29,4 @@ to_do_script
 
 # ignore all directory, because of wrong operation for github copilot, need delete them mannually later
 # */
+agent_result

@@ -177,6 +177,8 @@ def visualize(benchmark_df, save="benchmark_heatmap.pdf", add_method_meta=False,
         plt.savefig(save, bbox_inches="tight")
         logger.debug(f"save benchmark plot to '{save}'")
 
+    return benchmark_df
+
 
 def show_trajectory_result_grid(fadata, model_name_list, save="benchmark_trajectory_grid.pdf"):
     import patchworklib as pw

@@ -31,6 +31,7 @@ def read_h5ad(*args, **kwargs):
     adata = sc.read_h5ad(*args, **kwargs)
     fadata = FateAnnData.from_anndata(adata)
 
+    # read trajectory_dict and unserialize MilestoneWrapper and WaypointWrapper objects
     def unserialize_trajectory_dict(fadata, model_name=None, recovery_raw_wrapper_dict=False):
         logger.debug(f"unserialize trajectory dict: '{model_name}'")
         trajectory_dict = fadata.get_trajectory_dict(model_name)
@@ -63,6 +64,15 @@ def read_h5ad(*args, **kwargs):
         utd = unserialize_trajectory_dict(fadata, k)
         fadata.set_trajectory_dict(utd, k)
 
+    dir_dict = fadata.uns.get("cafe", {}).get("dir", None)
+    if dir_dict is not None:
+        fadata.result_dir = dir_dict["result_dir"]
+        fadata.log_dir = dir_dict["log_dir"]
+        fadata.trajectory_history_dir = dir_dict["trajectory_history_dir"]
+        fadata.metric_dir = dir_dict["metric_dir"]
+        fadata.h5ad_dir = dir_dict["h5ad_dir"]
+        fadata.image_dir = dir_dict["image_dir"]
+        fadata.benchmark_dir = dir_dict["benchmark_dir"]
     return fadata
 
 

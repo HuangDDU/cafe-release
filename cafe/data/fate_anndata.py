@@ -1335,6 +1335,7 @@ class FateAnnData(ad.AnnData):
             logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
     # TODO: Time wrapper for WaddingtonOT, Moscot
+    # TODO:
     def add_trajectory_time(
         self,
         tmaps: dict,
@@ -2079,6 +2080,17 @@ class FateAnnData(ad.AnnData):
         self.image_dir = os.path.join(dirname, "img")
         self.benchmark_dir = os.path.join(dirname, "benchmark")
 
+        # for save h5ad conveniently
+        self.uns["cafe"]["dir"] = {
+            "result_dir": self.result_dir,
+            "log_dir": self.log_dir,
+            "trajectory_history_dir": self.trajectory_history_dir,
+            "metric_dir": self.metric_dir,
+            "h5ad_dir": self.h5ad_dir,
+            "image_dir": self.image_dir,
+            "benchmark_dir": self.benchmark_dir,
+        }
+
     def write_trajectory_dict(self, dirname=None, model_name_list=None):
         """Save trajectory dictionaries to pickle files.
 
@@ -2304,3 +2316,23 @@ class FateAnnData(ad.AnnData):
                 # check if basis exists in self.obsm
                 raise ValueError(f"parameter basis '{basis}' not found in self.obsm")
         return basis
+
+    # TODO: future work
+    def combine_pseudotime_and_embedding(
+        self,
+        pseudotime,
+        basis,
+        cluster,
+    ):
+        # TODO: combine linear pseudotime and specific embedding to get cluster-level trajectory graph
+        # A(0.1)->B(0.5)->C(0.8)/D(0.9),
+        # Combing embedding space, A is root, B is the branch point, C/D is the terminal state.
+        pass
+
+    def combine_pseudotime_and_undircted_graph(
+        self,
+        pseudotime,
+        # monocle2 result
+    ):
+        # TODO: combine linear pseudotime and undirected graph (such as monocle2 result) to get trajectory graph
+        pass
