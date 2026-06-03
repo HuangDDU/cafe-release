@@ -318,6 +318,27 @@ class TestMilestoneWrapper:
         # assert merged_mw.divergence_regions
         # merged_prog = merged_mw.progressions
 
+    def test_get_milestone_order(self):
+        mw = self.milestone_wrapper
+
+        # BFS / Level-Order order
+        level_order = mw.get_milestone_order(order_type="bfs")
+        expected_level_order = ["W", "X", "Y", "Z", "A"]
+        assert level_order == expected_level_order
+
+        # DFS order
+        dfs_order = mw.get_milestone_order(order_type="dfs")
+        expected_dfs_order = ["W", "X", "Y", "Z", "A"]
+        assert dfs_order == expected_dfs_order
+
+        # Balanced inorder order
+        # Tree: W -> X -> {Y, Z->A}
+        #   X: left subtree Z-A (2 nodes) > right subtree Y (1 node)
+        #   -> A, Z, X, Y, W
+        balance_order = mw.get_milestone_order(order_type="balance")
+        expected_balance_order = ["A", "Z", "X", "Y", "W"]
+        assert balance_order == expected_balance_order, f"Expected {expected_balance_order}, got {balance_order}"
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

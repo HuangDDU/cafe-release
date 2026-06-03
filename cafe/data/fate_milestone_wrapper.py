@@ -902,6 +902,115 @@ class MilestoneWrapper(FateWrapper):
             return self
         return mn
 
+    def get_milestone_order(
+        self,
+        root=None,
+        order_type="bfs",
+    ):
+        """Return milestone traversal order for bubble-chart y-axis layout.
+
+        Parameters
+        ----------
+        root : str or None
+            Root milestone.  When None, uses ``get_root_milestone()``.
+        order_type : str
+            ``"bfs"`` — breadth-first (level-order).
+            ``"dfs"`` — depth-first.
+            ``"balance"`` — balanced inorder: for each node, larger
+            subtrees are placed on the left so that the node sits near
+            the centre of its descendant range.  Works on both trees
+            and DAGs by constructing a spanning tree first.
+
+        Returns
+        -------
+        list of str
+            Ordered milestone IDs.
+        """
+        G = self.milestone_network_G
+        if root is None:
+            root = self.get_root_milestone()
+
+        if order_type == "bfs":
+            return list(nx.bfs_tree(G, source=root).nodes())
+        elif order_type == "dfs":
+            return list(nx.dfs_tree(G, source=root).nodes())
+        elif order_type == "balance":
+            return self._balanced_inorder_order(G, root)
+        else:
+            raise ValueError(f"Unknown order_type '{order_type}'. " f"Choose 'bfs', 'dfs', or 'balance'.")
+
+    # ------------------------------------------------------------------
+    # Balanced inorder helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _balanced_inorder_order(G, root):
+        """Balanced-inorder traversal of a (possibly DAG) milestone graph.
+
+        1. Build a spanning tree rooted at *root* via BFS.
+        2. Compute subtree sizes.
+        3. For every node with children, sort children by subtree size
+           descending, then greedily partition into left / right groups
+           so that the current node sits as close to the centre of its
+           descendant range as possible.
+        4. Traverse: left-group subtrees -> node -> right-group subtrees.
+        """
+        # 1. spanning tree — covers all nodes reachable from root
+        if isinstance(G, nx.DiGraph):
+            tree = nx.bfs_tree(G, source=root)
+        else:
+            tree = nx.bfs_tree(G, source=root)
+
+        reachable = set(tree.nodes())
+
+        # 2. subtree sizes (post-order)
+        subtree_size = {}
+
+        def _compute_size(node):
+            children = list(tree.successors(node))
+            size = 1
+            for child in children:
+                size += _compute_size(child)
+            subtree_size[node] = size
+            return size
+
+        _compute_size(root)
+
+        # 3 & 4. balanced inorder recursion
+        def _traverse(node):
+            children = list(tree.successors(node))  # TODO: keep stable during sorting, refer to self.milestone_id_list
+            if not children:
+                return [node]
+
+            # sort by subtree size descending
+            children.sort(key=lambda c: subtree_size[c], reverse=True)
+
+            # greedy partition into left / right
+            left_kids, right_kids = [], []
+            left_total, right_total = 0, 0
+            for child in children:
+                sz = subtree_size[child]
+                if left_total <= right_total:
+                    left_kids.append(child)
+                    left_total += sz
+                else:
+                    right_kids.append(child)
+                    right_total += sz
+
+            result = []
+            for child in left_kids:
+                result.extend(_traverse(child))
+            result.append(node)
+            for child in right_kids:
+                result.extend(_traverse(child))
+            return result
+
+        order = _traverse(root)
+
+        # append any nodes not reachable from root at the end
+        extra = [n for n in G.nodes() if n not in reachable]
+        return order + extra
+
     # def group_onto_trajectory_edges(self) -> pd.DataFrame:
     #     """group cells to edges
     #     ref: PyDynverse/pydynverse/wrap/wrap_add_grouping.group_onto_trajectory_edges
