@@ -70,7 +70,7 @@ class MilestoneWrapper(FateWrapper):
         # choose milestone_percentages or progressions
         if (milestone_percentages is None) == (progressions is None):
             if milestone_percentages is not None:
-                logger.warning("Both milestone_percentages and progressions are given, will only use progressions")
+                logger.debug("Both milestone_percentages and progressions are given, will only use progressions")
                 milestone_percentages = None
             else:
                 raise ValueError("Exactly one of milestone_percentages or progressions, must be defined, the other should be None")

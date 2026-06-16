@@ -6,13 +6,15 @@ import anndata as ad
 import networkx as nx
 import numpy as np
 import pandas as pd
-import scanpy as sc
 
 from .._logging import logger
 from .._settings import settings
 from ..util import random_time_string
 from .fate_milestone_wrapper import MilestoneWrapper
 from .fate_waypoint_wrapper import WaypointWrapper
+
+# import scanpy as sc
+
 
 # from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
 
@@ -321,8 +323,11 @@ class FateAnnData(ad.AnnData):
 
     def add_model_name(self, model_name: str):
         self.model_name = model_name
-        # self.cafe_dict["model_name"] = model_name
-        self.trajectory_history_dict[self.model_name] = {}
+        if model_name in self.trajectory_history_dict:
+            logger.warning(f"model_name '{model_name}' already exists in trajectory_history_dict, may overwrite existing trajectory")
+        else:
+            # self.cafe_dict["model_name"] = model_name
+            self.trajectory_history_dict[self.model_name] = {}
 
     def get_parsed_model_name(self, model_name: str = None):
         from ..util import parse_random_time_string
@@ -521,7 +526,8 @@ class FateAnnData(ad.AnnData):
                 neighbors=trajectory_dict.get("neighbors"),
                 obs_index=trajectory_dict.get("obs_index"),
                 var_index=trajectory_dict.get("var_index"),
-                X=trajectory_dict.get("X"),  # add X for velocity method like veloae,
+                X=trajectory_dict.get("X"),
+                milestone_network_strategy=trajectory_dict.get("milestone_network_strategy", "auto"),  # auto choice for strategy
                 **kwargs,
             )
         elif wrapper_type == "lineage":
@@ -542,6 +548,8 @@ class FateAnnData(ad.AnnData):
                 normalize=trajectory_dict.get("normalize", True),
                 include_self_loop=trajectory_dict.get("include_self_loop", False),
             )
+        mn = self.get_milestone_wrapper().milestone_network
+        logger.info(f"MilestoneNetwork: {len(mn)} edges\n{mn.to_string()}")
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None, waypoint_wrapper_kwargs: dict = {}) -> None:
         """Create WaypointWrapper object"""
@@ -742,8 +750,6 @@ class FateAnnData(ad.AnnData):
         )
         return self
 
-    # fix
-
     def __getitem__(self, index):
         # 1. call Anndata __getitem__ to get the sliced AnnData object
         new_adata = super().__getitem__(index)
@@ -767,6 +773,7 @@ class FateAnnData(ad.AnnData):
 
         # 4. link complex trajectory attribute from 'self' to 'new_adata'
         # New trajectory history dict construction
+        # todo: lazy subset operation for milestone_wrapper and waypoint_wrapper
         new_trajectory_history_dict = {}
         for model_name, trajectory_history in self.trajectory_history_dict.items():
             # Create copy to avoid modifying parent dict
@@ -1536,132 +1543,124 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_velocity(
         self,
         velocity: np.array,
-        velocity_graph: np.array,
-        velocity_graph_neg: np.array,
-        velocity_embedding: np.array,
-        neighbors: dict,
-        milestone_network_strategy: str = "paga",
+        velocity_graph: np.array = None,
+        velocity_graph_neg: np.array = None,
+        velocity_embedding: np.array = None,
+        neighbors: dict = None,
         cluster: str = None,
         obs_index=None,
         var_index=None,
         basis=None,
         X: np.array = None,
+        # milestone_network_strategy: str = "scvelo_paga",
+        milestone_network_strategy: str = "auto",  # TODO: milestone_network choice
+        strategy_kwargs: dict = None,
     ):
-        # TODO: move to _velocity_wrapper module
-        "add velocity trajectory using PAGA transform, such as scVelo, VeloAE"
+        """Add velocity trajectory using PAGA transform (scVelo, VeloAE, CellDancer, etc.).
+
+        Refactored: delegates to ``_velocity_wrapper`` module for AnnData construction,
+        velocity embedding computation, and milestone network building via strategy pattern.
+
+        Parameters
+        ----------
+        velocity : np.ndarray
+            High-dimensional velocity matrix (n_cells, n_genes).
+        velocity_graph : np.ndarray
+            scVelo transition graph (n_cells, n_cells). Optional.
+        velocity_graph_neg : np.ndarray
+            Negative transition graph. Optional.
+        velocity_embedding : np.ndarray
+            Pre-computed low-dim velocity embedding. If provided, forces
+            ``low_dim_paga`` strategy.
+        neighbors : dict
+            Dict with ``"distances"`` and ``"connectivities"`` sparse matrices.
+        milestone_network_strategy : str
+            Strategy name: ``"scvelo_paga"``, ``"low_dim_paga"``,
+            ``"raw_paga"``, or ``"cosine_similarity"``.
+        cluster : str, optional
+            Cluster column in ``.obs``. Defaults to ``prior_information["cluster"]``.
+        obs_index : pd.Index, optional
+            Filtered cell indices (CellDancer/Dynamo).
+        var_index : pd.Index, optional
+            Filtered gene indices (CellDancer/Dynamo).
+        basis : str, optional
+            Embedding key in ``.obsm``. Defaults to ``prior_information["basis"]``.
+        X : np.ndarray, optional
+            Latent space expression matrix (VeloAE).
+        strategy_kwargs : dict, optional
+            Additional keyword arguments passed to the strategy builder
+            (e.g. ``{"threshold": 0.3}`` for cosine_similarity,
+            ``{"n_neighbors": 20}`` for low_dim_paga).
+        """
+        from ._velocity_wrapper import (
+            VelocityInput,
+            build_milestone_network,
+            choose_or_check_strategy,
+            compute_milestone_embeddings,
+            compute_velocity_embedding,
+            prepare_anndata_for_velocity,
+        )
+
         if cluster is None:
             cluster = self.prior_information.get("cluster")
         if basis is None:
             basis = self.prior_information.get("basis")
 
-        # PAGA
-        import scvelo as scv
+        # Reconstruct trajectory_dict for the new module interface
+        trajectory_dict = {
+            "velocity": velocity,
+            "velocity_graph": velocity_graph,
+            "velocity_graph_neg": velocity_graph_neg,
+            "velocity_embedding": velocity_embedding,
+            "neighbors": neighbors,
+            "obs_index": obs_index,
+            "var_index": var_index,
+            "X": X,
+        }
 
-        if X is not None:
-            # for veloae
-            adata = ad.AnnData(X)
-            adata.obs.index = obs_index if obs_index is not None else self.obs.index
-            adata.var.index = var_index if var_index is not None else self.var.index
-            adata.obs[cluster] = self[adata.obs.index].obs[cluster]
-            adata.obsm[basis] = self[adata.obs.index].obsm[basis]
-        else:
-            # extract sub adata
-            if (obs_index is not None) or (var_index is not None):
-                obs_index = self.obs.index if obs_index is None else obs_index
-                var_index = self.var.index if var_index is None else var_index
-                adata = self[obs_index, var_index].copy()
-            else:
-                # TODO: copy may waste time and memory, need other strategy
-                # adata = self.copy()
-                adata = self.to_anndata()
+        # Step 0: Determine strategy for milestone network construction
+        milestone_network_strategy = choose_or_check_strategy(trajectory_dict, milestone_network_strategy)
 
-        logger.debug(f"filterd adata: {adata}")
+        # Step 1: Build scvelo-compatible AnnData
+        adata = prepare_anndata_for_velocity(self, trajectory_dict, cluster, basis)
 
-        velocity_basis = f"velocity_{basis[2:]}"
-        if velocity_embedding is not None:
-            milestone_network_strategy = "low_dim_paga"  # force to use cons strategy
-            logger.debug(f"use given velocity embedding, use strategy '{milestone_network_strategy}' to get milestone_network")
-        else:
-            adata.layers["velocity"] = velocity
-            if (velocity_graph is not None) and (velocity_graph_neg is not None):
-                # Final goal: only save velocity matrix of a method.
-                adata.uns["velocity_graph"] = velocity_graph
-                adata.uns["velocity_graph_neg"] = velocity_graph_neg
-                adata.uns["neighbors"] = {}
-                adata.obsp["distances"] = neighbors["distances"]
-                adata.obsp["connectivities"] = neighbors["connectivities"]
-            else:
-                # recompute neighbors and velocity graph may waste time
-                scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
-                scv.tl.velocity_graph(adata)  # add transition graph by velocity
-
-            logger.debug("add raw velocity embedding to fadata")
-            scv.tl.velocity_embedding(adata, basis=basis[2:])
-            velocity_embedding = adata.obsm[velocity_basis]
+        # Step 2: Compute or extract velocity embedding
+        # Separate embed-specific kwargs from strategy-specific kwargs
+        _all_kwargs = strategy_kwargs or {}
+        embed_kwargs = {k: v for k, v in _all_kwargs.items() if k in ("n_pcs", "n_neighbors")}  # extract neighbor kwargs for embedding
+        strategy_only_kwargs = {k: v for k, v in _all_kwargs.items() if k not in ("n_pcs", "n_neighbors")}
+        velocity_embedding, velocity_basis = compute_velocity_embedding(adata, trajectory_dict, basis, **embed_kwargs)
         self.raw_wrapper_dict.update({velocity_basis: velocity_embedding})
 
-        # compute milestone embedding based clustered cell embedding
-        X_emb = pd.DataFrame(adata.obsm[basis], index=adata.obs.index)
-        milestone_emb = adata.obs.groupby(cluster).apply(lambda x: X_emb.loc[x.index].mean(axis=0))
-        milestone_emb.index = list(adata.obs[cluster].cat.categories)
+        # Step 3: Compute milestone (cluster centroid) embeddings
+        milestone_emb = compute_milestone_embeddings(adata, cluster, basis)
 
-        # construct milestone_network based velocity
-        if milestone_network_strategy == "paga":
-            # use paga based graph connectivity
-            scv.tl.paga(adata, groups=cluster)
-            df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-            # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
-            milestone_network = (
-                df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
-            )
-            milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
-            milestone_network["directed"] = True
-        elif milestone_network_strategy == "low_dim_paga":
-            # paga based on expression embedding and velocity embedding
-            new_adata = sc.AnnData(X=adata.obsm[basis], obs=adata.obs, obsm=adata.obsm, obsp=adata.obsp, uns=adata.uns)
-            new_adata.layers["spliced"] = adata.obsm[basis]
-            new_adata.layers["unspliced"] = adata.obsm[basis]
-            new_adata.layers["velocity"] = velocity_embedding
-            # recomput velocity graph based on low-dim velocity and embedding
-            sc.pp.neighbors(new_adata)
-            scv.tl.velocity_graph(new_adata, show_progress_bar=False)
-            scv.tl.paga(new_adata, groups=cluster)  # recompute paga
-            df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-            print(df)
-            # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
-            milestone_network = (
-                df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
-            )
-            milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
-            milestone_network["directed"] = True
-        else:
-            # TODO: use velocity consine similarity method, need fix
-            threshold = 0.2
-            cluster_list = adata.obs[cluster].cat.categories.to_list()
-            cluster_connection_df = pd.DataFrame(0.0, index=cluster_list, columns=cluster_list)
-            for source_cluster in cluster_list:
-                source_cell_velocity = velocity_embedding[np.where(self.obs[cluster] == source_cluster)[0]]
-                source_cell_velocity = source_cell_velocity / (np.linalg.norm(source_cell_velocity, axis=1, keepdims=True) + 1e-6)
-                for target_cluster in cluster_list:
-                    if source_cluster == target_cluster:
-                        continue
-                    cluster_velocity = milestone_emb.loc[target_cluster].values - milestone_emb.loc[source_cluster].values
-                    cluster_velocity = cluster_velocity / (np.linalg.norm(cluster_velocity) + 1e-6)
-                    # cosine similarity between each cell's velocity and the inter-cluster direction
-                    # normalized vector dot calculation is equal to cosin similarity calculation.
-                    cosine_sims = (source_cell_velocity @ cluster_velocity).mean()
-                    # TODO: weighted
-                    cluster_connection_df.loc[source_cluster, target_cluster] = cosine_sims
-            logger.debug(f"cluster_connection_df:\n{cluster_connection_df.round(2)}")
-            milestone_network = cluster_connection_df.stack().reset_index()
-            milestone_network.columns = ["from", "to", "score"]
-            milestone_network = milestone_network[milestone_network["score"] > threshold].copy()
-            milestone_network["length"] = 1.0
-            milestone_network["directed"] = True
-        # TODO: other strategy LAP
+        # Step 4: Build VelocityInput and dispatch to strategy
+        X_emb_adata = pd.DataFrame(adata.obsm[basis], index=adata.obs.index)
+        paga_ready = (velocity_graph is not None) and (velocity_graph_neg is not None) and (neighbors is not None)
+        velo_input = VelocityInput(
+            adata=adata,
+            velocity_embedding=velocity_embedding,
+            velocity_basis=velocity_basis,
+            X_emb=X_emb_adata,
+            milestone_emb=milestone_emb,
+            paga_ready=paga_ready,
+        )
 
-        X_emb = pd.DataFrame(self.obsm[basis], index=self.obs.index)  # use all cell
-        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
+        milestone_network = build_milestone_network(
+            velo_input,
+            strategy=milestone_network_strategy,
+            strategy_kwargs=strategy_only_kwargs,
+        )
+
+        # Step 5: Project all cells onto the milestone network
+        X_emb_full = pd.DataFrame(self.obsm[basis], index=self.obs.index)
+        self.add_trajectory_projection(
+            milestone_network=milestone_network,
+            milestone_emb=milestone_emb,
+            X_emb=X_emb_full,
+            cluster_key=cluster,
+        )
 
     def add_metric(
         self,
