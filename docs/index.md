@@ -15,10 +15,19 @@
 
 ## Key Applications
 
-- **Trajectory Inference**: Infer cell fate trajectories using various backend methods (including Python-based, Docker-based, and Conda-based backends).
-- **Visualization**: Visualize trajectories, embeddings, pseudotime, and velocity fields with high-quality plots.
-- **Benchmarking**: Compare different trajectory inference methods using comprehensive metrics including topology, cluster, and feature importance.
 - **Data Management**: Manage complex single-cell data structures with `FateAnnData`, extending the capabilities of AnnData for trajectory analysis.
+- **Trajectory Inference**: Infer cell fate trajectories using various backend methods.
+- **Visualization**: Visualize trajectories, embeddings, pseudotime, and velocity fields.
+- **Benchmarking**: Compare methods using comprehensive metrics (topology, cluster, feature importance, etc.).
+
+## Documentation
+
+| I want to... | Go to... |
+|-------------|----------|
+| Understand concepts & architecture | **[Introduction](introduction/index.md)** — cell fate prediction, data structures, wrappers, plots, metrics |
+| Get hands-on code examples | **[Tutorial](tutorial/index.md)** — quick start, benchmark, visualization, cellxgene |
+| Look up functions' API | **[API Reference](api/index.md)** — auto-generated from docstrings |
+| Contribute to cafe | **[Development Guide](development_document/index.md)** — contribution guides & project schedule |
 
 ## Citation
 
@@ -34,7 +43,3 @@ If you use Cafe in your research, please cite:
     publisher={Cold Spring Harbor Laboratory}
 }
 ```
-
-## Contributing
-
-We actively encourage any contribution! To get started, please check out the [development document](./development_document/index.md).
