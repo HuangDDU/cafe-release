@@ -34,12 +34,13 @@
 If you use Cafe in your research, please cite:
 
 ```bibtex
-@article{huang2025cellfateexplorer,
-    title={CellFateExplorer: An integrated platform for exploring cell fate},
-    author={Huang, Zhaoyang and Ma, Haonan and Peng, Yuchuan and Zhao, Chenguang and Yu, Liang},
-    journal={bioRxiv},
-    pages={2025--02},
-    year={2025},
-    publisher={Cold Spring Harbor Laboratory}
+@article{cafe,
+  title = {Cafe: An integrated platform for exploring cell fate},
+  author = {Huang, Zhaoyang and Ma, Haonan and Peng, Yuchuan and Zhao, Chenguang and Yu, Liang},
+  journal = {bioRxiv},
+  pages = {2025.02.04.636565},
+  year = {2026},
+  doi = {10.1101/2025.02.04.636565},
+  publisher = {Cold Spring Harbor Laboratory}
 }
 ```

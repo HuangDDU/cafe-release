@@ -1,32 +1,192 @@
-# Add paper reference automatically from Endnote
-@article{anndata,
-  title={anndata: Access and store annotated data matrices},
-  author={Virshup, Isaac and Rybakov, Sergei and Theis, Fabian J and Angerer, Philipp and Wolf, F Alexander},
-  journal={Journal of Open Source Software},
-  volume={9},
-  number={101},
-  pages={4371},
-  year={2024}
+% Cafe framework
+
+@article{cafe,
+  title = {Cafe: An integrated platform for exploring cell fate},
+  author = {Huang, Zhaoyang and Ma, Haonan and Peng, Yuchuan and Zhao, Chenguang and Yu, Liang},
+  journal = {bioRxiv},
+  pages = {2025.02.04.636565},
+  year = {2026},
+  doi = {10.1101/2025.02.04.636565},
+  publisher = {Cold Spring Harbor Laboratory}
 }
+
+% Single-cell data structures and preprocessing
+
+@article{anndata,
+  title = {anndata: Access and store annotated data matrices},
+  author = {Virshup, Isaac and Rybakov, Sergei and Theis, Fabian J. and Angerer, Philipp and Wolf, F. Alexander},
+  journal = {Journal of Open Source Software},
+  volume = {9},
+  number = {101},
+  pages = {4371},
+  year = {2024},
+  doi = {10.21105/joss.04371}
+}
+
+@article{scanpy,
+  title = {{SCANPY}: large-scale single-cell gene expression data analysis},
+  author = {Wolf, F. Alexander and Angerer, Philipp and Theis, Fabian J.},
+  journal = {Genome Biology},
+  volume = {19},
+  number = {1},
+  pages = {15},
+  year = {2018},
+  doi = {10.1186/s13059-017-1382-0}
+}
+
+% Trajectory inference and benchmarking
 
 @article{dynverse,
-   author = {Saelens, Wouter and Cannoodt, Robrecht and Todorov, Helena and Saeys, Yvan},
-   title = {A comparison of single-cell trajectory inference methods},
-   journal = {Nature biotechnology},
-   volume = {37},
-   number = {5},
-   pages = {547-554},
-   ISSN = {1087-0156},
-   year = {2019},
-   type = {Journal Article}
+  title = {A comparison of single-cell trajectory inference methods},
+  author = {Saelens, Wouter and Cannoodt, Robrecht and Todorov, Helena and Saeys, Yvan},
+  journal = {Nature Biotechnology},
+  volume = {37},
+  number = {5},
+  pages = {547--554},
+  year = {2019},
+  doi = {10.1038/s41587-019-0071-9}
 }
 
-# Add github repository reference manually
-Anthony Gitter. Single-cell RNA-seq pseudotime estimation algorithms. 2018. doi:10.5281/zenodo.1297422 https://github.com/agitter/single-cell-pseudotime
+@article{paga,
+  title = {PAGA: graph abstraction reconciles clustering with trajectory inference through a topology preserving map of single cells},
+  author = {Wolf, F. Alexander and Hamey, Fiona K. and Plass, Mireya and Solana, Jordi and Dahlin, Joakim S. and Gottgens, Berthold and Rajewsky, Nikolaus and Simon, Lukas and Theis, Fabian J.},
+  journal = {Genome Biology},
+  volume = {20},
+  number = {1},
+  pages = {59},
+  year = {2019},
+  doi = {10.1186/s13059-019-1663-x}
+}
+
+@article{palantir,
+  title = {Characterization of cell fate probabilities in single-cell data with Palantir},
+  author = {Setty, Manu and Kiseliovas, Vaidotas and Levine, Jacob and Gayoso, Adam and Mazutis, Linas and Pe'er, Dana},
+  journal = {Nature Biotechnology},
+  volume = {37},
+  number = {4},
+  pages = {451--460},
+  year = {2019},
+  doi = {10.1038/s41587-019-0068-4}
+}
+
+@article{cytotrace,
+  title = {Single-cell entropy for accurate estimation of differentiation potency from a cell's transcriptome},
+  author = {Gulati, Gunsagar S. and Sikandar, Sharmila S. and Wesche, David J. and Manjunath, Anoop and Bharadwaj, Aditya and Berger, Michael J. and Ilagan, Francisco and Kuo, Angera H. and Hsieh, Robert W. and Cai, Stanley and Zabala, Maria and Scheeren, F. Patrick and Lobo, Neil A. and Qian, David and Yu, Frank B. and Dirbas, Frederick M. and Clarke, Michael F. and Newman, Aaron M.},
+  journal = {Science},
+  volume = {367},
+  number = {6476},
+  pages = {405--411},
+  year = {2020},
+  doi = {10.1126/science.aax0249}
+}
+
 @misc{sc_pseudotime_github,
-  author = {Anthony Gitter},
   title = {Single-cell RNA-seq pseudotime estimation algorithms},
+  author = {Gitter, Anthony},
   publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {https://github.com/agitter/single-cell-pseudotime},
+  year = {2018},
+  howpublished = {\url{https://github.com/agitter/single-cell-pseudotime}},
+  doi = {10.5281/zenodo.1297422}
+}
+
+% RNA velocity and directed fate mapping
+
+@article{rna_velocity,
+  title = {RNA velocity of single cells},
+  author = {La Manno, Gioele and Soldatov, Ruslan and Zeisel, Amit and Braun, Emelie and Hochgerner, Hannah and Petukhov, Viktor and Lidschreiber, Katja and Kastriti, Maria E. and Lonnerberg, Peter and Furlan, Alessandro and Fan, Jean and Borm, Lars E. and Liu, Zehua and van Bruggen, David and Guo, Jimin and He, Xiaoling and Barker, Roger and Sundstrom, Erik and Castelo-Branco, Goncalo and Cramer, Patrick and Adameyko, Igor and Linnarsson, Sten and Kharchenko, Peter V.},
+  journal = {Nature},
+  volume = {560},
+  number = {7719},
+  pages = {494--498},
+  year = {2018},
+  doi = {10.1038/s41586-018-0414-6}
+}
+
+@article{scvelo,
+  title = {Generalizing RNA velocity to transient cell states through dynamical modeling},
+  author = {Bergen, Volker and Lange, Marius and Peidli, Stefan and Wolf, F. Alexander and Theis, Fabian J.},
+  journal = {Nature Biotechnology},
+  volume = {38},
+  number = {12},
+  pages = {1408--1414},
+  year = {2020},
+  doi = {10.1038/s41587-020-0591-3}
+}
+
+@article{cellrank,
+  title = {CellRank for directed single-cell fate mapping},
+  author = {Lange, Marius and Bergen, Volker and Klein, Michal and Setty, Manu and Reuter, Bernhard and Bakhti, Mostafa and Lickert, Heiko and Ansari, Meshal and Schniering, Jorg and Schiller, Herbert B. and Pe'er, Dana and Theis, Fabian J.},
+  journal = {Nature Methods},
+  volume = {19},
+  number = {2},
+  pages = {159--170},
+  year = {2022},
+  doi = {10.1038/s41592-021-01346-6}
+}
+
+@article{dynamo,
+  title = {Mapping single-cell transcriptomic vector fields of cellular state transition},
+  author = {Qiu, Xiaojie and Zhang, Yan and Martin-Rufino, Jose D. and Weng, Chen and Hosseinzadeh, Sam and Yang, Dian and Pogson, Alexandra N. and Hein, Marco Y. and Min, Kyung Hoi and Wang, Li and Grody, Eric I. and Shurtleff, Marc J. and Yuan, Rui and Xu, Shou-Wen and Ma, Yuhan and Replogle, Joseph M. and Lander, Eric S. and Darmanis, Spyros and Bahar, Ivet and Xing, Jianhua and Weissman, Jonathan S. and Kharchenko, Peter V. and Regev, Aviv and Massague, Joan and Hacohen, Nir and Zilionis, Rapolas and Yanai, Itai and Rajewsky, Nikolaus and Klein, Allon M. and Trapnell, Cole},
+  journal = {Cell},
+  volume = {185},
+  number = {4},
+  pages = {690--711.e45},
+  year = {2022},
+  doi = {10.1016/j.cell.2021.12.045}
+}
+
+@article{unitvelo,
+  title = {UniTVelo: temporally unified RNA velocity reinforces single-cell trajectory inference},
+  author = {Gao, Mingze and Qiao, Chen and Huang, Yuanhua},
+  journal = {Nature Communications},
+  volume = {13},
+  number = {1},
+  pages = {6586},
+  year = {2022},
+  doi = {10.1038/s41467-022-34188-7}
+}
+
+@article{deepvelo,
+  title = {DeepVelo: Single-cell transcriptomic deep velocity field learning with neural ordinary differential equations},
+  author = {Chen, Zhanlin and King, William C. and Hwang, Aheyon and Gerstein, Mark and Zhang, Jing},
+  journal = {Science Advances},
+  volume = {8},
+  number = {48},
+  pages = {eabq3745},
+  year = {2022},
+  doi = {10.1126/sciadv.abq3745}
+}
+
+@article{celldancer,
+  title = {A relay velocity model infers cell-dependent RNA velocity},
+  author = {Li, Shengyu and Zhang, Pengzhi and Chen, Weiqing and Ye, Lingqun and Brannan, Kristopher W. and others},
+  journal = {Nature Biotechnology},
+  volume = {41},
+  pages = {1175--1185},
+  year = {2023},
+  doi = {10.1038/s41587-023-01728-5}
+}
+
+% Downstream regulatory analysis
+
+@article{scenic,
+  title = {{SCENIC}: single-cell regulatory network inference and clustering},
+  author = {Aibar, Sara and Gonzalez-Blas, Carmen Bravo and Moerman, Thomas and Huynh-Thu, V{\^a}n Anh and Imrichova, Hana and Hulselmans, Gert and Rambow, Florian and Marine, Jean-Christophe and Geurts, Pierre and Aerts, Jan and van den Oord, Jeroen and Atak, Zeynep Kalender and Wouters, Jasper and Aerts, Stein},
+  journal = {Nature Methods},
+  volume = {14},
+  number = {11},
+  pages = {1083--1086},
+  year = {2017},
+  doi = {10.1038/nmeth.4463}
+}
+
+@article{celloracle,
+  title = {Dissecting cell identity via network inference and in silico gene perturbation},
+  author = {Kamimoto, Kenji and Stringa, Benedetta and Hoffmann, Christoph M. and Jindal, Krishan and Solnica-Krezel, Lilianna and Morris, Samantha A.},
+  journal = {Nature},
+  volume = {614},
+  number = {7949},
+  pages = {742--751},
+  year = {2023},
+  doi = {10.1038/s41586-022-05688-9}
 }
