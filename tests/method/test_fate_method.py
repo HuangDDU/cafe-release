@@ -26,13 +26,14 @@ class TestFateMethod:
         fate_method.choose_backend(backend="python_function")
         assert fate_method.backend == "python_function" and isinstance(fate_method.method_backend, cafe.method.FunctionBackend)
 
-        self.fate_method.choose_backend(backend="cafe_docker")
-        assert fate_method.backend == "cafe_docker" and isinstance(fate_method.method_backend, cafe.method.CFEDockerBackend)
+        # Note：test cafe and dynverse docker backends.
+        # self.fate_method.choose_backend(backend="cafe_docker")
+        # assert fate_method.backend == "cafe_docker" and isinstance(fate_method.method_backend, cafe.method.CFEDockerBackend)
 
-        if cafe.settings.r_available:
-            # test dynverse docker when R is available
-            self.fate_method.choose_backend(backend="dynverse_docker")
-            assert fate_method.backend == "dynverse_docker" and isinstance(fate_method.method_backend, cafe.method.DynverseDockerBackend)
+        # if cafe.settings.r_available:
+        #     # test dynverse docker when R is available
+        #     self.fate_method.choose_backend(backend="dynverse_docker")
+        #     assert fate_method.backend == "dynverse_docker" and isinstance(fate_method.method_backend, cafe.method.DynverseDockerBackend)
 
     def test_infer_trajectory(self):
         # notebook/quickstart_paga.ipynb

@@ -8,6 +8,7 @@ from .test_fate_function_backend import get_test_run_data
 image_id = "huangzhaoyang/comp1:0.0.1"
 
 
+@pytest.mark.skip(reason="Docker backend is not available for github action")
 class TestCFEDockerBackend:
     def setup_method(self):
         function_name = "comp1"

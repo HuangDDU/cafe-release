@@ -266,7 +266,7 @@ class TestMilestoneWrapper:
     def test_subset_by_cells(self):
         mw = self.milestone_wrapper
         cell_id_list = ["b", "c", "e"]
-        new_mw = mw.subset_by_cells(cell_id_list=cell_id_list)
+        new_mw = mw.subset_by_cells(cell_list=cell_id_list)
         assert set(new_mw.cell_id_list) == set(cell_id_list)
 
     def test_subset_by_edges(self):
