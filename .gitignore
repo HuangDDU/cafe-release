@@ -11,6 +11,11 @@ tmp
 
 # mkdoc
 site
+site-local
+
+# local-only documentation drafts
+mkdocs.local.yml
+docs/test/
 
 # # method docker image
 # build_method_docker_image*

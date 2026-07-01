@@ -2,8 +2,13 @@ site_name: Cafe - Cellular Fate Explorer
 repo_url: https://github.com/HuangDDU/cafe-release
 repo_name: HuangDDU/cafe-release
 
+exclude_docs: |
+  test/
+  test/**
+
 nav:
-- Index: index.md
+- Cafe Document: index.md
+- Installation: installation.md
 - Introduction: 
   - introduction/index.md
   - Cell Fate Prediction: introduction/cell_fate_prediction.md
@@ -12,7 +17,6 @@ nav:
   - Trajectory Visualization: introduction/trajectory_visualization.md
   - Metrics and Benchmark: introduction/metrics_and_benchmark.md
   - Downstream Analysis: introduction/downstream_analysis.md
-- Installation: installation.md
 - Tutorial:
   - tutorial/index.md
   - Quick Start: tutorial/quickstart.ipynb
@@ -50,18 +54,15 @@ nav:
     - cafe.plot.plot_wrapper: api/plot/plot_wrapper.md
     - cafe.plot.plot_pie: api/plot/plot_pie.md
 
-# - Development Document:
-#   - development_document/index.md
-#   - Architecture: development_document/architecture.md
-#   - New Collaborator Onboarding: development_document/onboarding.md
-#   - Project Hygiene: development_document/project_hygiene.md
-#   - cellxgene-cafe Integration: development_document/cellxgene_cafe_integration.md
-#   - Contributing Guide:
-#     - Method: development_document/contributing_guide/method.md
-#     - Data: development_document/contributing_guide/data.md
-#     - Metric: development_document/contributing_guide/metric.md
-#     - Visualization: development_document/contributing_guide/visualization.md
-#     - Document: development_document/contributing_guide/document.md
+- Development Document:
+  - development_document/index.md
+  - Contributing Guide:
+    - Method: development_document/contributing_guide/method.md
+    - Data: development_document/contributing_guide/data.md
+    - Metric: development_document/contributing_guide/metric.md
+    - Visualization: development_document/contributing_guide/visualization.md
+    - Document: development_document/contributing_guide/document.md
+    
   - Schedule:
     # - Shedule Summary: shedule.md
     - Data: development_document/shedule/data.md
@@ -69,8 +70,9 @@ nav:
     - Plot: development_document/shedule/plot.md
     - Benchmark: development_document/shedule/benchmark.md
     - Downstream Analysis: development_document/shedule/downstream_analysis.md
-  - Change Log:  development_document/change_log/index.md
-
+- Release Notes: release_notes/index.md
+- Contributors: contributors.md
+- References: references.md
 extra_css:
 - stylesheets/style.css
 
@@ -113,6 +115,7 @@ plugins:
     branch: dev
 - bibtex:
     bib_file: "docs/references.bib"
+    bib_by_default: false
 - mkdocs-jupyter:
 - mkdocstrings:
     default_handler: python
@@ -129,6 +132,7 @@ plugins:
           docstring_style: google
 
 markdown_extensions:
+- footnotes
 - pymdownx.tasklist:
     custom_checkbox: true
 - pymdownx.highlight

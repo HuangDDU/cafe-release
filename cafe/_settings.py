@@ -43,7 +43,7 @@ class CellFateExplorerConfig:
         #     logger.warning("R or rpy2 is not available. You can't use dynverse dataset")
         # manually settings r_available=False for testing
         self.r_available = False
-        self.version = "0.1.3"  # ref: https://zhuanlan.zhihu.com/p/703265351
+        self.version = "0.2.0"  # ref: https://zhuanlan.zhihu.com/p/703265351
 
     def check_gpu(self):
         self.gpu = ""

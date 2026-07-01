@@ -142,7 +142,7 @@ addopts = [
     # "-n=auto",        # 自动选择线程数，会丢弃掉整洁输出
     "--tb=auto",             # 显示错误回溯
     "-p no:warnings",        # 忽略警告
-    "--ignore=tests/method", # 忽略 method 模块的测试
+    "--ignore=tests/method/function", # 忽略 method function 下依赖外部环境的方法测试
     # "--capture=sys",  # 严格捕获所有输出
     # "--no-showlocals", # 隐藏局部变量
     # "-q",             # 静默模式
