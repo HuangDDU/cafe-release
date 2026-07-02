@@ -63,6 +63,7 @@ nav:
     - Metric: development_document/contributing_guide/metric.md
     - Visualization: development_document/contributing_guide/visualization.md
     - Document: development_document/contributing_guide/document.md
+    - Release: development_document/contributing_guide/release.md
     
   - Schedule:
     # - Shedule Summary: shedule.md
