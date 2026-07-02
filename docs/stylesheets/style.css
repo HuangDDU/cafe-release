@@ -10,3 +10,13 @@
 .md-sidebar {
     width: 12rem;  /* 默认约10rem */
 }
+
+.cafe-release-date {
+    color: var(--md-default-fg-color--light);
+    display: inline-block;
+    font-size: 0.7em;
+    font-weight: 600;
+    letter-spacing: 0;
+    margin-left: 0.45rem;
+    vertical-align: baseline;
+}

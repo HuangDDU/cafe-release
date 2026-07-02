@@ -5,6 +5,7 @@ repo_name: HuangDDU/cafe-release
 exclude_docs: |
   test/
   test/**
+  release_notes/_partials/**
 
 nav:
 - Cafe Document: index.md
@@ -133,6 +134,8 @@ plugins:
 
 markdown_extensions:
 - footnotes
+- pymdownx.snippets:
+    base_path: docs
 - pymdownx.tasklist:
     custom_checkbox: true
 - pymdownx.highlight
