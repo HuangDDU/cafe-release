@@ -1,6 +1,5 @@
 [project]
 name = "cafe-release"
-# TODO: update version in "cafe/_settings.py", automatic github action
 version = "0.2.1rc1" 
 readme = "README.md"
 license = "MIT"
@@ -89,18 +88,33 @@ Documentation = "https://cafe-release.readthedocs.io"
 Repository = "https://github.com/HuangDDU/cafe-release"
 
 [build-system]
-requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
 
 [project.scripts]
 cafe = "cafe.cli:main"
 
-[tool.setuptools.packages.find]
-include = ["cafe*"]
-exclude = ["tests*", "docs*", "notebook_dev*"]
+[tool.hatch.build.targets.sdist]
+include = [
+    "/cafe",
+    "/LICENSE",
+    "/README.md",
+    "/pyproject.toml",
+]
+exclude = [
+    "/build",
+    "/dist",
+    "/docs",
+    "/notebook_dev",
+    "/tests",
+    "*.egg-info",
+    "**/__pycache__",
+    "**/*.py[cod]",
+    "**/.DS_Store",
+]
 
-[tool.setuptools.package-data]
-cafe = ["method/*.csv", "metric/*.csv"]
+[tool.hatch.build.targets.wheel]
+packages = ["cafe"]
 
 
 [tool.black]

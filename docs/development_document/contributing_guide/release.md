@@ -43,13 +43,23 @@ python -m build
 python -m twine check dist/*
 ```
 
-The `Package` workflow runs the same build and `twine check` steps on pull
-requests and pushes to `dev`.
+The `Release` workflow is triggered only by a manual run or by pushing a
+three-part version tag. Cafe tags use the PEP 440 version directly, such as
+`0.2.1rc1`, without a leading `v`. The workflow runs the release pipeline in
+this order:
+
+1. Build wheel and source distribution.
+2. Run `twine check`.
+3. Validate the release version against PEP 440 and Cafe's package metadata.
+4. Publish to TestPyPI.
+5. Publish to PyPI.
 
 ## TestPyPI
 
-Use the `Publish TestPyPI` workflow from GitHub Actions and set the expected
-version, for example `0.2.1rc1`.
+Use the `Release` workflow from GitHub Actions and set the expected version, for
+example `0.2.1rc1`. The workflow builds and checks the package, validates that
+the requested version matches `pyproject.toml`, then publishes to TestPyPI
+before continuing to PyPI.
 
 After the workflow succeeds, test installation in a clean environment:
 
@@ -66,19 +76,22 @@ does not shadow the installed package.
 
 ## PyPI
 
-Create and push a version tag only after the release PR is merged and TestPyPI
-installation works:
+Create and push a version tag only after the release PR is merged:
 
 ```bash
 git checkout dev
 git pull github dev
-git tag v0.2.1rc1
-git push github v0.2.1rc1
+git tag 0.2.1rc1
+git push github 0.2.1rc1
 ```
 
-Pushing a tag that starts with `v` triggers the `Publish PyPI` workflow. The
-workflow strips the leading `v` and fails if the tag version does not match
-`pyproject.toml`.
+Pushing a version tag such as `0.2.1rc1` triggers the full `Release` workflow.
+The workflow validates the tag as PEP 440 and fails if the tag version does not
+match `pyproject.toml`.
+
+If you want a manual approval gate between TestPyPI and PyPI, configure GitHub's
+`pypi` environment with required reviewers. The workflow will pause before the
+PyPI job starts.
 
 ## PyPI Trusted Publishing
 
@@ -86,13 +99,13 @@ The publish workflows use GitHub Actions trusted publishing. Configure trusted
 publishers in PyPI and TestPyPI for:
 
 - repository: `HuangDDU/cafe-release`
-- workflow: `.github/workflows/publish-pypi.yml`
+- workflow: `.github/workflows/release.yml`
 - environment: `pypi`
 
 For TestPyPI:
 
 - repository: `HuangDDU/cafe-release`
-- workflow: `.github/workflows/publish-testpypi.yml`
+- workflow: `.github/workflows/release.yml`
 - environment: `testpypi`
 
 Do not reuse deleted PyPI versions. PyPI permanently reserves uploaded filenames,
@@ -107,4 +120,4 @@ version.
 - [ ] `python scripts/check_version.py --expected <version>` passes.
 - [ ] `python -m build` passes from a clean `dist/`.
 - [ ] `python -m twine check dist/*` passes.
-- [ ] TestPyPI installation is verified before creating the PyPI tag.
+- [ ] GitHub `pypi` environment approval is configured if manual review is required before PyPI publishing.

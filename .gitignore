@@ -4,6 +4,7 @@ tmp
 
 # test
 *.pytest_cache
+*.log
 
 # PyCharm
 .idea

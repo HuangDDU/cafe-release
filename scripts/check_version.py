@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import ast
-import importlib.metadata
 import sys
 from pathlib import Path
+
+from packaging.version import InvalidVersion, Version
 
 try:
     import tomllib
@@ -15,68 +16,51 @@ except ModuleNotFoundError:  # pragma: no cover
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def read_pyproject_version(pyproject_path: Path = ROOT / "pyproject.toml") -> str:
-    with pyproject_path.open("rb") as handle:
+def pyproject_version() -> str:
+    with (ROOT / "pyproject.toml").open("rb") as handle:
         return tomllib.load(handle)["project"]["version"]
 
 
-def read_runtime_version() -> str:
-    settings_path = ROOT / "cafe" / "_settings.py"
-    tree = ast.parse(settings_path.read_text(encoding="utf-8"))
+def runtime_version() -> str:
+    tree = ast.parse((ROOT / "cafe" / "_settings.py").read_text())
     for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Assign)
-            and any(
-                isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "self" and target.attr == "version"
-                for target in node.targets
-            )
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        ):
-            return node.value.value
-    raise RuntimeError("Could not find self.version in cafe/_settings.py.")
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant):
+            for target in node.targets:
+                if isinstance(target, ast.Attribute) and target.attr == "version":
+                    return str(node.value.value)
+    raise RuntimeError("Could not find cafe runtime version.")
 
 
-def read_installed_metadata_version(package_name: str = "cafe-release") -> str:
-    return importlib.metadata.version(package_name)
-
-
-def validate_versions(expected: str | None = None, check_metadata: bool = False) -> list[str]:
-    pyproject_version = read_pyproject_version()
-    runtime_version = read_runtime_version()
+def check_version(expected: str | None = None) -> list[str]:
+    project = pyproject_version()
+    runtime = runtime_version()
     errors: list[str] = []
 
-    if expected is not None and pyproject_version != expected:
-        errors.append(f"pyproject.toml version is {pyproject_version!r}, expected {expected!r}.")
+    for label, version in {"pyproject": project, "runtime": runtime, "expected": expected}.items():
+        if version:
+            try:
+                Version(version)
+            except InvalidVersion:
+                errors.append(f"{label} version {version!r} is not PEP 440 compatible.")
 
-    if runtime_version != pyproject_version:
-        errors.append(f"cafe.settings.version is {runtime_version!r}, expected {pyproject_version!r}.")
-
-    if check_metadata:
-        metadata_version = read_installed_metadata_version()
-        if metadata_version != pyproject_version:
-            errors.append(f"installed metadata version is {metadata_version!r}, expected {pyproject_version!r}.")
-
+    if runtime != project:
+        errors.append(f"runtime version {runtime!r} != pyproject version {project!r}.")
+    if expected and expected != project:
+        errors.append(f"expected version {expected!r} != pyproject version {project!r}.")
     return errors
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate Cafe package version metadata.")
-    parser.add_argument("--expected", help="Expected release version, for example 0.2.1rc1.")
-    parser.add_argument(
-        "--check-installed-metadata",
-        action="store_true",
-        help="Also compare the installed package metadata version.",
-    )
-    args = parser.parse_args(argv)
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--expected")
+    args = parser.parse_args()
 
-    errors = validate_versions(expected=args.expected, check_metadata=args.check_installed_metadata)
+    errors = check_version(args.expected)
     if errors:
-        for error in errors:
-            print(error, file=sys.stderr)
+        print("\n".join(errors), file=sys.stderr)
         return 1
 
-    print(f"Cafe package version is consistent: {read_pyproject_version()}")
+    print(f"Cafe package version is consistent: {pyproject_version()}")
     return 0
 
 
