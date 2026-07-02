@@ -31,6 +31,6 @@ jobs:
       - name: Build, Test, Push
         id: build-test-push
         run: |
-          bash ./build_method_docker_image.sh ${{ matrix.var }}
+          bash ./scripts/build_method_docker_image.sh ${{ matrix.var }}
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           # TODO: docker push
