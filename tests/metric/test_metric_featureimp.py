@@ -103,7 +103,7 @@ def test_get_expression_and_wrapper():
         milestone_percentages=pd.DataFrame({"cell_id": ["a", "b", "c"], "milestone_id": ["A"] * 3, "percentage": [1, 1, 1]}),
     )
     fa.milestone_wrapper = mw_dummy
-    fa.is_wrapped_with_trajectory = True
+    # fa.is_wrapped_with_trajectory = True
     assert is_wrapper_with_trajectory(fa)
 
 

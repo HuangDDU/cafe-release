@@ -6,10 +6,11 @@ import pandas as pd
 
 def parse_bash_resource_usage_string(usage_string: str) -> dict:
     # parse usage string generate by "/usr/bin/time -v" to usage dict
+    # use the last match for log files that contain multiple runs
 
     # extract time(s)
-    time_match = re.search(r"Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): ([\d:]+(?:\.\d+)?)", usage_string)
-    time_str = time_match.group(1) if time_match else "0"
+    time_matches = re.findall(r"Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): ([\d:]+(?:\.\d+)?)", usage_string)
+    time_str = time_matches[-1] if time_matches else "0"
     # h:mm:ss or m:ss
     parts = time_str.split(":")
     if len(parts) == 3:
@@ -20,14 +21,14 @@ def parse_bash_resource_usage_string(usage_string: str) -> dict:
         time_sec = float(parts[0])
 
     # extract memory(MB)
-    mem_match = re.search(r"Maximum resident set size \(kbytes\): (\d+)", usage_string)
-    memory = int(mem_match.group(1)) if mem_match else 0  # KB
+    mem_matches = re.findall(r"Maximum resident set size \(kbytes\): (\d+)", usage_string)
+    memory = int(mem_matches[-1]) if mem_matches else 0  # KB
     memory = memory / 1024  # MB
     memory = round(memory, 2)
 
     # extract cpu percentage
-    cpu_match = re.search(r"Percent of CPU this job got: (\d+)%", usage_string)
-    cpu = float(cpu_match.group(1)) / 100 if cpu_match else 0.0
+    cpu_matches = re.findall(r"Percent of CPU this job got: ([\d.]+)%", usage_string)
+    cpu = float(cpu_matches[-1]) / 100 if cpu_matches else 0.0
 
     usage_dict = {
         "time": time_sec,
@@ -64,3 +65,23 @@ def parse_docker_resource_usage_string_list(usage_string_list: list) -> dict:
     }
 
     return usage_dict
+
+
+def format_time(time):
+    # base: s
+    if time < 60:
+        time_text = f"{time:.0f}s"
+    elif time < 3600:
+        time_text = f"{time/60:.0f}min"
+    else:
+        time_text = f"{time/3600:.0f}h"
+    return time_text
+
+
+def format_memory(memory):
+    # base: MB
+    if memory < 1024:
+        memory_text = f"{memory:.0f}M"
+    else:
+        memory_text = f"{memory/1024:.0f}G"
+    return memory_text

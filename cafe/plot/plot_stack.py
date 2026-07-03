@@ -15,7 +15,7 @@ def plot_stack(
     cluster: str = None,
     n_bins: int = 100,
     ax: plt.Axes = None,
-    legend_loc: str = "center left",
+    legend_loc: str = "best",
     bbox_to_anchor: tuple = (1, 0.5),
     save: str | bool = None,
     return_proportions: bool = False,
@@ -105,7 +105,8 @@ def plot_stack(
     ax.plot(1, 0, ">k", transform=ax.get_yaxis_transform(), clip_on=False)
 
     ax.set_title("group")  # As in the example image
-    ax.legend(loc=legend_loc, bbox_to_anchor=bbox_to_anchor, frameon=False)
+    if legend_loc is not None:
+        ax.legend(loc=legend_loc, bbox_to_anchor=bbox_to_anchor, frameon=False)
 
     # 设置离散时间刻度标签（仅在离散模式）
     if x_tick_labels is not None:

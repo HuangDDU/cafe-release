@@ -8,7 +8,7 @@ except ImportError:
 
 
 @method_info(
-    name="sctc",
+    name="SCTC",
     version="0.0.1",
     description="SCTC: single-Cell Transcriptional Complexity",
     wrapper_type="linear",

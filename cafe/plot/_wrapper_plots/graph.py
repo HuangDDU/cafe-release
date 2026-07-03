@@ -33,3 +33,5 @@ def plot_embedding(fadata, model_name: str = None, cluster: str = None, basis: s
     G_filtered = nx.from_pandas_edgelist(milestone_network, source="from", target="to", create_using=nx.Graph)
     pos_filtered = dict(zip(filtered_cell_id_list, fadata[filtered_cell_id_list].obsm[basis].copy().tolist()))  # add cell node pos
     nx.draw_networkx_edges(G_filtered, pos=pos_filtered, ax=ax, alpha=1, edge_color="black", width=1)
+
+    return ax

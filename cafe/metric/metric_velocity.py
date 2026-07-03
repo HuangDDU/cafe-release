@@ -169,6 +169,8 @@ def calculate_velocity_metrics(
     # extract velocity embedding from raw wrapper dict
     velocity_basis = f"velocity_{basis[2:]}"  # add velocity embedding temporarily, delete after metric calculation
     raw_wrapper_dict = fadata.get_raw_wrapper_dict(model_name)
+    if raw_wrapper_dict is None:
+        raw_wrapper_dict = {}
 
     if velocity_basis not in raw_wrapper_dict:
         logger.info("pseudo velocity don't exist, compute and add it to raw_wrapper_dict ")

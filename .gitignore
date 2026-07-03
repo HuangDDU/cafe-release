@@ -4,6 +4,7 @@ tmp
 
 # test
 *.pytest_cache
+*.log
 
 # PyCharm
 .idea
@@ -11,6 +12,11 @@ tmp
 
 # mkdoc
 site
+site-local
+
+# local-only documentation drafts
+mkdocs.local.yml
+docs/test/
 
 # # method docker image
 # build_method_docker_image*
@@ -26,3 +32,6 @@ build
 # vscode config file
 .vscode
 .env
+
+# agent result archive (large notebooks, not for git)
+agent_result/

@@ -1,5 +1,7 @@
 from .plot_benchmark import style_benchmark
 from .plot_embedding_plotly import plot_embedding_plotly
+from .plot_enrichment import plot_enrichment
+from .plot_gene_trends import plot_gene_linear_trends, plot_gene_trends
 from .plot_graph import plot_graph
 from .plot_pie import plot_pie
 from .plot_pseudotime import plot_pseudotime_embedding, plot_pseudotime_stack
@@ -7,6 +9,8 @@ from .plot_stack import plot_stack
 from .plot_stream import plot_stream
 from .plot_trajectory import plot_trajectory
 from .plot_velocity import plot_velocity
+from .plot_volcano import plot_volcano
+from .plot_waddington_landscape_3d import plot_waddington_landscape_3d
 from .plot_wrapper import plot_wrapper
 
 __all__ = [
@@ -21,4 +25,9 @@ __all__ = [
     "plot_stream",
     "plot_pie",
     "plot_velocity",
+    "plot_gene_trends",
+    "plot_gene_linear_trends",
+    "plot_waddington_landscape_3d",
+    "plot_volcano",
+    "plot_enrichment",
 ]

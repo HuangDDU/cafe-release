@@ -17,7 +17,7 @@ except ImportError:
 
 
 @method_info(
-    name="dynamo",
+    name="Dynamo",
     version="0.0.1",
     description="Dynamo: Mapping Transcriptomic Vector Fields of Single Cells",
     wrapper_type="velocity",

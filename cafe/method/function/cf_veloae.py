@@ -13,7 +13,7 @@ except ImportError:
 
 
 @method_info(
-    name="veloae",
+    name="VeloAE",
     version="0.0.1",
     description="VeloAE: Representation learning of RNA velocity reveals robust cell transitions",
     wrapper_type="velocity",
@@ -48,7 +48,7 @@ def veloae(
         "--lr",
         "1e-6",
         "--n-epochs",
-        "10",
+        "100",
         "--g-rep-dim",
         "100",
         "--k-dim",

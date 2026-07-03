@@ -13,7 +13,7 @@ except ImportError:
 
 
 @method_info(
-    name="unitvelo",
+    name="UniTVelo",
     version="0.0.1",
     description="UniTVelo: temporally unified RNA velocity reinforces single-cell trajectory inference",
     wrapper_type="velocity",

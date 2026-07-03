@@ -1,11 +1,23 @@
 site_name: Cafe - Cellular Fate Explorer
-repo_url: https://github.com/HuangDDU/CellFateExplorer
-repo_name: HuangDDU/CellFateExplorer
+repo_url: https://github.com/HuangDDU/cafe-release
+repo_name: HuangDDU/cafe-release
+
+exclude_docs: |
+  test/
+  test/**
+  release_notes/_partials/**
 
 nav:
-- Index: index.md
+- Cafe Document: index.md
 - Installation: installation.md
-
+- Introduction: 
+  - introduction/index.md
+  - Cell Fate Prediction: introduction/cell_fate_prediction.md
+  - Data Structure: introduction/data_structure.md
+  - Wrapper Types: introduction/method_wrappers.md
+  - Trajectory Visualization: introduction/trajectory_visualization.md
+  - Metrics and Benchmark: introduction/metrics_and_benchmark.md
+  - Downstream Analysis: introduction/downstream_analysis.md
 - Tutorial:
   - tutorial/index.md
   - Quick Start: tutorial/quickstart.ipynb
@@ -51,15 +63,18 @@ nav:
     - Metric: development_document/contributing_guide/metric.md
     - Visualization: development_document/contributing_guide/visualization.md
     - Document: development_document/contributing_guide/document.md
-  - Shedule:
+    - Release: development_document/contributing_guide/release.md 
+    
+  - Schedule:
     # - Shedule Summary: shedule.md
     - Data: development_document/shedule/data.md
     - Method: development_document/shedule/method.md
     - Plot: development_document/shedule/plot.md
     - Benchmark: development_document/shedule/benchmark.md
     - Downstream Analysis: development_document/shedule/downstream_analysis.md
-  - Change Log:  development_document/change_log/index.md
-
+- Release Notes: release_notes/index.md
+- Contributors: contributors.md
+- References: references.md
 extra_css:
 - stylesheets/style.css
 
@@ -102,6 +117,7 @@ plugins:
     branch: dev
 - bibtex:
     bib_file: "docs/references.bib"
+    bib_by_default: false
 - mkdocs-jupyter:
 - mkdocstrings:
     default_handler: python
@@ -118,8 +134,20 @@ plugins:
           docstring_style: google
 
 markdown_extensions:
+- footnotes
+- pymdownx.snippets:
+    base_path: docs
 - pymdownx.tasklist:
     custom_checkbox: true
 - pymdownx.highlight
-- pymdownx.superfences
+- pymdownx.arithmatex:
+    generic: true
+- pymdownx.superfences:
+    custom_fences:
+    - name: mermaid
+      class: mermaid
 - codehilite
+
+extra_javascript:
+- javascripts/mathjax.js
+- https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

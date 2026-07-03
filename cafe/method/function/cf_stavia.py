@@ -14,7 +14,7 @@ except ImportError:
 
 
 @method_info(
-    name="stavia",
+    name="StaVia",
     version="0.0.1",
     description="StaVia: spatially and temporally aware cartography with higher-order random walks for cell atlases",
     wrapper_type="cluster",

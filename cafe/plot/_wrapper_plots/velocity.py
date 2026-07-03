@@ -15,16 +15,18 @@ def plot_velocity(fadata, basis=None, model_name: str = None, style="scvelo", mo
             import scvelo as scv
 
             if mode == "stream":
-                scv.pl.velocity_embedding_stream(fadata, basis=basis[2:])
+                ax = scv.pl.velocity_embedding_stream(fadata, basis=basis[2:], show=False)
             elif mode == "grid":
-                scv.pl.velocity_embedding_grid(fadata, basis=basis[2:])
+                ax = scv.pl.velocity_embedding_grid(fadata, basis=basis[2:], show=False)
             else:
-                scv.pl.velocity_embedding(fadata, basis=basis[2:])
+                ax = scv.pl.velocity_embedding(fadata, basis=basis[2:], show=False)
         else:
             # TODO: dynamo style
             import dynamo as dyn
 
-            dyn.pl.streamline_plot(fadata, basis=basis[2:])
+            ax = dyn.pl.streamline_plot(fadata, basis=basis[2:], save_show_or_return="return")
+
+    return ax
 
 
 def plot_embedding(fadata, model_name: str = None, basis: str = None, style="scvelo"):

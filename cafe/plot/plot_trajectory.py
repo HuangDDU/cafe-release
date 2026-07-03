@@ -125,7 +125,8 @@ def plot_trajectory(
                 fadata.uns["milestone_colors"] = [cell_color_dict[i] if i in cell_color_dict else missing_cell_color for i in fadata.obs.index]
 
             # base scanpy embedding scatter plot
-            sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
+            if "title" not in sc_pl_embedding_kwargs:
+                sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
             sc.pl.embedding(fadata, color=color, basis=basis, ax=ax, show=False, **sc_pl_embedding_kwargs)  # base cell embedding
 
             # legend remove
@@ -139,12 +140,7 @@ def plot_trajectory(
             directed = milestone_wrapper["directed"]
 
             if show_milestone_labels or not curve:
-                G = nx.from_pandas_edgelist(
-                    milestone_wrapper["milestone_network"],
-                    source="from",
-                    target="to",
-                    create_using=nx.DiGraph if directed else nx.Graph,
-                )
+                G = milestone_wrapper["milestone_network_G"]
                 # get milestone positions
 
                 def get_milestone(row):
@@ -234,7 +230,7 @@ def plot_trajectory(
                     if scanpy_legend:
                         scanpy_legend.set_title("Cells")
                         ax.add_artist(scanpy_legend)
-                        bbox_to_anchor = (1.3, 0.5)  # shift latter legene
+                        bbox_to_anchor = (1.3, 0.5)  # shift latter legend
                     else:
                         bbox_to_anchor = (1.0, 0.5)
                     # Add milestone legend below the existing one
@@ -245,7 +241,7 @@ def plot_trajectory(
 
     if save is not None:
         if isinstance(save, bool) and save:
-            save = f".cafe/{fadata.id}/img/trajectory_{basis}_{'_'.join(model_name_list)}.png"
+            save = f"{fadata.image_dir}/trajectory_{basis}_[{','.join(model_name_list)}].png"
         plt.savefig(save, bbox_inches="tight")
         logger.debug(f"save trajectory plot to '{save}'")
     return axes

@@ -11,7 +11,7 @@ except ImportError:
 
 
 @method_info(
-    name="palantir",
+    name="Palantir",
     version="0.0.1",
     description="Palantir: characterization of cell fate probabilities",
     wrapper_type=["linear", "probability", "lineage"],

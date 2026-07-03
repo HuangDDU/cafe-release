@@ -12,7 +12,8 @@ from .test_fate_function_backend import get_test_run_data
 image_id = "dynverse/ti_comp1:v0.9.9.01"
 
 
-@pytest.mark.local
+# only test local
+@pytest.mark.skip(reason="Docker backend is not available for github action")
 class TestDynverseDockerBackend:
     def setup_method(self):
         self.dynverse_docker = cafe.method.DynverseDockerBackend(image_id)
@@ -51,7 +52,8 @@ class TestDynverseDockerBackend:
 # YAML ubject for 'definition.yaml' file
 
 
-@pytest.mark.local
+# only test local
+@pytest.mark.skip(reason="Docker backend is not available for github action")
 class TestDefinition:
     #
     def setup_method(self):

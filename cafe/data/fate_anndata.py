@@ -6,13 +6,15 @@ import anndata as ad
 import networkx as nx
 import numpy as np
 import pandas as pd
-import scanpy as sc
 
 from .._logging import logger
 from .._settings import settings
 from ..util import random_time_string
 from .fate_milestone_wrapper import MilestoneWrapper
 from .fate_waypoint_wrapper import WaypointWrapper
+
+# import scanpy as sc
+
 
 # from anndata._io.specs.registry import _REGISTRY, IOSpec  # global I/O registry
 
@@ -321,8 +323,11 @@ class FateAnnData(ad.AnnData):
 
     def add_model_name(self, model_name: str):
         self.model_name = model_name
-        # self.cafe_dict["model_name"] = model_name
-        self.trajectory_history_dict[self.model_name] = {}
+        if model_name in self.trajectory_history_dict:
+            logger.warning(f"model_name '{model_name}' already exists in trajectory_history_dict, may overwrite existing trajectory")
+        else:
+            # self.cafe_dict["model_name"] = model_name
+            self.trajectory_history_dict[self.model_name] = {}
 
     def get_parsed_model_name(self, model_name: str = None):
         from ..util import parse_random_time_string
@@ -521,7 +526,8 @@ class FateAnnData(ad.AnnData):
                 neighbors=trajectory_dict.get("neighbors"),
                 obs_index=trajectory_dict.get("obs_index"),
                 var_index=trajectory_dict.get("var_index"),
-                X=trajectory_dict.get("X"),  # add X for velocity method like veloae,
+                X=trajectory_dict.get("X"),
+                milestone_network_strategy=trajectory_dict.get("milestone_network_strategy", "auto"),  # auto choice for strategy
                 **kwargs,
             )
         elif wrapper_type == "lineage":
@@ -542,6 +548,8 @@ class FateAnnData(ad.AnnData):
                 normalize=trajectory_dict.get("normalize", True),
                 include_self_loop=trajectory_dict.get("include_self_loop", False),
             )
+        mn = self.get_milestone_wrapper().milestone_network
+        logger.info(f"MilestoneNetwork: {len(mn)} edges\n{mn.to_string()}")
 
     def add_waypoints(self, milestone_wrapper: MilestoneWrapper = None, model_name: str = None, waypoint_wrapper_kwargs: dict = {}) -> None:
         """Create WaypointWrapper object"""
@@ -561,7 +569,13 @@ class FateAnnData(ad.AnnData):
         # self.trajectory_history_dict[model_name]["waypoint_wrapper"] = waypoint_wrapper
         self.set_waypoint_wrapper(waypoint_wrapper, model_name)
 
-    def subset_trajectory(self, edge_list: list, model_name: str = None) -> "FateAnnData":
+    def subset_trajectory(
+        self,
+        edge_list: list,
+        model_name: str = None,
+        cluster: str = None,
+        keep_color_cluster: str = None,
+    ) -> "FateAnnData":
         """
         Subset the FateAnnData object based on trajectory edges.
 
@@ -573,10 +587,21 @@ class FateAnnData(ad.AnnData):
             model_name = self.model_name
 
         mw = self.get_milestone_wrapper(model_name)
-        new_mw = mw.subset_by_edges(edge_list)
+        new_mw = mw.subset_by_edges(edge_list)  # milestone keep here
 
         # subset adata
         new_fadata = self[new_mw.cell_id_list].copy()
+        new_fadata.id = f"{self.id}_subset_{edge_list}"
+        new_fadata.check_result_dir()
+
+        # keep cell and milestone color with raw fadata if possible
+        if keep_color_cluster is not None:
+            cluster = keep_color_cluster
+        else:
+            cluster = self.prior_information.get("cluster")
+        if set(new_fadata.obs[cluster].unique()) == set(new_mw.id_list):
+            new_fadata.obs[cluster] = pd.Categorical(new_fadata.obs[cluster], categories=new_mw.id_list)  # ensure the category order
+            new_fadata.uns[f"{cluster}_colors"] = [new_mw.milestone_color_dict[k] for k in new_mw.id_list]
 
         # update the wrapper in the new object
         new_fadata.set_milestone_wrapper(new_mw, model_name=model_name)
@@ -589,13 +614,12 @@ class FateAnnData(ad.AnnData):
             del traj_dict["waypoint_wrapper"]
             new_fadata.is_wrapped_with_waypoints = False
 
-        # todo: keep color with
-
         return new_fadata
 
-    def splice_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
+    # TODO: core operation should move to MilestoneWrapper, the interface should refer to the next function
+    def merge_edge_trajectory(self, fadata_sub: "FateAnnData", replace_edges: list = None, model_name: str = None):
         """
-        Splice a fine-grained trajectory (from fadata_sub) back into the coarse trajectory (self).
+        Merge a fine-grained trajectory (from fadata_sub) back into the coarse trajectory (self).
 
         Args:
             fadata_sub (FateAnnData): The subset FateAnnData object containing the fine-grained trajectory.
@@ -648,11 +672,84 @@ class FateAnnData(ad.AnnData):
             divergence_regions=None,
             generate_color=False,  # Don't overwrite colors if not necessary, maybe?
         )
+        # TODO: scale the edge length in new_mn if needed, to maintain consistency with global trajectory
 
-        logger.info(f"Successfully spliced trajectory from subset with {len(fadata_sub)} cells.")
+        logger.info(f"Successfully merged edge trajectory from subset with {len(fadata_sub)} cells.")
         return self
 
-    # fix
+    # TODO
+    # def merge_edge_trajectory(
+    #     self,
+    #     fadata_sub: "FateAnnData",
+    #     replace_edge: str,
+    #     model_name: str = None,
+    #     sub_model_name: str = None,
+    #     save_model_name: str = "merge",
+    #     scale_local_edge_length: bool = True,
+    # ):
+    #     target_model_name = self.parse_model_name(model_name)
+    #     if target_model_name is None:
+    #         raise ValueError(f"model '{model_name}' not found in current trajectory history")
+    #     target_sub_model_name = fadata_sub.parse_model_name(sub_model_name)
+    #     if target_sub_model_name is None:
+    #         raise ValueError(f"sub model '{sub_model_name}' not found in fadata_sub trajectory history")
+    #     missing_cell_list = list(set(fadata_sub.obs.index) - set(self.obs.index))
+    #     if len(missing_cell_list) > 0:
+    #         raise ValueError(f"fadata_sub has {len(missing_cell_list)} cells not in self: {missing_cell_list}")
+
+    #     mw = self.get_milestone_wrapper(target_model_name)
+    #     sub_mw = fadata_sub.get_milestone_wrapper(target_sub_model_name)
+    #     new_mw = mw.merge_edge_trajectory(
+    #         sub_mw=sub_mw,
+    #         replace_edge=replace_edge,
+    #         scale_local_edge_length=scale_local_edge_length,
+    #     )
+
+    #     self.add_model_name(save_model_name)
+    #     self.add_trajectory(
+    #         milestone_network=new_mw.milestone_network,
+    #         progressions=new_mw.progressions,
+    #         divergence_regions=new_mw.divergence_regions,
+    #         generate_color=False,
+    #     )
+    #     return self
+
+    def merge_milestone_trajectory(
+        self,
+        fadata_sub: "FateAnnData",
+        replace_milestone: str,
+        model_name: str = None,
+        sub_model_name: str = None,
+        save_model_name: str = "merge",
+        scale_local_edge_length: bool = True,
+    ):
+        target_model_name = self.parse_model_name(model_name)
+        if target_model_name is None:
+            raise ValueError(f"model '{model_name}' not found in current trajectory history")
+        target_sub_model_name = fadata_sub.parse_model_name(sub_model_name)
+        if target_sub_model_name is None:
+            raise ValueError(f"sub model '{sub_model_name}' not found in fadata_sub trajectory history")
+
+        missing_cell_list = list(set(fadata_sub.obs.index) - set(self.obs.index))
+        if len(missing_cell_list) > 0:
+            raise ValueError(f"fadata_sub has {len(missing_cell_list)} cells not in self: {missing_cell_list}")
+
+        mw = self.get_milestone_wrapper(target_model_name)
+        sub_mw = fadata_sub.get_milestone_wrapper(target_sub_model_name)
+        new_mw = mw.merge_milestone_trajectory(
+            sub_mw=sub_mw,
+            replace_milestone=replace_milestone,
+            scale_local_edge_length=scale_local_edge_length,
+        )
+        self.add_model_name(save_model_name)
+        self.add_trajectory(
+            milestone_network=new_mw.milestone_network,
+            progressions=new_mw.progressions,
+            divergence_regions=new_mw.divergence_regions,
+            generate_color=False,
+        )
+        return self
+
     def __getitem__(self, index):
         # 1. call Anndata __getitem__ to get the sliced AnnData object
         new_adata = super().__getitem__(index)
@@ -669,12 +766,14 @@ class FateAnnData(ad.AnnData):
             new_adata.uns["cafe"] = {}
 
         # 3. copy simple attribute/property from 'self' to 'new_adata'
-        new_adata.id = self.id
         new_adata.prior_information = self.prior_information  # TODO: check
         new_adata.model_name = self.model_name
+        # new_adata.id = f"{self.id}_subset"  # update id for subset
+        # new_adata.check_result_dir()
 
         # 4. link complex trajectory attribute from 'self' to 'new_adata'
         # New trajectory history dict construction
+        # todo: lazy subset operation for milestone_wrapper and waypoint_wrapper
         new_trajectory_history_dict = {}
         for model_name, trajectory_history in self.trajectory_history_dict.items():
             # Create copy to avoid modifying parent dict
@@ -1218,7 +1317,7 @@ class FateAnnData(ad.AnnData):
         probability: pd.DataFrame,
         cluster_key: str = None,
         new_cluster_list: list = None,
-        strategy: str = "base",  # base, graph_fusion, hierarchical_clustering
+        strategy: str = "graph_fusion",  # base, graph_fusion, hierarchical_clustering
         **strategy_kwargs,
     ):
         # TODO: for palantir, cellrank
@@ -1243,6 +1342,7 @@ class FateAnnData(ad.AnnData):
             logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
     # TODO: Time wrapper for WaddingtonOT, Moscot
+    # TODO:
     def add_trajectory_time(
         self,
         tmaps: dict,
@@ -1443,132 +1543,124 @@ class FateAnnData(ad.AnnData):
     def add_trajectory_velocity(
         self,
         velocity: np.array,
-        velocity_graph: np.array,
-        velocity_graph_neg: np.array,
-        velocity_embedding: np.array,
-        neighbors: dict,
-        milestone_network_strategy: str = "paga",
+        velocity_graph: np.array = None,
+        velocity_graph_neg: np.array = None,
+        velocity_embedding: np.array = None,
+        neighbors: dict = None,
         cluster: str = None,
         obs_index=None,
         var_index=None,
         basis=None,
         X: np.array = None,
+        # milestone_network_strategy: str = "scvelo_paga",
+        milestone_network_strategy: str = "auto",  # TODO: milestone_network choice
+        strategy_kwargs: dict = None,
     ):
-        # TODO: move to _velocity_wrapper module
-        "add velocity trajectory using PAGA transform, such as scVelo, VeloAE"
+        """Add velocity trajectory using PAGA transform (scVelo, VeloAE, CellDancer, etc.).
+
+        Refactored: delegates to ``_velocity_wrapper`` module for AnnData construction,
+        velocity embedding computation, and milestone network building via strategy pattern.
+
+        Parameters
+        ----------
+        velocity : np.ndarray
+            High-dimensional velocity matrix (n_cells, n_genes).
+        velocity_graph : np.ndarray
+            scVelo transition graph (n_cells, n_cells). Optional.
+        velocity_graph_neg : np.ndarray
+            Negative transition graph. Optional.
+        velocity_embedding : np.ndarray
+            Pre-computed low-dim velocity embedding. If provided, forces
+            ``low_dim_paga`` strategy.
+        neighbors : dict
+            Dict with ``"distances"`` and ``"connectivities"`` sparse matrices.
+        milestone_network_strategy : str
+            Strategy name: ``"scvelo_paga"``, ``"low_dim_paga"``,
+            ``"raw_paga"``, or ``"cosine_similarity"``.
+        cluster : str, optional
+            Cluster column in ``.obs``. Defaults to ``prior_information["cluster"]``.
+        obs_index : pd.Index, optional
+            Filtered cell indices (CellDancer/Dynamo).
+        var_index : pd.Index, optional
+            Filtered gene indices (CellDancer/Dynamo).
+        basis : str, optional
+            Embedding key in ``.obsm``. Defaults to ``prior_information["basis"]``.
+        X : np.ndarray, optional
+            Latent space expression matrix (VeloAE).
+        strategy_kwargs : dict, optional
+            Additional keyword arguments passed to the strategy builder
+            (e.g. ``{"threshold": 0.3}`` for cosine_similarity,
+            ``{"n_neighbors": 20}`` for low_dim_paga).
+        """
+        from ._velocity_wrapper import (
+            VelocityInput,
+            build_milestone_network,
+            choose_or_check_strategy,
+            compute_milestone_embeddings,
+            compute_velocity_embedding,
+            prepare_anndata_for_velocity,
+        )
+
         if cluster is None:
             cluster = self.prior_information.get("cluster")
         if basis is None:
             basis = self.prior_information.get("basis")
 
-        # PAGA
-        import scvelo as scv
+        # Reconstruct trajectory_dict for the new module interface
+        trajectory_dict = {
+            "velocity": velocity,
+            "velocity_graph": velocity_graph,
+            "velocity_graph_neg": velocity_graph_neg,
+            "velocity_embedding": velocity_embedding,
+            "neighbors": neighbors,
+            "obs_index": obs_index,
+            "var_index": var_index,
+            "X": X,
+        }
 
-        if X is not None:
-            # for veloae
-            adata = ad.AnnData(X)
-            adata.obs.index = obs_index if obs_index is not None else self.obs.index
-            adata.var.index = var_index if var_index is not None else self.var.index
-            adata.obs[cluster] = self[adata.obs.index].obs[cluster]
-            adata.obsm[basis] = self[adata.obs.index].obsm[basis]
-        else:
-            # extract sub adata
-            if (obs_index is not None) or (var_index is not None):
-                obs_index = self.obs.index if obs_index is None else obs_index
-                var_index = self.var.index if var_index is None else var_index
-                adata = self[obs_index, var_index].copy()
-            else:
-                # TODO: copy may waste time and memory, need other strategy
-                # adata = self.copy()
-                adata = self.to_anndata()
+        # Step 0: Determine strategy for milestone network construction
+        milestone_network_strategy = choose_or_check_strategy(trajectory_dict, milestone_network_strategy)
 
-        logger.debug(f"filterd adata: {adata}")
+        # Step 1: Build scvelo-compatible AnnData
+        adata = prepare_anndata_for_velocity(self, trajectory_dict, cluster, basis)
 
-        velocity_basis = f"velocity_{basis[2:]}"
-        if velocity_embedding is not None:
-            milestone_network_strategy = "low_dim_paga"  # force to use cons strategy
-            logger.debug(f"use given velocity embedding, use strategy '{milestone_network_strategy}' to get milestone_network")
-        else:
-            adata.layers["velocity"] = velocity
-            if (velocity_graph is not None) and (velocity_graph_neg is not None):
-                # Final goal: only save velocity matrix of a method.
-                adata.uns["velocity_graph"] = velocity_graph
-                adata.uns["velocity_graph_neg"] = velocity_graph_neg
-                adata.uns["neighbors"] = {}
-                adata.obsp["distances"] = neighbors["distances"]
-                adata.obsp["connectivities"] = neighbors["connectivities"]
-            else:
-                # recompute neighbors and velocity graph may waste time
-                scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
-                scv.tl.velocity_graph(adata)  # add transition graph by velocity
-
-            logger.debug("add raw velocity embedding to fadata")
-            scv.tl.velocity_embedding(adata, basis=basis[2:])
-            velocity_embedding = adata.obsm[velocity_basis]
+        # Step 2: Compute or extract velocity embedding
+        # Separate embed-specific kwargs from strategy-specific kwargs
+        _all_kwargs = strategy_kwargs or {}
+        embed_kwargs = {k: v for k, v in _all_kwargs.items() if k in ("n_pcs", "n_neighbors")}  # extract neighbor kwargs for embedding
+        strategy_only_kwargs = {k: v for k, v in _all_kwargs.items() if k not in ("n_pcs", "n_neighbors")}
+        velocity_embedding, velocity_basis = compute_velocity_embedding(adata, trajectory_dict, basis, **embed_kwargs)
         self.raw_wrapper_dict.update({velocity_basis: velocity_embedding})
 
-        # compute milestone embedding based clustered cell embedding
-        X_emb = pd.DataFrame(adata.obsm[basis], index=adata.obs.index)
-        milestone_emb = adata.obs.groupby(cluster).apply(lambda x: X_emb.loc[x.index].mean(axis=0))
-        milestone_emb.index = list(adata.obs[cluster].cat.categories)
+        # Step 3: Compute milestone (cluster centroid) embeddings
+        milestone_emb = compute_milestone_embeddings(adata, cluster, basis)
 
-        # construct milestone_network based velocity
-        if milestone_network_strategy == "paga":
-            # use paga based graph connectivity
-            scv.tl.paga(adata, groups=cluster)
-            df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-            # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
-            milestone_network = (
-                df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
-            )
-            milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
-            milestone_network["directed"] = True
-        elif milestone_network_strategy == "low_dim_paga":
-            # paga based on expression embedding and velocity embedding
-            new_adata = sc.AnnData(X=adata.obsm[basis], obs=adata.obs, obsm=adata.obsm, obsp=adata.obsp, uns=adata.uns)
-            new_adata.layers["spliced"] = adata.obsm[basis]
-            new_adata.layers["unspliced"] = adata.obsm[basis]
-            new_adata.layers["velocity"] = velocity_embedding
-            # recomput velocity graph based on low-dim velocity and embedding
-            sc.pp.neighbors(new_adata)
-            scv.tl.velocity_graph(new_adata, show_progress_bar=False)
-            scv.tl.paga(new_adata, groups=cluster)  # recompute paga
-            df = scv.get_df(adata, "paga/transitions_confidence", precision=2).T
-            print(df)
-            # df.index = df.columns = adata.obs[cluster].cat.categories.tolist()
-            milestone_network = (
-                df.reset_index().rename(columns={"index": "from"}).melt(id_vars="from", var_name="to", value_name="length").query("`length` > 0")
-            )
-            milestone_network["length"] = 1  # TODO: need to be modified based embedding distance between milestone.
-            milestone_network["directed"] = True
-        else:
-            # TODO: use velocity consine similarity method, need fix
-            threshold = 0.2
-            cluster_list = adata.obs[cluster].cat.categories.to_list()
-            cluster_connection_df = pd.DataFrame(0.0, index=cluster_list, columns=cluster_list)
-            for source_cluster in cluster_list:
-                source_cell_velocity = velocity_embedding[np.where(self.obs[cluster] == source_cluster)[0]]
-                source_cell_velocity = source_cell_velocity / (np.linalg.norm(source_cell_velocity, axis=1, keepdims=True) + 1e-6)
-                for target_cluster in cluster_list:
-                    if source_cluster == target_cluster:
-                        continue
-                    cluster_velocity = milestone_emb.loc[target_cluster].values - milestone_emb.loc[source_cluster].values
-                    cluster_velocity = cluster_velocity / (np.linalg.norm(cluster_velocity) + 1e-6)
-                    # cosine similarity between each cell's velocity and the inter-cluster direction
-                    # normalized vector dot calculation is equal to cosin similarity calculation.
-                    cosine_sims = (source_cell_velocity @ cluster_velocity).mean()
-                    # TODO: weighted
-                    cluster_connection_df.loc[source_cluster, target_cluster] = cosine_sims
-            logger.debug(f"cluster_connection_df:\n{cluster_connection_df.round(2)}")
-            milestone_network = cluster_connection_df.stack().reset_index()
-            milestone_network.columns = ["from", "to", "score"]
-            milestone_network = milestone_network[milestone_network["score"] > threshold].copy()
-            milestone_network["length"] = 1.0
-            milestone_network["directed"] = True
-        # TODO: other strategy LAP
+        # Step 4: Build VelocityInput and dispatch to strategy
+        X_emb_adata = pd.DataFrame(adata.obsm[basis], index=adata.obs.index)
+        paga_ready = (velocity_graph is not None) and (velocity_graph_neg is not None) and (neighbors is not None)
+        velo_input = VelocityInput(
+            adata=adata,
+            velocity_embedding=velocity_embedding,
+            velocity_basis=velocity_basis,
+            X_emb=X_emb_adata,
+            milestone_emb=milestone_emb,
+            paga_ready=paga_ready,
+        )
 
-        X_emb = pd.DataFrame(self.obsm[basis], index=self.obs.index)  # use all cell
-        self.add_trajectory_projection(milestone_network=milestone_network, milestone_emb=milestone_emb, X_emb=X_emb, cluster_key=cluster)
+        milestone_network = build_milestone_network(
+            velo_input,
+            strategy=milestone_network_strategy,
+            strategy_kwargs=strategy_only_kwargs,
+        )
+
+        # Step 5: Project all cells onto the milestone network
+        X_emb_full = pd.DataFrame(self.obsm[basis], index=self.obs.index)
+        self.add_trajectory_projection(
+            milestone_network=milestone_network,
+            milestone_emb=milestone_emb,
+            X_emb=X_emb_full,
+            cluster_key=cluster,
+        )
 
     def add_metric(
         self,
@@ -1692,6 +1784,7 @@ class FateAnnData(ad.AnnData):
         }
 
     def get_start_milestone(self, start_cell, model_name=None):
+        # get start milestone based on start cell, find the milestone with highest percentage for the cell
         trajectory_dict = self.get_trajectory_dict(model_name)
 
         milestone_wrapper = trajectory_dict["milestone_wrapper"]
@@ -1707,7 +1800,7 @@ class FateAnnData(ad.AnnData):
 
         return start_milestone
 
-    def get_trajectory_pseudotime(self, start_milestone=None, start_cell=None, model_name=None):
+    def _check_start_milestone(self, start_milestone=None, start_cell=None, model_name=None):
         trajectory_dict = self.get_trajectory_dict(model_name)
 
         start_milestone = start_milestone if start_milestone else self.prior_information.get("start_milestone")
@@ -1735,6 +1828,14 @@ class FateAnnData(ad.AnnData):
             else:
                 start_milestone = self.get_start_milestone(start_cell, model_name=model_name)
             logger.debug(f"find start milestone '{start_milestone}' from start cell '{start_cell}'")
+
+        return start_milestone
+
+    def get_trajectory_pseudotime(self, start_milestone=None, start_cell=None, model_name=None):
+        # get trajectory pseudotime based on start_milestone
+
+        start_milestone = self._check_start_milestone(start_milestone=start_milestone, start_cell=start_cell, model_name=model_name)
+        trajectory_dict = self.get_trajectory_dict(model_name)
 
         pseudotime_key = f"pseudotime_from_{start_milestone}"
         if pseudotime_key in trajectory_dict:
@@ -1842,9 +1943,55 @@ class FateAnnData(ad.AnnData):
         velocity_embedding = velocity_df.values
         return velocity_embedding
 
-    def get_lineage(self, model_name):
+    def get_lineages(self, start_milestone=None, start_cell=None, target_milestone_list=None, model_name=None, return_element_type="obs_index"):
         # TODO: DFS from root to find all lineage for downstream driver gene search
-        pass
+        # ref: notebook_dev/hzy/downstream_lineage_dev.ipynb
+        # 1. check start milestone, target milestone list
+        start_milestone = self._check_start_milestone(start_milestone=start_milestone, start_cell=start_cell, model_name=model_name)
+
+        mw = self.get_milestone_wrapper(model_name)
+        G = mw.milestone_network_G
+
+        # available target milestone is the leaf node milestone in the same subgraph with start_milestone
+        available_target_milestone_list = [node for node in G.nodes if nx.has_path(G, start_milestone, node) and G.out_degree(node) == 0]
+        if target_milestone_list is None:
+            target_milestone_list = available_target_milestone_list
+        else:
+            # check target_milstone
+            invalid_target_milestone_list = set(available_target_milestone_list) - set(target_milestone_list)
+            if len(invalid_target_milestone_list) > 0:
+                logger.warning(f"invalid target milestone found: {invalid_target_milestone_list}, they will be ignored")
+                # remove invalid target milestone from target_milestone_list
+                for i in invalid_target_milestone_list:
+                    target_milestone_list.remove(i)
+
+        # 2. DFS to find all lineage from start_milestone to target_milestone_list
+        lineage_dict = {}
+        for target_milestone in target_milestone_list:
+            # find shortest path of start_milestone to target_milestone as lineage
+            sp = nx.shortest_path(G, source=start_milestone, target=target_milestone, weight="length")
+            spl_dict = {start_milestone: 0}
+            for i in range(len(sp) - 1):
+                spl_dict[sp[i + 1]] = spl_dict[sp[i]] + G[sp[i]][sp[i + 1]].get("length", 1)
+            logger.debug(f"shortest path from '{start_milestone}' to '{target_milestone}': {sp}")
+
+            # extract cells along the lineage
+            df_list = []
+            for i in range(len(sp) - 1):
+                df = mw.progressions.query(f"`from` == '{sp[i]}' & `to` == '{sp[i+1]}'")
+                df_list.append(df)
+            lineage_progressions = pd.concat(df_list)
+            lineage_cell_id_list = lineage_progressions["cell_id"].tolist()
+
+            lineage_dict[target_milestone] = lineage_cell_id_list
+
+        # simple case: binary tree structure, lineage: A->B->C, A->B->D
+        # lineage_dict = {
+        #     "Alpha": [0, 1, 2],
+        #     "Beta": [0, 1, 3],
+        # }
+
+        return lineage_dict
 
     def update_uns_cafe(self):
         # update .uns["cafe"]
@@ -1870,6 +2017,9 @@ class FateAnnData(ad.AnnData):
             # transfer milestone object to dict
             milestone_wrapper = trajectory_dict.get("milestone_wrapper", None)
             if milestone_wrapper is not None and isinstance(milestone_wrapper, MilestoneWrapper):
+                if hasattr(milestone_wrapper, "_milestone_network_G"):
+                    # networkX.Graph object cannot be serialized, need to be remove from attribute.
+                    delattr(milestone_wrapper, "_milestone_network_G")
                 trajectory_dict["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
             # transfer waypoint object to dict
             waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
@@ -1928,6 +2078,17 @@ class FateAnnData(ad.AnnData):
         self.h5ad_dir = os.path.join(dirname, "h5ad")
         self.image_dir = os.path.join(dirname, "img")
         self.benchmark_dir = os.path.join(dirname, "benchmark")
+
+        # for save h5ad conveniently
+        self.uns["cafe"]["dir"] = {
+            "result_dir": self.result_dir,
+            "log_dir": self.log_dir,
+            "trajectory_history_dir": self.trajectory_history_dir,
+            "metric_dir": self.metric_dir,
+            "h5ad_dir": self.h5ad_dir,
+            "image_dir": self.image_dir,
+            "benchmark_dir": self.benchmark_dir,
+        }
 
     def write_trajectory_dict(self, dirname=None, model_name_list=None):
         """Save trajectory dictionaries to pickle files.
@@ -2046,7 +2207,6 @@ class FateAnnData(ad.AnnData):
             tmp_filename (str, optional): Path for the temporary h5ad file. Defaults to "current_dir/.tmp.h5ad".
             trajectory (bool, optional): Whether to launch in trajectory visualization mode (requires special dev environment). Defaults to False.
             port (int, optional): Port to run the cellxgene server on. Defaults to 5005.
-            conda_env (str, optional): Conda environment name to run cellxgene in. Defaults to "cafe".
         """
         import os
         import subprocess
@@ -2069,32 +2229,34 @@ class FateAnnData(ad.AnnData):
         logger.debug("-" * 50)
 
         # 2. launch cellxgene
-        # construct command
-        if trajectory:
-            # TODO: local frontend and backend development version need be packaged
-            # TODO: cxgxf打包后要能够一键执行
-            # client_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-frontend"
-            # subprocess.Popen(client_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # frontend: react, ignore output
-            # server_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-server"
-            # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
-            # logger.info("cellxgene with trajectory must run on port: 3000")
-            # port = 3000
-            # conda_env = "cafe" # 在当前环境下
-            # cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
-            # cmd = f"DATASET={tmp_filename}"  # dataset
-            # cmd += f" & CXG_SERVER_PORT={5005}"  # server port
-            # cmd += f" & CXG_CLIENT_PORT={port}"  # client port, web interface port
-            # cmd += " & cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene"
-            # cmd += " & make start-dev"
-            # cellxgene with trajectory need use local development version
-            cmd = "cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene && "
-            cmd += f"DATASET={tmp_filename} CXG_SERVER_PORT={5005} CXG_CLIENT_PORT={port} make start-dev"
-        else:
-            conda_env = "cellxgene"
-            cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
-            # conda activate + conda_env (usually use but not valid here)
-            # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
-        # execuate command (NOTE: python_function can be executed in this way by conda)
+        # TODO: detect if cellxgene-cafe plugin is available, if not, launch normal cellxgene
+        cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch --port {port} {tmp_filename}"  # conda run
+        # # construct command
+        # if trajectory:
+        #     # TODO: local frontend and backend development version need be packaged
+        #     # TODO: cxgxf打包后要能够一键执行
+        #     # client_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-frontend"
+        #     # subprocess.Popen(client_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # frontend: react, ignore output
+        #     # server_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-server"
+        #     # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
+        #     # logger.info("cellxgene with trajectory must run on port: 3000")
+        #     # port = 3000
+        #     # conda_env = "cafe" # 在当前环境下
+        #     # cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+        #     # cmd = f"DATASET={tmp_filename}"  # dataset
+        #     # cmd += f" & CXG_SERVER_PORT={5005}"  # server port
+        #     # cmd += f" & CXG_CLIENT_PORT={port}"  # client port, web interface port
+        #     # cmd += " & cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene"
+        #     # cmd += " & make start-dev"
+        #     # cellxgene with trajectory need use local development version
+        #     cmd = "cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene && "
+        #     cmd += f"DATASET={tmp_filename} CXG_SERVER_PORT={5005} CXG_CLIENT_PORT={port} make start-dev"
+        # else:
+        #     conda_env = "cellxgene"
+        #     cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
+        #     # conda activate + conda_env (usually use but not valid here)
+        #     # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
+        # # execuate command (NOTE: python_function can be executed in this way by conda)
         logger.debug(f"execute command: {cmd}")
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         threading.Thread(target=print_output, args=(process.stdout, "[stdout]"), daemon=True).start()
@@ -2153,3 +2315,148 @@ class FateAnnData(ad.AnnData):
                 # check if basis exists in self.obsm
                 raise ValueError(f"parameter basis '{basis}' not found in self.obsm")
         return basis
+
+    # TODO: future work
+    def combine_pseudotime_and_embedding(
+        self,
+        pseudotime,
+        basis,
+        cluster,
+    ):
+        # TODO: combine linear pseudotime and specific embedding to get cluster-level trajectory graph
+        # A(0.1)->B(0.5)->C(0.8)/D(0.9),
+        # Combing embedding space, A is root, B is the branch point, C/D is the terminal state.
+        pass
+
+    def combine_pseudotime_and_undircted_graph(
+        self,
+        pseudotime,
+        # monocle2 result
+    ):
+        # TODO: combine linear pseudotime and undirected graph (such as monocle2 result) to get trajectory graph
+        pass
+
+    def recovery_metacell(
+        self,
+        fadata_metacell: "FateAnnData",
+        cell_id_dict: dict,
+        model_name: str = None,
+        recovered_model_name: str = None,
+    ) -> "FateAnnData":
+        """Recover metacell-level trajectory to individual cells.
+
+        Extracts the milestone network and progressions from a metacell-level
+        FateAnnData, maps metacell IDs back to individual cell barcodes using
+        the provided dictionary, and adds the recovered trajectory to ``self``
+        (the global cell-level FateAnnData).
+
+        The recovered trajectory preserves the original milestone network
+        structure.  When ``plot_trajectory()`` is called, Cafe automatically
+        re-computes the trajectory embedding in the global cell UMAP space.
+
+        Args:
+            fadata_metacell:
+                FateAnnData with metacell-level trajectory (e.g. from running
+                Palantir on aggregated metacells).
+            cell_id_dict:
+                Mapping ``{cell_barcode: metacell_label}``, e.g.
+                ``{"AAACCTG...": "mc-0", ...}``.  Only cells present in
+                ``self.obs.index`` are kept.
+            model_name:
+                Model name in *fadata_metacell* to recover from.  Defaults to
+                ``fadata_metacell.model_name``.
+            recovered_model_name:
+                Model name for the recovered trajectory stored in *self*.
+                Defaults to ``"{model_name}_recovered"``.
+
+        Returns:
+            self (supports method chaining)
+
+        Example:
+            >>> # After running Palantir on metacells:
+            >>> recovered_fadata = global_fadata.recovery_metacell(
+            ...     fadata_mc, cell_id_map, model_name="palantir_mc",
+            ... )
+            >>> cafe.plot.plot_trajectory(recovered_fadata,
+            ...     model_name="palantir_mc_recovered")
+        """
+        # TODO: (1) Generated by Deepseek, will be optimized by CodeX (2) Add test case
+
+        # ── 1. Resolve model name ──────────────────────────────────────
+        if model_name is None:
+            model_name = fadata_metacell.model_name
+
+        # ── 2. Extract source trajectory ───────────────────────────────
+        mc_mw = fadata_metacell.get_milestone_wrapper(model_name)
+        if mc_mw is None:
+            raise ValueError(f"Model '{model_name}' not found in fadata_metacell. " f"Available: {fadata_metacell.get_all_model_name(parse=False)}")
+
+        mc_wrapper_type = mc_mw.wrapper_type if (hasattr(mc_mw, "wrapper_type") and mc_mw.wrapper_type) else "linear"
+        mc_progressions = mc_mw.progressions.copy()
+        mc_milestone_network = mc_mw.milestone_network.copy()
+        mc_divergence_regions = (
+            mc_mw.divergence_regions.copy() if (mc_mw.divergence_regions is not None and not mc_mw.divergence_regions.empty) else None
+        )
+        milestone_id_list = mc_mw.id_list.copy() if mc_mw.id_list else None
+
+        # ── 3. Build reverse mapping  metacell_label → [cell_barcodes] ─
+        mc_to_cells: dict[str, list] = {}
+        global_cell_set = set(self.obs.index)
+        n_skipped = 0
+        for cell_barcode, mc_label in cell_id_dict.items():
+            if cell_barcode in global_cell_set:
+                mc_to_cells.setdefault(mc_label, []).append(cell_barcode)
+            else:
+                n_skipped += 1
+        if n_skipped > 0:
+            logger.warning(f"{n_skipped} cells in cell_id_dict are not present in " f"self.obs.index and will be skipped.")
+
+        # ── 4. Expand metacell progressions → individual cells ─────────
+        new_rows = []
+        for _, row in mc_progressions.iterrows():
+            mc_label = row["cell_id"]
+            cells = mc_to_cells.get(mc_label, [])
+            if not cells:
+                logger.warning(f"Metacell '{mc_label}' has no mapped cells in " f"self.obs.index, skipping its progression.")
+                continue
+            for cell_barcode in cells:
+                new_rows.append(
+                    {
+                        "cell_id": cell_barcode,
+                        "from": row["from"],
+                        "to": row["to"],
+                        "percentage": row["percentage"],
+                    }
+                )
+
+        if not new_rows:
+            raise ValueError("No cells could be mapped.  Verify that cell_id_dict keys " "match self.obs.index.")
+
+        new_progressions = pd.DataFrame(new_rows)
+        n_cells_mapped = new_progressions["cell_id"].nunique()
+        logger.info(f"Recovered {len(new_progressions):,} progressions " f"for {n_cells_mapped:,} cells " f"(wrapper_type='{mc_wrapper_type}').")
+
+        # ── 5. Add recovered trajectory to self ────────────────────────
+        if recovered_model_name is None:
+            recovered_model_name = f"{model_name}_recovered"
+        self.add_model_name(recovered_model_name)
+
+        self.add_trajectory(
+            milestone_network=mc_milestone_network,
+            milestone_id_list=milestone_id_list,
+            divergence_regions=mc_divergence_regions,
+            progressions=new_progressions,
+            generate_color=(mc_wrapper_type != "graph"),  # graph has many milestones, skip color generation
+            wrapper_type=mc_wrapper_type,
+        )
+
+        # ── 6. Copy raw_wrapper_dict from source ───────────────────────
+        source_raw = fadata_metacell.get_raw_wrapper_dict(model_name)
+        if source_raw:
+            # Inject per-cell pseudotime for linear wrapper (convenience)
+            if mc_wrapper_type == "linear":
+                pseudotime_series = new_progressions.set_index("cell_id")["percentage"]
+                source_raw = {**source_raw, "pseudotime": pseudotime_series}
+            self.get_trajectory_dict(recovered_model_name)["raw_wrapper_dict"] = source_raw
+
+        return self

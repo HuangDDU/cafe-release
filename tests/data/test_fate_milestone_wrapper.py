@@ -41,6 +41,106 @@ def setup_method_data():
     return milestone_wrapper
 
 
+# test data for "merge_milestone_trajectory"
+
+
+def get_merge_milestone_trajectory_mw():
+    # global: A -> B -> {C, D}
+    global_milestone_network = pd.DataFrame(
+        columns=["from", "to", "length", "directed"],
+        data=[
+            ["A", "B", 1.0, True],
+            ["B", "C", 1.0, True],
+            ["B", "D", 1.0, True],
+        ],
+    )
+    global_progressions = pd.DataFrame(
+        columns=["cell_id", "from", "to", "percentage"],
+        data=[
+            ["a", "A", "B", 0.2],
+            ["b1", "A", "B", 0.8],
+            ["b2", "B", "C", 0.2],
+            ["b3", "B", "D", 0.2],
+            ["c", "B", "C", 0.8],
+            ["d", "B", "D", 0.8],
+        ],
+    )
+    global_divergence_regions = pd.DataFrame(
+        columns=["divergence_id", "milestone_id", "is_start"], data=[["BCD", "B", True], ["BCD", "C", False], ["BCD", "D", False]]
+    )
+    global_milestone_wrapper = cafe.data.MilestoneWrapper(
+        milestone_network=global_milestone_network,
+        divergence_regions=global_divergence_regions,
+        progressions=global_progressions,
+    )
+
+    # local sub trajectory to replace B: B1 -> {B2, B3}
+    local_milestone_network = pd.DataFrame(
+        columns=["from", "to", "length", "directed"],
+        data=[
+            ["B1", "B2", 0.5, True],
+            ["B1", "B3", 0.5, True],
+        ],
+    )
+    local_progressions = pd.DataFrame(
+        columns=["cell_id", "from", "to", "percentage"],
+        data=[
+            ["b1", "B1", "B2", 0.2],
+            ["b1", "B1", "B3", 0.2],
+            ["b2", "B1", "B2", 0.8],
+            ["b3", "B1", "B3", 0.8],
+        ],
+    )
+    local_divergence_regions = pd.DataFrame(
+        columns=["divergence_id", "milestone_id", "is_start"], data=[["B1B2B3", "B1", True], ["B1B2B3", "B2", False], ["B1B2B3", "B3", False]]
+    )
+    local_milestone_wrapper = cafe.data.MilestoneWrapper(
+        milestone_network=local_milestone_network,
+        divergence_regions=local_divergence_regions,
+        progressions=local_progressions,
+    )
+    replace_milestone = "B"
+
+    # expected milestone wrapper after merging:
+    merged_milestone_network = pd.DataFrame(
+        columns=["from", "to", "length", "directed"],
+        data=[
+            ["A", "B1", 1.0, True],
+            ["B1", "B2", 1.0, True],
+            ["B1", "B3", 1.0, True],
+            ["B2", "C", 1.0, True],
+            ["B3", "D", 1.0, True],
+        ],
+    )
+    merged_progressions = pd.DataFrame(
+        columns=["cell_id", "from", "to", "percentage"],
+        data=[
+            ["a", "A", "B1", 0.2],
+            ["b1", "B1", "B2", 0.2],
+            ["b1", "B1", "B3", 0.2],
+            ["b2", "B1", "B2", 0.8],
+            ["b3", "B1", "B3", 0.8],
+            ["c", "B2", "C", 0.8],
+            ["d", "B3", "D", 0.8],
+        ],
+    )
+    merged_divergence_regions = pd.DataFrame(
+        columns=["divergence_id", "milestone_id", "is_start"], data=[["B1B2B3", "B1", True], ["B1B2B3", "B2", False], ["B1B2B3", "B3", False]]
+    )
+    merged_milestone_wrapper = cafe.data.MilestoneWrapper(
+        milestone_network=merged_milestone_network,
+        progressions=merged_progressions,
+        divergence_regions=merged_divergence_regions,
+    )
+    data = {
+        "global_milestone_wrapper": global_milestone_wrapper,
+        "local_milestone_wrapper": local_milestone_wrapper,
+        "merged_milestone_wrapper": merged_milestone_wrapper,
+        "replace_milestone": replace_milestone,
+    }
+    return data
+
+
 class TestMilestoneWrapper:
     def setup_method(self):
         self.milestone_wrapper = setup_method_data()
@@ -166,7 +266,7 @@ class TestMilestoneWrapper:
     def test_subset_by_cells(self):
         mw = self.milestone_wrapper
         cell_id_list = ["b", "c", "e"]
-        new_mw = mw.subset_by_cells(cell_id_list=cell_id_list)
+        new_mw = mw.subset_by_cells(cell_list=cell_id_list)
         assert set(new_mw.cell_id_list) == set(cell_id_list)
 
     def test_subset_by_edges(self):
@@ -174,6 +274,70 @@ class TestMilestoneWrapper:
         edge_list = [("X", "Z"), ("Z", "A")]
         new_mw = mw.subset_by_edges(edge_list=edge_list)
         assert set([tuple(i) for i in new_mw.milestone_network[["from", "to"]].values.tolist()]) == set(edge_list)
+
+    def test_remove_loop_edge(self):
+        mw = self.milestone_wrapper
+        mn = mw.milestone_network
+        # add new loop row to milestone network
+        loop_row = pd.Series(["W", "W", 1, True], index=mn.columns)
+        new_mn = mn.append(loop_row, ignore_index=True)
+        mw.milestone_network = new_mn
+        # excute remove loop
+        mw.remove_loop_edges()
+
+        assert compare_dataframes(mn, mw.milestone_network, on_columns=["from", "to"])
+
+    def test_is_connected(self):
+        mw = self.milestone_wrapper
+        assert mw.is_connected(), "milestone network should be connected"
+
+    def test_get_root_milestone(self):
+        mw = self.milestone_wrapper
+        root_milestone = mw.get_root_milestone()
+        assert root_milestone == "W", f"root milestone should be 'W', but got {root_milestone}"
+
+    def test_merge_edge_trajectory(self):
+        pass
+
+    def test_merge_milestone_trajectory(self):
+        test_data = get_merge_milestone_trajectory_mw()
+        global_milestone_wrapper = test_data["global_milestone_wrapper"]
+        local_milestone_wrapper = test_data["local_milestone_wrapper"]
+        replace_milestone = test_data["replace_milestone"]
+        expected_merged_mw = test_data["merged_milestone_wrapper"]
+
+        merged_mw = global_milestone_wrapper.merge_milestone_trajectory(
+            sub_mw=local_milestone_wrapper,
+            replace_milestone=replace_milestone,
+        )
+
+        assert compare_dataframes(merged_mw.milestone_network, expected_merged_mw.milestone_network, on_columns=["from", "to"])
+        assert compare_dataframes(merged_mw.progressions, expected_merged_mw.progressions, on_columns=["from", "to"])
+        assert compare_dataframes(merged_mw.divergence_regions, expected_merged_mw.divergence_regions, on_columns=["divergence_id", "milestone_id"])
+        # assert merged_mw.progressions
+        # assert merged_mw.divergence_regions
+        # merged_prog = merged_mw.progressions
+
+    def test_get_milestone_order(self):
+        mw = self.milestone_wrapper
+
+        # BFS / Level-Order order
+        level_order = mw.get_milestone_order(order_type="bfs")
+        expected_level_order = ["W", "X", "Y", "Z", "A"]
+        assert level_order == expected_level_order
+
+        # DFS order
+        dfs_order = mw.get_milestone_order(order_type="dfs")
+        expected_dfs_order = ["W", "X", "Y", "Z", "A"]
+        assert dfs_order == expected_dfs_order
+
+        # Balanced inorder order
+        # Tree: W -> X -> {Y, Z->A}
+        #   X: left subtree Z-A (2 nodes) > right subtree Y (1 node)
+        #   -> A, Z, X, Y, W
+        balance_order = mw.get_milestone_order(order_type="balance")
+        expected_balance_order = ["A", "Z", "X", "Y", "W"]
+        assert balance_order == expected_balance_order, f"Expected {expected_balance_order}, got {balance_order}"
 
 
 if __name__ == "__main__":

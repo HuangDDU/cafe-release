@@ -394,11 +394,11 @@ def calculate_featureimp_enrichment(
     return {"featureimp_ks": ks.pvalue, "featureimp_wilcox": 1.0 - wilc.pvalue}
 
 
-def plot_featureimp(featureimp_df, save=None):
+def plot_featureimp(featureimp_df, gene_list=None, save=None):
     import matplotlib.pyplot as plt
 
     # 设定绘制范围（例如前 500 个基因，避免X轴过长）
-    plot_top_n = 2000
+    plot_top_n = min(2000, featureimp_df.shape[0])
     df_plot = featureimp_df.head(plot_top_n).reset_index(drop=True)
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -409,7 +409,9 @@ def plot_featureimp(featureimp_df, save=None):
     # 2. 设定需要高亮/标记的基因
     # 自动选择前 5 个，或者您可以手动指定列表，如 gene_list = ["Ins1", "Gcg"]
     # gene_list = df_plot["gene"].head(5).tolist()
-    gene_list = df_plot["gene"][[0, plot_top_n // 2, plot_top_n - 1]].tolist()
+    if gene_list is None:
+        # 默认最高、中间、最后三个基因
+        gene_list = df_plot["gene"][[0, plot_top_n // 2, plot_top_n - 1]].tolist()
     # gene_list = ["Pdx1"]
 
     marker_indices = []

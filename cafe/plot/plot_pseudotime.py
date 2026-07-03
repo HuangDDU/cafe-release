@@ -28,8 +28,9 @@ def plot_pseudotime_embedding(
         fadata.obs[pseudotime_key] = pseudotime
 
     ax = sc.pl.embedding(fadata, color=pseudotime_key, basis=basis, cmap="viridis", show=False)
-
     save_fig(save, default_filename=f".cafe/{fadata.id}/img/pseudotime_embedding_{model_name}.png", ax=ax)
+
+    return ax
 
 
 def plot_pseudotime_stack(
@@ -118,3 +119,5 @@ def plot_pseudotime_stack(
     ax.legend(loc=legend_loc, bbox_to_anchor=bbox_to_anchor, frameon=False)
 
     plt.tight_layout()
+
+    return ax

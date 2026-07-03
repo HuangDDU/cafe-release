@@ -12,7 +12,7 @@ class CellFateExplorerConfig:
         self.data_dir = os.environ.get("CAFE_DATA_DIR", "/root/PyCode/scRNA/data")
 
         # result directory for .cafe output, allow override via CAFE_RESULT_DIR
-        self.result_dir = os.environ.get("CAFE_RESULT_DIR", ".")
+        self.result_dir = os.environ.get("CAFE_RESULT_DIR", os.getcwd())  # workspace dir by default
 
         # backend settings
         # ["python_function", "cafe_docker", "dynverse_docker", "conda"]
@@ -43,7 +43,8 @@ class CellFateExplorerConfig:
         #     logger.warning("R or rpy2 is not available. You can't use dynverse dataset")
         # manually settings r_available=False for testing
         self.r_available = False
-        self.version = "0.1.3"  # ref: https://zhuanlan.zhihu.com/p/703265351
+        # version management ref: https://zhuanlan.zhihu.com/p/703265351, sync with pyproject.toml
+        self.version = "0.2.1rc1"
 
     def check_gpu(self):
         self.gpu = ""

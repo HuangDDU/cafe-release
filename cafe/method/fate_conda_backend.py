@@ -92,10 +92,15 @@ class CondaBackend(Backend):
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
         # remove unimportant warning log
         stderr_lines = []  # to capture stderr for latter resource usage parsing
-        threading.Thread(target=print_output(logger.debug), args=(process.stdout, "[conda-excute-stdout]"), daemon=True).start()
-        threading.Thread(target=print_output(logger.debug, stderr_lines), args=(process.stderr, "[conda-excute-stderr]"), daemon=True).start()
+        stdout_thread = threading.Thread(target=print_output(logger.debug), args=(process.stdout, "[conda-excute-stdout]"), daemon=True)
+        stderr_thread = threading.Thread(target=print_output(logger.debug, stderr_lines), args=(process.stderr, "[conda-excute-stderr]"), daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
         # wait for process
         process.wait()
+        # wait for stream reader threads to consume remaining pipe data
+        stdout_thread.join()
+        stderr_thread.join()
 
         # read output pkl
         output_pkl_filename = f"{tmp_wd}/output.pkl"
