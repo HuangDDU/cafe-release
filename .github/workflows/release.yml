@@ -42,7 +42,7 @@ jobs:
             echo "A release version is required for manual releases." >&2
             exit 1
           fi
-
+          pip install packaging
           python scripts/check_version.py --expected "$expected_version"
 
       - name: Install build tools
