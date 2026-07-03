@@ -4,6 +4,8 @@
 
 --8<-- "release_notes/unreleased.md"
 
+--8<-- "release_notes/0.2.1rc.md"
+
 --8<-- "release_notes/0.2.0.md"
 
 --8<-- "release_notes/0.1.3.md"
