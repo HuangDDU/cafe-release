@@ -1,6 +1,9 @@
+import pytest
+
 import cafe
 
 
+@pytest.mark.skip(reason="the local dataset is not available for github action")
 def get_test_fadata():
     fadata = cafe.data.read_dynverse_simulation_data()
 

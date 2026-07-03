@@ -5,6 +5,7 @@ import cafe
 from ..test_data import get_test_fadata
 
 
+@pytest.mark.skip(reason="the local dataset is not available for github action")
 class TestFindEdgeFeatureGene:
     def setup_method(self):
         self.fadata = get_test_fadata()
