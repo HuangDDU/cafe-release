@@ -69,7 +69,6 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pip install rpy2==3.3.0
+        pip install pytest rpy2==3.3.0
         mkdir -p ./tests/plot/img ./cafe
-        conda install pytest
         pytest -m "not local"
