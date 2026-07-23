@@ -1,4 +1,5 @@
 # Installation
+> [!warning] The related packages versions here are only tested for Linux system. Other system adaption (Windows and MacOS) will release in future version  corresponding [issue#11](https://github.com/HuangDDU/cafe-release/issues/11).
 
 ## Create conda environment
 
