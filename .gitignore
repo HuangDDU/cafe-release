@@ -35,3 +35,7 @@ build
 
 # agent result archive (large notebooks, not for git)
 agent_result/
+# project prompts for agents
+AGENTS.md
+.superpowers/
+docs/superpowers/

@@ -3,7 +3,7 @@ import sys
 from ._logging import logger
 from ._settings import settings
 
-from . import data, method, metric, plot, preprocess, util, benchmark  # isort: skip
+from . import data, method, metric, plot, preprocess, util, benchmark, downstream  # isort: skip
 
 logo = """
     ██████╗ █████╗ ███████╗███████╗
@@ -16,7 +16,7 @@ logo = """
 logger.info(logo, indent_level=0)
 logger.info(f"Version: {settings.version}", indent_level=0)
 
-__all__ = ["settings", "logger", "data", "preprocess", "method", "plot", "util", "metric", "benchmark"]
+__all__ = ["settings", "logger", "data", "preprocess", "method", "plot", "util", "metric", "benchmark", "downstream"]
 
 
 # Compatible with 'cfe' module references in older version pickle files
