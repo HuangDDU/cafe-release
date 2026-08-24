@@ -47,7 +47,7 @@ def keep_type(adata, nodes, target, k_cluster):
     return nodes[adata.obs[k_cluster][nodes].values == target]
 
 
-def cross_boundary_correctness(adata, k_cluster, k_velocity, cluster_edges, return_raw=False, x_emb="X_umap"):
+def cross_boundary_correctness(adata, k_cluster, k_velocity, cluster_edges, return_raw=False, x_emb="X_umap", neighbor_indices=None):
     """Cross-Boundary Direction Correctness Score (A->B)
 
     Args:
@@ -57,6 +57,8 @@ def cross_boundary_correctness(adata, k_cluster, k_velocity, cluster_edges, retu
         cluster_edges (list of tuples("A", "B")): pairs of clusters has transition direction A->B
         return_raw (bool): return aggregated or raw scores.
         x_emb (str): key to x embedding for visualization.
+        neighbor_indices (array-like): Per-cell neighbor indices. If omitted,
+            use the legacy ``adata.uns["neighbors"]["indices"]`` value.
 
     Returns:
         dict: all_scores indexed by cluster_edges
@@ -70,10 +72,12 @@ def cross_boundary_correctness(adata, k_cluster, k_velocity, cluster_edges, retu
 
     v_emb = adata.obsm[k_velocity]  # velocity embedding space
     x_emb = adata.obsm[x_emb]  # expression embedding space
+    if neighbor_indices is None:
+        neighbor_indices = adata.uns["neighbors"]["indices"]
 
     for u, v in cluster_edges:
         sel = adata.obs[k_cluster] == u
-        nbs = adata.uns["neighbors"]["indices"][sel]  # [n * 30] # TODO: update here mannuly add indices
+        nbs = neighbor_indices[np.asarray(sel)]
 
         boundary_nodes = map(lambda nodes: keep_type(adata, nodes, v, k_cluster), nbs)
         x_points = x_emb[sel]
@@ -97,7 +101,7 @@ def cross_boundary_correctness(adata, k_cluster, k_velocity, cluster_edges, retu
     return scores, np.mean([sc for sc in scores.values()])  # here use mean
 
 
-def inner_cluster_coh(adata, k_cluster, k_velocity, return_raw=False):
+def inner_cluster_coh(adata, k_cluster, k_velocity, return_raw=False, neighbor_indices=None):
     """In-cluster Coherence Score.
 
     Args:
@@ -105,6 +109,8 @@ def inner_cluster_coh(adata, k_cluster, k_velocity, return_raw=False):
         k_cluster (str): key to the cluster column in adata.obs DataFrame.
         k_velocity (str): key to the velocity matrix in adata.obsm.
         return_raw (bool): return aggregated or raw scores.
+        neighbor_indices (array-like): Per-cell neighbor indices. If omitted,
+            use the legacy ``adata.uns["neighbors"]["indices"]`` value.
 
     Returns:
         dict: all_scores indexed by cluster_edges
@@ -114,13 +120,15 @@ def inner_cluster_coh(adata, k_cluster, k_velocity, return_raw=False):
 
     """
     velocities = adata.obsm[k_velocity]
+    if neighbor_indices is None:
+        neighbor_indices = adata.uns["neighbors"]["indices"]
 
     clusters = np.unique(adata.obs[k_cluster])
     scores = {}
     all_scores = {}
     for cat in clusters:
         sel = adata.obs[k_cluster] == cat
-        nbs = adata.uns["neighbors"]["indices"][sel]
+        nbs = neighbor_indices[np.asarray(sel)]
         same_cat_nodes = map(lambda nodes: keep_type(adata, nodes, cat, k_cluster), nbs)
         # velocities = adata.layers[k_velocity] # replace by
         cat_vels = velocities[sel]
@@ -134,6 +142,7 @@ def inner_cluster_coh(adata, k_cluster, k_velocity, return_raw=False):
     return scores, np.mean([sc for sc in scores.values()])
 
 
+# adopt the metric calculation function from VeloAE, and modify it to fit FateAnnData
 def calculate_velocity_metrics(
     fadata: FateAnnData,
     cluster_edges: list,
@@ -147,12 +156,12 @@ def calculate_velocity_metrics(
     """Evaluate velocity estimation results using 5 metrics.
 
     Args:
-        adata (Anndata): Anndata object.
+        fadata (FateAnnData): FateAnnData object.
         cluster_edges (list of tuples("A", "B")): pairs of clusters has transition direction A->B
-        cluster (str): key to the cluster column in adata.obs DataFrame.
+        cluster (str): key to the cluster column in fadata.obs DataFrame.
         basis (str): key to x embedding for visualization.
         model_name (str): model name in raw_wrapper_dict.
-        recompute_pseudo_velocity(bool): whether to recompute pseudo velocity.
+        recompute_pseudo_velocity (bool): whether to recompute pseudo velocity.
         return_raw (bool): return aggregated or raw scores.
         summary (bool): if not return_raw, whether to return summary scores.
 
@@ -181,20 +190,32 @@ def calculate_velocity_metrics(
     # fadata.trajectory_history_dict[model_name]["raw_wrapper_dict"] = raw_wrapper_dict # update raw_wrapper_dict
     velocity_embedding = raw_wrapper_dict[velocity_basis]
 
-    # extract neighbors indices from distance matrix
+    # extract neighbor indices
     neighbor_dict = fadata.uns["neighbors"]
     if "indices" not in neighbor_dict:
-        logger.debug("extract knn indices to 'adata.uns['neighbors']['indices']' for metric calculation")
-        n_neighbors = neighbor_dict["params"]["n_neighbors"]
-        if isinstance(n_neighbors, np.ndarray):
-            n_neighbors = n_neighbors.item()
-        distances = fadata.obsp["distances"]  # csr matrix
-        neighbor_dict["indices"] = distances.indices.reshape(-1, n_neighbors - 1)
+        # Extract variable-length neighbor indices row by row from the CSR matrix.
+        distances_key = neighbor_dict.get("distances_key", "distances")
+        distances = fadata.obsp[distances_key].tocsr()
+        neighbor_indices = np.empty(fadata.n_obs, dtype=object)
+        for i in range(fadata.n_obs):
+            row_indices = distances.indices[distances.indptr[i] : distances.indptr[i + 1]]
+            neighbor_indices[i] = row_indices[row_indices != i]
+
+        # Previous implementation assumed every sparse row contained exactly
+        # ``n_neighbors - 1`` non-zero distances. Real neighbor graphs may have
+        # variable row sizes (for example after zero distances are omitted), so the
+        # flattened CSR indices cannot safely be reshaped.
+        # logger.debug("extract knn indices to 'adata.uns['neighbors']['indices']' for metric calculation")
+        # n_neighbors = neighbor_dict["params"]["n_neighbors"]
+        # if isinstance(n_neighbors, np.ndarray):
+        #     n_neighbors = n_neighbors.item()
+        # distances = fadata.obsp["distances"]  # csr matrix
+        # neighbor_indices = distances.indices.reshape(-1, n_neighbors - 1)
 
     # NOTE: (Important) calculate metrics for low dimensional velocity embedding,
     with temporary_obsm_key(fadata, velocity_basis, velocity_embedding):
-        crs_bdr_crc = cross_boundary_correctness(fadata, cluster, velocity_basis, cluster_edges, return_raw, basis)
-        ic_coh = inner_cluster_coh(fadata, cluster, velocity_basis, return_raw)
+        crs_bdr_crc = cross_boundary_correctness(fadata, cluster, velocity_basis, cluster_edges, return_raw, basis, neighbor_indices=neighbor_indices)
+        ic_coh = inner_cluster_coh(fadata, cluster, velocity_basis, return_raw, neighbor_indices=neighbor_indices)
 
     # summarize if need
     if return_raw:
