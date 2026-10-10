@@ -28,6 +28,7 @@ class Lineage:
 
 
 def _validate_graph(milestone_wrapper: MilestoneWrapper, start_milestone: Hashable) -> nx.DiGraph:
+    """Require a directed acyclic graph containing the requested root."""
     milestone_network = milestone_wrapper.milestone_network
     if not milestone_network["directed"].all():
         raise ValueError("Lineage extraction requires a directed milestone graph.")
@@ -47,6 +48,7 @@ def _resolve_terminal_states(
     start_milestone: Hashable,
     terminal_states: Sequence[Hashable] | None,
 ) -> tuple[Hashable, ...]:
+    """Select reachable sinks, or validate the supplied terminal states."""
     available = tuple(node for node in graph if node != start_milestone and nx.has_path(graph, start_milestone, node) and graph.out_degree(node) == 0)
     if terminal_states is None:
         selected = available
@@ -66,11 +68,13 @@ def _resolve_terminal_states(
 
 
 def _terminal_subgraph(graph: nx.DiGraph, start_milestone: Hashable, terminal_state: Hashable) -> nx.DiGraph:
+    """Keep all nodes on a root-to-terminal route, including merged DAG paths."""
     nodes = {node for node in graph if nx.has_path(graph, start_milestone, node) and nx.has_path(graph, node, terminal_state)}
     return graph.subgraph(nodes).copy()
 
 
 def _validate_cell_ids(fadata: FateAnnData, milestone_wrapper: MilestoneWrapper) -> None:
+    """Ensure unique cell names and trajectory-to-expression alignment."""
     if not fadata.obs_names.is_unique:
         raise ValueError("FateAnnData observation names must be unique.")
 
@@ -85,6 +89,7 @@ def _membership_from_progressions(
     progressions: pd.DataFrame,
     subgraphs: Mapping[Hashable, nx.DiGraph],
 ) -> pd.DataFrame:
+    """Assign cells by progression edges; shared trunks may belong to several lineages."""
     membership = pd.DataFrame(False, index=obs_names.copy(), columns=list(subgraphs), dtype=bool)
 
     for terminal_state, graph in subgraphs.items():
@@ -103,6 +108,7 @@ def _membership_from_progressions(
 
 
 def _exclusive_membership(membership: pd.DataFrame) -> pd.DataFrame:
+    """Exclude shared cells and keep only single-lineage memberships."""
     unique = membership.sum(axis=1).eq(1)
     return membership.mul(unique, axis=0).astype(bool)
 
@@ -113,6 +119,7 @@ def _lineage_pseudotime(
     subgraphs: Mapping[Hashable, nx.DiGraph],
     start_milestone: Hashable,
 ) -> pd.DataFrame:
+    """Compute weighted root distances and scale each lineage independently to 0–1."""
     pseudotime = pd.DataFrame(np.nan, index=membership.index.copy(), columns=membership.columns, dtype=float)
     percentages = milestone_wrapper.milestone_percentages
 
@@ -149,18 +156,12 @@ def extract_lineages(
     terminal_states: Sequence[Hashable] | None = None,
 ) -> Lineage:
     """Extract terminal lineages from a rooted directed tree or DAG."""
-    parsed_model_name = fadata.parse_model_name(model_name)
-    if parsed_model_name is None:
-        raise KeyError(f"Trajectory model {model_name!r} is not available.")
-
-    milestone_wrapper = fadata.get_milestone_wrapper(parsed_model_name)
-    if milestone_wrapper is None:
-        raise ValueError(f"Trajectory model {parsed_model_name!r} does not contain a MilestoneWrapper.")
+    milestone_wrapper = fadata.get_milestone_wrapper(model_name)
 
     resolved_start = fadata._check_start_milestone(
         start_milestone=start_milestone,
         start_cell=start_cell,
-        model_name=parsed_model_name,
+        model_name=model_name,
     )
     graph = _validate_graph(milestone_wrapper, resolved_start)
     selected_terminals = _resolve_terminal_states(graph, resolved_start, terminal_states)
@@ -181,5 +182,5 @@ def extract_lineages(
         names=selected_terminals,
         colors=colors,
         start_milestone=resolved_start,
-        model_name=parsed_model_name,
+        model_name=fadata.model_name if model_name is None else model_name,
     )

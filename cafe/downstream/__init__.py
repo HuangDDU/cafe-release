@@ -1,5 +1,3 @@
-from ._driver_gene import DriverGene
-from ._lineage import Lineage
-from ._result import DriverGeneResult
+from ._driver_genes.core import driver_genes
 
-__all__ = ["DriverGene", "DriverGeneResult", "Lineage"]
+__all__ = ["driver_genes"]

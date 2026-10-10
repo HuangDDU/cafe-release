@@ -3,12 +3,10 @@ from typing import Any
 import pandas as pd
 import scanpy as sc
 
-from ..._settings import settings
-from .._result import DriverGeneResult
-from ._base import BaseDriverMethod, DriverContext, register_driver_method
+from ..result import DriverGeneResult
+from .base import BaseDriverMethod, DriverContext
 
 
-@register_driver_method("de")
 class DEMethod(BaseDriverMethod):
     """Terminal-lineage differential expression using Scanpy."""
 
@@ -18,14 +16,21 @@ class DEMethod(BaseDriverMethod):
         self,
         context: DriverContext,
         *,
+        test: str = "wilcoxon",
+        reference: str = "rest",
         layer: str | None = None,
         use_raw: bool = False,
         min_cells: int = 3,
+        group_scope: str = "exclusive",
         **_: Any,
     ) -> None:
         if len(context.selected_lineages) < 2:
             raise ValueError("Differential expression requires at least 2 lineages.")
-        if context.group_scope != "exclusive":
+        if test not in ("wilcoxon", "t-test", "t-test_overestim_var"):
+            raise ValueError("DE test must be 'wilcoxon', 't-test', or 't-test_overestim_var'.")
+        if reference != "rest" and reference not in context.selected_lineages:
+            raise ValueError("DE reference must be 'rest' or one of the selected lineages.")
+        if group_scope != "exclusive":
             raise ValueError("Differential expression currently requires group_scope='exclusive'.")
         if min_cells < 1:
             raise ValueError("min_cells must be a positive integer.")
@@ -56,16 +61,11 @@ class DEMethod(BaseDriverMethod):
         layer: str | None = None,
         use_raw: bool = False,
         min_cells: int = 3,
+        group_scope: str = "exclusive",
         **kwargs: Any,
     ) -> DriverGeneResult:
-        self.validate(
-            context,
-            layer=layer,
-            use_raw=use_raw,
-            min_cells=min_cells,
-        )
-
         selected = context.selected_lineages
+        targets = selected if reference == "rest" else tuple(name for name in selected if name != reference)
         membership = context.lineage.exclusive_membership.loc[:, list(selected)]
         assigned = membership.sum(axis=1).eq(1)
         labels = membership.idxmax(axis=1).where(assigned)
@@ -78,7 +78,7 @@ class DEMethod(BaseDriverMethod):
         sc.tl.rank_genes_groups(
             adata,
             groupby="_cafe_driver_lineage",
-            groups=list(selected),
+            groups=list(targets),
             reference=reference,
             method=test,
             layer=layer,
@@ -87,7 +87,7 @@ class DEMethod(BaseDriverMethod):
         )
 
         tables = []
-        for lineage_name in selected:
+        for lineage_name in targets:
             table = sc.get.rank_genes_groups_df(adata, group=lineage_name).rename(
                 columns={
                     "names": "gene",
@@ -127,7 +127,7 @@ class DEMethod(BaseDriverMethod):
             "layer": layer,
             "use_raw": use_raw,
             "min_cells": min_cells,
-            "group_scope": context.group_scope,
+            "group_scope": group_scope,
             **kwargs,
         }
         return DriverGeneResult(
@@ -140,6 +140,5 @@ class DEMethod(BaseDriverMethod):
                 "schema_version": 1,
                 "expression_source": "raw" if use_raw else (layer or "X"),
                 "cell_counts": cell_counts,
-                "cafe_version": settings.version,
             },
         )
