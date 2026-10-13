@@ -114,6 +114,35 @@ class TestFateAnnData:
         adata = fadata.to_anndata(delete_trajectory=True)
         assert isinstance(adata, ad.AnnData)
 
+    def test_launch_cellxgene_delegates_to_util_launcher(self, monkeypatch, tmp_path):
+        calls = []
+
+        def fake_launch_cellxgene(filename, **kwargs):
+            calls.append((filename, kwargs))
+            return "process"
+
+        def fake_write_h5ad(filename):
+            with open(filename, "w", encoding="utf-8") as handle:
+                handle.write("fake")
+
+        monkeypatch.setattr(self.fadata, "write_h5ad", fake_write_h5ad)
+        monkeypatch.setattr("cafe.util.launch.launch_cellxgene", fake_launch_cellxgene)
+
+        result = self.fadata.launch_cellxgene(
+            tmp_filename=tmp_path / "current.h5ad",
+            port=5011,
+            use_cellxgene_cafe=True,
+            conda_env="cafe",
+            open_browser=False,
+        )
+
+        assert result == "process"
+        assert calls[0][0] == tmp_path / "current.h5ad"
+        assert calls[0][1]["port"] == 5011
+        assert calls[0][1]["use_cellxgene_cafe"] is True
+        assert calls[0][1]["conda_env"] == "cafe"
+        assert calls[0][1]["open_browser"] is False
+
     @pytest.mark.skipif(not cafe.settings.r_available, reason="R is not available")
     def test_read_dynverse_simulation_data(self):
         fadata = cafe.data.FateAnnData.read_dynverse_simulation_data()

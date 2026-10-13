@@ -1,6 +1,6 @@
 [project]
 name = "cafe-release"
-version = "0.2.1rc1" 
+version = "0.2.1rc2"
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -52,6 +52,7 @@ dependencies = [
     # trajectory inference related (optional)
     "scvelo==0.3.3",
     "dynamo-release==1.4.1",
+    "jupyter"
 ]
 
 [project.optional-dependencies]

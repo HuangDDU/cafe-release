@@ -44,7 +44,7 @@ class CellFateExplorerConfig:
         # manually settings r_available=False for testing
         self.r_available = False
         # version management ref: https://zhuanlan.zhihu.com/p/703265351, sync with pyproject.toml
-        self.version = "0.2.1rc1"
+        self.version = "0.2.1rc2"
 
     def check_gpu(self):
         self.gpu = ""

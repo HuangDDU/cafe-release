@@ -8,7 +8,25 @@
 #             if "-m run_method" not in " ".join(config.invocation_params.args):
 #                 item.add_marker(pytest.mark.skip(reason="The test should run in specific conda environment with `-m run_method` in command"))
 
+import os
+import shutil
+
 import pytest
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_cafe_dir():
+    """Clean up .cafe intermediate results after the test session ends.
+
+    cafe generates a .cafe/ directory under the current working directory
+    (or CAFE_RESULT_DIR) to store intermediate results. This fixture
+    automatically removes it after all tests complete, so it doesn't
+    accumulate across repeated test runs in VSCode or CI.
+    """
+    yield
+    cwd_cafe = os.path.join(os.getcwd(), ".cafe")
+    if os.path.isdir(cwd_cafe):
+        shutil.rmtree(cwd_cafe, ignore_errors=True)
 
 
 def pytest_addoption(parser):

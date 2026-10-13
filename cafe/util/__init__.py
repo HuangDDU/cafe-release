@@ -2,6 +2,7 @@ from .anndata_attribute import AnndataAttribute, extract_external_data_dict_dire
 from .available_metadata import get_available_method_df
 from .context import temporary_obsm_key
 from .find_edge_feature_gene import find_edge_feature_gene
+from .launch import build_cellxgene_launch_command, launch_cellxgene
 from .parse_benchmark import (
     format_memory,
     format_time,
@@ -24,4 +25,6 @@ __all__ = [
     "AnndataAttribute",
     "extract_external_data_dict_directly",
     "find_edge_feature_gene",
+    "build_cellxgene_launch_command",
+    "launch_cellxgene",
 ]

@@ -119,6 +119,7 @@ plugins:
     bib_file: "docs/references.bib"
     bib_by_default: false
 - mkdocs-jupyter:
+    include_source: true
 - mkdocstrings:
     default_handler: python
     ignore:

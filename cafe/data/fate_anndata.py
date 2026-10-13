@@ -2023,7 +2023,7 @@ class FateAnnData(ad.AnnData):
                 trajectory_dict["milestone_wrapper"] = milestone_wrapper.__dict__  # TODO: 保存时__dict__会修改category为int, 待修复
             # transfer waypoint object to dict
             waypoint_wrapper = trajectory_dict.get("waypoint_wrapper", None)
-            if waypoint_wrapper is not None:
+            if waypoint_wrapper is not None and isinstance(waypoint_wrapper, WaypointWrapper):
                 if hasattr(waypoint_wrapper, "milestone_wrapper"):
                     # MilestoneWrapper object need to be remove from attribute
                     delattr(waypoint_wrapper, "milestone_wrapper")
@@ -2197,90 +2197,60 @@ class FateAnnData(ad.AnnData):
         # clear log in cafe_dict
         pass
 
-    def launch_cellxgene(self, tmp_filename=None, trajectory=False, port=5005, conda_env="cafe"):  # if show trajectory
+    # TODO: fix: launch_cellxgene_cafe is not working, need to check the conda env and cellxgene-cafe plugin
+    def launch_cellxgene(
+        self,
+        tmp_filename=None,
+        trajectory: bool | None = None,
+        port=5005,
+        conda_env="cafe",
+        use_cellxgene_cafe: bool | None = None,
+        open_browser=True,
+        keep_file=False,
+        extra_args=None,
+    ):
         """Launch cellxgene to visualize the FateAnnData object.
 
         This function saves the current object to a temporary h5ad file and launches cellxgene
-        for interactive visualization. It supports a custom mode for trajectory visualization.
+        for interactive visualization. It can use native cellxgene or the cafe-cellxgene plugin.
 
         Args:
             tmp_filename (str, optional): Path for the temporary h5ad file. Defaults to "current_dir/.tmp.h5ad".
-            trajectory (bool, optional): Whether to launch in trajectory visualization mode (requires special dev environment). Defaults to False.
+            trajectory (bool, optional): Backward-compatible alias for use_cellxgene_cafe.
             port (int, optional): Port to run the cellxgene server on. Defaults to 5005.
+            conda_env (str | None, optional): Conda environment used by `conda run`. Defaults to "cafe".
+            use_cellxgene_cafe (bool | None, optional): Use cafe-cellxgene instead of native cellxgene.
+            open_browser (bool, optional): Open browser after the server starts.
+            keep_file (bool, optional): Keep the temporary h5ad file after the process exits.
+            extra_args (list[str], optional): Extra arguments passed to the launcher.
         """
         import os
-        import subprocess
-        import threading
-        import time
-        import webbrowser
+        from pathlib import Path
 
-        def print_output(pipe, prefix):
-            """print output from a pipe"""
-            for line in iter(pipe.readline, ""):
-                if line:
-                    logger.debug(f"{prefix}{line.rstrip()}")
-            pipe.close()
+        from cafe.util import launch as launch_util
 
-        # 1. save as tmp.h5ad
         if tmp_filename is None:
             tmp_filename = f"{os.getcwd()}/.tmp.h5ad"
+        tmp_filename = Path(tmp_filename)
+        if use_cellxgene_cafe is None:
+            use_cellxgene_cafe = bool(trajectory)
+
         self.write_h5ad(tmp_filename)
         logger.debug(f"write h5ad to {tmp_filename}")
-        logger.debug("-" * 50)
 
-        # 2. launch cellxgene
-        # TODO: detect if cellxgene-cafe plugin is available, if not, launch normal cellxgene
-        cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch --port {port} {tmp_filename}"  # conda run
-        # # construct command
-        # if trajectory:
-        #     # TODO: local frontend and backend development version need be packaged
-        #     # TODO: cxgxf打包后要能够一键执行
-        #     # client_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-frontend"
-        #     # subprocess.Popen(client_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # frontend: react, ignore output
-        #     # server_cmd = "cd /home/huang/PyCode/scRNA/CellXGene/cellxgene/client && make start-server"
-        #     # process = subprocess.Popen(server_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # backend: flask
-        #     # logger.info("cellxgene with trajectory must run on port: 3000")
-        #     # port = 3000
-        #     # conda_env = "cafe" # 在当前环境下
-        #     # cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
-        #     # cmd = f"DATASET={tmp_filename}"  # dataset
-        #     # cmd += f" & CXG_SERVER_PORT={5005}"  # server port
-        #     # cmd += f" & CXG_CLIENT_PORT={port}"  # client port, web interface port
-        #     # cmd += " & cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene"
-        #     # cmd += " & make start-dev"
-        #     # cellxgene with trajectory need use local development version
-        #     cmd = "cd /root/PyCode/scRNA/CellFateExplorer/cafe-cellxgene/cellxgene && "
-        #     cmd += f"DATASET={tmp_filename} CXG_SERVER_PORT={5005} CXG_CLIENT_PORT={port} make start-dev"
-        # else:
-        #     conda_env = "cellxgene"
-        #     cmd = f"conda run -n {conda_env} --no-capture-output cellxgene launch {tmp_filename} --port {port}"  # conda run
-        #     # conda activate + conda_env (usually use but not valid here)
-        #     # cmd =  f"conda activate {conda_env} && cellxgene launch {tmp_filename} --port {port}"
-        # # execuate command (NOTE: python_function can be executed in this way by conda)
-        logger.debug(f"execute command: {cmd}")
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        threading.Thread(target=print_output, args=(process.stdout, "[stdout]"), daemon=True).start()
-        threading.Thread(target=print_output, args=(process.stderr, "[stderr]"), daemon=True).start()
-        # open browser (NOTE: refresh browser if not valid)
-        host = "127.0.0.1"
-        time.sleep(5)  # wait for server to start
-        if process.poll() is None:
-            url = f"http://{host}:{port}"
-            logger.info(f"🌐 Server start at: {url}")
-            webbrowser.open(url)
-            logger.debug("📝 Show cellxgene log")
-        # wait for process
         try:
-            process.wait()
-        except KeyboardInterrupt:
-            logger.debug("-" * 50)
-            logger.info("🛑 Server top!!!")
-            process.terminate()
-            process.wait()
-
-        # 3. delete tmp.h5ad
-        logger.debug(f"remove {tmp_filename}")
-        os.remove(tmp_filename)
+            return launch_util.launch_cellxgene(
+                tmp_filename,
+                port=port,
+                use_cellxgene_cafe=use_cellxgene_cafe,
+                conda_env=conda_env,
+                open_browser=open_browser,
+                extra_args=extra_args,
+            )
+        finally:
+            if not keep_file and tmp_filename.exists():
+                logger.debug(f"remove {tmp_filename}")
+                os.remove(tmp_filename)
 
     def print_trajectory_data(self):
         from ..util.print_dict import print_dict

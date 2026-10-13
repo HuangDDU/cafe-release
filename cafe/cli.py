@@ -42,6 +42,16 @@ def main():
     benchmark_parser.add_argument("--save_h5ad", type=str, default=None, help="Filename for h5ad")
     benchmark_parser.add_argument("--save_benchmark", default=None, help="Filename for benchmark dataframe")
 
+    # TODO: launch cellxgene or cafe-cellxgene for an h5ad file
+    launch_parser = subparsers.add_parser("launch-cellxgene", aliases=["launch"], help="Launch cellxgene or cafe-cellxgene for an h5ad file")
+    launch_parser.add_argument("data", type=str, help="Path to the h5ad data file")
+    launch_parser.add_argument("--port", type=int, default=5005, help="Port to run the web server on")
+    launch_parser.add_argument(
+        "--cellxgene-cafe", dest="use_cellxgene_cafe", action="store_true", help="Use cafe-cellxgene instead of native cellxgene"
+    )
+    launch_parser.add_argument("--conda-env", type=str, default=None, help="Optional conda environment used with conda run")
+    launch_parser.add_argument("--no-open", dest="open_browser", action="store_false", default=True, help="Do not open a browser automatically")
+
     args = parser.parse_args()
     # print(args.__dict__)
 
@@ -63,6 +73,16 @@ def main():
             save_benchmark=args.save_benchmark,
         )
         print(metric_dict)
+    elif args.command in {"launch-cellxgene", "launch"}:
+        from cafe.util.launch import launch_cellxgene
+
+        launch_cellxgene(
+            args.data,
+            port=args.port,
+            use_cellxgene_cafe=args.use_cellxgene_cafe,
+            conda_env=args.conda_env,
+            open_browser=args.open_browser,
+        )
 
 
 def infer(
@@ -197,7 +217,6 @@ def default_parameter_test():
 
 
 if __name__ == "__main__":
-    default_parameter_test()  # use default parameter test case
     try:
         main()
     except Exception as e:

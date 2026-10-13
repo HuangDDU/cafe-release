@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+  {% if page.nb_url %}
+    <a
+      href="{{ page.nb_url }}"
+      download
+      title="Download Notebook"
+      aria-label="Download Notebook"
+      class="md-content__button md-icon jp-DownloadNB"
+    >
+      {% include ".icons/material/download.svg" %}
+    </a>
+  {% endif %}
   {{ super() }}
 {% endblock %}

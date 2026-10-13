@@ -39,6 +39,7 @@ def metrics(
 
     if model_name_list is None:
         method_yaml_file = f".cafe/{fadata.id}/benchmark/methods.yaml"
+        # TODO: fix fadata.benchmark_dir
         with open(method_yaml_file, "r") as f:
             method_parameter_dict = yaml.safe_load(f)
         model_name_list = list(method_parameter_dict.keys())
