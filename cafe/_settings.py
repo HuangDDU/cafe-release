@@ -9,7 +9,7 @@ class CellFateExplorerConfig:
     def __init__(self):
         # data settings
         # Allow overriding via environment variable CAFE_DATA_DIR
-        self.data_dir = os.environ.get("CAFE_DATA_DIR", "/root/PyCode/scRNA/data")
+        self.data_dir = os.environ.get("CAFE_DATA_DIR", "data")
 
         # result directory for .cafe output, allow override via CAFE_RESULT_DIR
         self.result_dir = os.environ.get("CAFE_RESULT_DIR", os.getcwd())  # workspace dir by default

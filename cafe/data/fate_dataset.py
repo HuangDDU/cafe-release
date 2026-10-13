@@ -80,6 +80,7 @@ def _create_fadata_from_file(
     filename: str,
     cluster: str,
     basis: str,
+    backup_url: str = None,
     id: str = None,
     prior_information: dict = {},
     subsample_kwargs: dict = {},  # subsample args
@@ -95,6 +96,7 @@ def _create_fadata_from_file(
         filename (str): Path to the input file (e.g., .h5ad).
         cluster (str): The key in `.obs` representing cell clusters/types.
         basis (str): The key in `.obsm` representing the embedding (e.g., 'X_umap').
+        backup_url (str, optional): URL used to download the file when it is not available locally. Defaults to None.
         id (str, optional): Unique identifier for the dataset. Defaults to None.
         prior_information (dict, optional): Dictionary of prior information to add to the object. Defaults to {}.
         subsample_kwargs (dict, optional): Arguments for subsampling (e.g., {'n_obs': 1000}). Defaults to {}.
@@ -105,7 +107,7 @@ def _create_fadata_from_file(
         FateAnnData: The initialized FateAnnData object.
     """
     logger.debug(f"Reading data from '{filename}'...")
-    adata = sc.read_h5ad(filename)
+    adata = sc.read(filename, backup_url=backup_url, cache=True)
     adata = subsample(adata, **subsample_kwargs)
     adata.uns["id"] = id
     # use csc matrix to replace for accelerate dynverse docker running.
@@ -403,6 +405,7 @@ def read_dentategyrus():
 def read_pancreas(filename=None, **subsample_kwargs):
     if filename is None:
         filename = f"{settings.data_dir}/Pancreas/endocrinogenesis_day15.h5ad"
+    backup_url = "https://github.com/theislab/scvelo_notebooks/raw/master/data/Pancreas/endocrinogenesis_day15.h5ad"
 
     milestone_network = pd.DataFrame(
         data=[
@@ -423,6 +426,7 @@ def read_pancreas(filename=None, **subsample_kwargs):
     }
     fadata = _create_fadata_from_file(
         filename=filename,
+        backup_url=backup_url,
         milestone_network=milestone_network,
         cluster=prior_information["cluster"],
         basis=prior_information["basis"],
