@@ -2,7 +2,7 @@
 
 **Added**
 
-- Added automatic first-use download for `cafe.data.read_pancreas()` using Scanpy's `backup_url` support.
+- No entries yet.
 
 **Changed**
 
@@ -14,4 +14,4 @@
 
 **Maintenance**
 
-- Changed the default dataset directory from a developer-specific absolute path to the local `data` directory; `CAFE_DATA_DIR` remains supported.
+- Keep this section as the working changelog for the next release.
