@@ -1,4 +1,5 @@
 import os.path
+import shutil
 
 import docker
 import pandas as pd
@@ -106,6 +107,20 @@ input_json_filename = f"{data_dir}/input.json"
 input_h5_filename = f"{data_dir}/input.h5"
 output_h5_filename = f"{data_dir}/output.h5"
 output_json_filename = f"{data_dir}/output.json"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def isolate_io_files(tmp_path_factory):
+    """Run I/O tests on temporary copies, leaving tracked fixtures unchanged."""
+    directory = tmp_path_factory.mktemp("dynverse_io")
+    with pytest.MonkeyPatch.context() as patch:
+        for name in ("input_json_filename", "input_h5_filename", "output_h5_filename", "output_json_filename"):
+            source = globals()[name]
+            target = directory / os.path.basename(source)
+            shutil.copy2(source, target)
+            patch.setitem(globals(), name, str(target))
+        yield
+
 
 # data
 inputs = {
