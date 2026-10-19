@@ -169,9 +169,9 @@ def plot_graph(
             # base scanpy embedding scatter plot
             # plot single str for color parameter
             # zorder: 1: line, 2: cell(scanpy), 3: milestone
-            if "title" not in sc_pl_embedding_kwargs:
-                sc_pl_embedding_kwargs["title"] = f"{fadata.get_parsed_model_name(model_name)}({color})"  # add title for subplot
-            sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, ax=ax, **sc_pl_embedding_kwargs)
+            embedding_kwargs = dict(sc_pl_embedding_kwargs)
+            embedding_kwargs.setdefault("title", f"{fadata.get_parsed_model_name(model_name)}({color})")
+            sc.pl.embedding(fadata, basis=basis, color=color, show=False, zorder=2, ax=ax, **embedding_kwargs)
 
             # legend remove
             if color == "milestone" or (layout_by_row == "color" and i < len(model_name_list) - 1):
@@ -189,12 +189,11 @@ def plot_graph(
                 node_color=[milestone_color_dict[node] for node in G.nodes],
             )
             default_nx_draw_kwargs.update(nx_draw_kwargs)
-            nx_draw_kwargs = default_nx_draw_kwargs
             nx.draw(
                 G,
                 milestone_emb_dict,
                 ax=ax,
-                **nx_draw_kwargs,
+                **default_nx_draw_kwargs,
             )
             if divergence_regions.shape[0] > 0:
                 plot_divergence_region(divergence_regions, milestone_emb_dict, ax=ax)  # divergence regoin

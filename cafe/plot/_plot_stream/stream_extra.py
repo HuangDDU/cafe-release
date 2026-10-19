@@ -182,7 +182,7 @@ def project_cells_to_g_fate_tree(adata, layout_name="X_dr", pos="X_pca_ddhodge_g
 def calculate_pseudotime(adata):
     stream_tree = adata.uns["stream_tree"]
     dict_edge_len = nx.get_edge_attributes(stream_tree, "len")
-    adata.obs = adata.obs[adata.obs.columns.drop(list(adata.obs.filter(regex="_pseudotime")))].copy()
+    # Update only root-specific STREAM columns; keep other pseudotime annotations.
     # dict_nodes_pseudotime = dict()
     for root_node in stream_tree.nodes():
         df_pseudotime = pd.Series(index=adata.obs.index, dtype="float64")
