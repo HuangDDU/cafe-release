@@ -5,6 +5,7 @@ from .plot_gene_trends import plot_gene_linear_trends, plot_gene_trends
 from .plot_graph import plot_graph
 from .plot_pie import plot_pie
 from .plot_pseudotime import plot_pseudotime_embedding, plot_pseudotime_stack
+from .plot_sankey import plot_sankey
 from .plot_stack import plot_stack
 from .plot_stream import plot_stream
 from .plot_trajectory import plot_trajectory
@@ -16,6 +17,7 @@ from .plot_wrapper import plot_wrapper
 __all__ = [
     "plot_trajectory",
     "plot_stack",
+    "plot_sankey",
     "plot_graph",
     "plot_wrapper",
     "plot_embedding_plotly",

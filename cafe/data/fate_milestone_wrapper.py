@@ -197,7 +197,7 @@ class MilestoneWrapper(FateWrapper):
 
         # percentage for "from milestone", for start milestone， percentage = 1 - sum(other end milestone percentages). it's important to for divergence region.
         # TODO: for all discrete milestone, progressions group result is empty, but milestone_percentages should not be empty. move it to the nearset milesotne
-        froms = progressions.groupby(["cell_id", "from"]).apply(lambda x: 1 - x["percentage"].sum()).rename().reset_index()
+        froms = (1 - progressions.groupby(["cell_id", "from"])["percentage"].sum()).rename("percentage").reset_index()
         froms.columns = ["cell_id", "milestone_id", "percentage"]
 
         # percentage for "to milestone", save directly

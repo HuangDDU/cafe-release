@@ -1,0 +1,14 @@
+name: moscot
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - moscot==0.5.0
+      - jax==0.6.2
+      - jaxlib==0.6.2
+      - ott-jax==0.6.0
+      - pyyaml
+variables:
+  PYTHONNOUSERSITE: '1'

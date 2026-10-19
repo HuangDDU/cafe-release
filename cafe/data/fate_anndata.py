@@ -547,6 +547,8 @@ class FateAnnData(ad.AnnData):
                 relative_threshold=trajectory_dict.get("relative_threshold", 0.3),
                 normalize=trajectory_dict.get("normalize", True),
                 include_self_loop=trajectory_dict.get("include_self_loop", False),
+                strategy=trajectory_dict.get("strategy", "base"),
+                **trajectory_dict.get("strategy_kwargs", {}),
             )
         mn = self.get_milestone_wrapper().milestone_network
         logger.info(f"MilestoneNetwork: {len(mn)} edges\n{mn.to_string()}")
@@ -1341,8 +1343,6 @@ class FateAnnData(ad.AnnData):
             )
             logger.debug(f"Successfully added lineage trajectory using '{strategy}' strategy.")
 
-    # TODO: Time wrapper for WaddingtonOT, Moscot
-    # TODO:
     def add_trajectory_time(
         self,
         tmaps: dict,
@@ -1352,193 +1352,55 @@ class FateAnnData(ad.AnnData):
         relative_threshold: float = 0.3,
         normalize: bool = True,
         include_self_loop: bool = False,
+        strategy: str = "base",
+        **strategy_kwargs,
     ):
-        """Add trajectory from time-series optimal transport results (WaddingtonOT, Moscot).
-
-        This method aggregates cell-level transport matrices into cluster-level transitions,
-        then constructs milestone_network and progressions for cafe trajectory.
-
-        Edge selection strategy (both conditions must be met):
-        1. Absolute threshold: flow > flow_threshold
-        2. Relative threshold: flow > relative_threshold * max_outgoing_flow
-
-        This allows preserving bifurcations while filtering out noise edges.
+        """Add a time trajectory through the selected construction strategy.
 
         Args:
-            tmaps: dict, keys are (t_start, t_end) tuples, values are transport matrices
-                   of shape (n_cells_t_start, n_cells_t_end) representing transition probabilities.
-            time_key: str, column name in obs for time points. If None, uses prior_information.
-            cluster_key: str, column name in obs for cell clusters. If None, uses prior_information.
-            flow_threshold: float, absolute minimum flow to include an edge (default 0.1).
-            relative_threshold: float, keep edges with flow >= relative_threshold * max_flow (default 0.3).
-                               Set to 0 to disable relative filtering.
-            normalize: bool, whether to normalize transition matrix by row.
-            include_self_loop: bool, whether to include self-loop edges (A->A).
+            tmaps: Time-pair matrices, with rows/columns in obs order within each time.
+            time_key: Categorical time column; defaults to prior_information or "time".
+            cluster_key: Categorical state column; defaults to prior_information or "clusters".
+            flow_threshold: Minimum cluster flow used by the base strategy.
+            relative_threshold: Base edge cutoff relative to maximum outgoing flow.
+            normalize: Whether base normalizes aggregated flow by row.
+            include_self_loop: Whether base retains self-transitions during edge selection.
+            strategy: "base" uses cluster flow; "timezone" merges Waterfall-style time-state evidence into type milestones.
+            **strategy_kwargs: Additional parameters for the selected strategy.
 
-        Example:
-            >>> fadata.add_trajectory_time(
-            ...     tmaps=tmaps_moscot,
-            ...     time_key="time",
-            ...     cluster_key="celltype",
-            ...     flow_threshold=0.1,      # 绝对阈值：过滤噪声
-            ...     relative_threshold=0.3,  # 相对阈值：保留 ≥30% 最大流量的边
-            ... )
+        Base progress uses global time-category order, not within-edge biological
+        progress. Existing positional arguments remain unchanged.
         """
-        from scipy import sparse
+        from ._time_trajectory import TIME_STRATEGIES
 
-        logger.debug("FateAnnData add_trajectory_time")
-
-        # Get keys from prior_information if not specified
-        if time_key is None:
-            time_key = self.prior_information.get("time_key", "time")
-        if cluster_key is None:
-            cluster_key = self.prior_information.get("cluster", "clusters")
-
-        obs = self.obs
-        clusters = list(obs[cluster_key].cat.categories)
-        n_clusters = len(clusters)
-        cluster_to_idx = {c: i for i, c in enumerate(clusters)}
-
-        # ========== Step 1: Build cluster indicator matrices (for matrix multiplication) ==========
-        def build_indicator_matrix(time_val):
-            """Build sparse indicator matrix G_t (n_cells_t x n_clusters)"""
-            mask = obs[time_key] == time_val
-            cell_indices = np.where(mask.values)[0]
-            cluster_codes = obs.loc[mask, cluster_key].map(cluster_to_idx).values
-            n_cells = len(cell_indices)
-            data = np.ones(n_cells, dtype=float)
-            G = sparse.csr_matrix((data, (np.arange(n_cells), cluster_codes)), shape=(n_cells, n_clusters))
-            return G
-
-        # ========== Step 2: Aggregate cell-level Tmaps to cluster-level flow ==========
-        cluster_flow = np.zeros((n_clusters, n_clusters))
-
-        logger.debug(f"Aggregating {len(tmaps)} time-pair transport matrices...")
-        for (t1, t2), tmap in tmaps.items():
-            # Validate dimensions
-            n_c1 = (obs[time_key] == t1).sum()
-            n_c2 = (obs[time_key] == t2).sum()
-            if tmap.shape != (n_c1, n_c2):
-                logger.warning(f"Skipping {t1}->{t2}: Tmap shape {tmap.shape} != expected ({n_c1}, {n_c2})")
-                continue
-
-            # Build indicator matrices
-            G1 = build_indicator_matrix(t1)
-            G2 = build_indicator_matrix(t2)
-
-            # Matrix multiplication: ClusterFlow = G1.T @ Tmap @ G2
-            if sparse.issparse(tmap):
-                flow = G1.T @ tmap @ G2
-            else:
-                flow = G1.T @ sparse.csr_matrix(tmap) @ G2
-            cluster_flow += flow.toarray() if sparse.issparse(flow) else flow
-
-        # Normalize by row
-        if normalize:
-            row_sums = cluster_flow.sum(axis=1, keepdims=True)
-            cluster_flow = cluster_flow / (row_sums + 1e-10)
-
-        cluster_flow_df = pd.DataFrame(cluster_flow, index=clusters, columns=clusters)
-
-        # ========== Step 3: Build milestone_network from cluster flow ==========
-        # Strategy: Use both absolute and relative thresholds to preserve bifurcations
-        edges = []
-        for source in clusters:
-            outgoing = cluster_flow_df.loc[source].copy()
-
-            # Optionally exclude self-loop
-            if not include_self_loop:
-                outgoing = outgoing.drop(source, errors="ignore")
-
-            if len(outgoing) == 0 or outgoing.max() == 0:
-                # No valid outgoing edges, add self-loop as fallback
-                edges.append(
-                    {
-                        "from": source,
-                        "to": source,
-                        "length": 1.0,
-                        "directed": True,
-                        "flow": cluster_flow_df.loc[source, source] if source in cluster_flow_df.columns else 0,
-                    }
-                )
-                continue
-
-            # Compute dynamic threshold based on max flow
-            max_flow = outgoing.max()
-            dynamic_threshold = max(flow_threshold, relative_threshold * max_flow)
-
-            # Filter edges by combined threshold
-            valid_targets = outgoing[outgoing >= dynamic_threshold]
-
-            if len(valid_targets) == 0:
-                # Fallback: keep the strongest edge
-                valid_targets = outgoing.nlargest(1)
-
-            for target, flow in valid_targets.items():
-                edges.append(
-                    {
-                        "from": source,
-                        "to": target,
-                        "length": 1.0 / (flow + 1e-6),  # Higher flow → shorter length
-                        "directed": True,
-                        "flow": flow,
-                    }
-                )
-
-        if not edges:
-            logger.warning("No edges found above flow_threshold. Consider lowering the threshold.")
-            # Add self-loops as fallback
-            for c in clusters:
-                edges.append({"from": c, "to": c, "length": 1.0, "directed": True, "flow": 1.0})
-
-        milestone_network = pd.DataFrame(edges)
-
-        # ========== Step 4: Build progressions (assign cells to edges) ==========
-        # Strategy: Assign each cell to the edge (source_cluster -> target_cluster)
-        # where source_cluster is the cell's cluster, and target_cluster is chosen
-        # based on the maximum outgoing flow. Percentage is based on time position.
-
-        time_values = obs[time_key].cat.categories.tolist()
-        time_to_norm = {t: i / max(len(time_values) - 1, 1) for i, t in enumerate(time_values)}
-
-        progressions_list = []
-        for cell_id in obs.index:
-            cell_cluster = obs.loc[cell_id, cluster_key]
-            cell_time = obs.loc[cell_id, time_key]
-
-            # Find the best target cluster (highest flow from this cluster)
-            outgoing = cluster_flow_df.loc[cell_cluster]
-            # Exclude self-loop if there are other options
-            if (outgoing.drop(cell_cluster, errors="ignore") > flow_threshold).any():
-                target_cluster = outgoing.drop(cell_cluster, errors="ignore").idxmax()
-            else:
-                target_cluster = cell_cluster  # Self-loop
-
-            # Percentage based on normalized time
-            percentage = time_to_norm.get(cell_time, 0.5)
-
-            progressions_list.append(
-                {
-                    "cell_id": cell_id,
-                    "from": cell_cluster,
-                    "to": target_cluster,
-                    "percentage": percentage,
-                }
-            )
-
-        progressions = pd.DataFrame(progressions_list)
-
-        # ========== Step 5: Call add_trajectory ==========
-        self.add_trajectory(
-            milestone_network=milestone_network[["from", "to", "length", "directed"]],
-            progressions=progressions,
+        logger.debug(f"Adding time trajectory using '{strategy}' strategy...")
+        strategy_func = TIME_STRATEGIES[strategy]
+        trajectory_components = strategy_func(
+            fadata=self,
+            tmaps=tmaps,
+            time_key=time_key,
+            cluster_key=cluster_key,
+            flow_threshold=flow_threshold,
+            relative_threshold=relative_threshold,
+            normalize=normalize,
+            include_self_loop=include_self_loop,
+            **strategy_kwargs,
         )
+        if trajectory_components is None:
+            logger.warning(f"Failed to add time trajectory using '{strategy}' strategy.")
+            return
 
-        # Store additional info in raw_wrapper_dict
-        self.raw_wrapper_dict["cluster_flow"] = cluster_flow_df
-        self.raw_wrapper_dict["tmaps_keys"] = list(tmaps.keys())
-
-        logger.debug(f"Added time trajectory with {len(milestone_network)} edges and {len(progressions)} cell progressions.")
+        self.add_trajectory(
+            milestone_network=trajectory_components["milestone_network"],
+            divergence_regions=trajectory_components.get("divergence_regions"),
+            progressions=trajectory_components["progressions"],
+            wrapper_type="time",
+        )
+        if trajectory_components.get("milestone_color_dict") is not None:
+            self.milestone_wrapper._generate_color(ref_color_dict=trajectory_components["milestone_color_dict"])
+        self.raw_wrapper_dict.update(trajectory_components.get("raw_wrapper_dict", {}))
+        self.raw_wrapper_dict["strategy"] = strategy
+        logger.debug(f"Successfully added time trajectory using '{strategy}' strategy.")
 
     def add_trajectory_velocity(
         self,
