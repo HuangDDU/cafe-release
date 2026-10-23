@@ -25,39 +25,6 @@
 
 Comprehensive documentation is available at [here](https://cafe-release.readthedocs.io/en/latest/), including installation, tutorial, API and so on.
 
-## Interactive web launch
-
-Cafe can open a saved `.h5ad` file in native CELLxGENE or in the CAFE-enabled
-`cafe-cellxgene` single-dataset viewer.
-
-Launch native CELLxGENE:
-
-```bash
-cafe launch-cellxgene dataset.h5ad --port 5005
-```
-
-Launch with the CAFE plugin:
-
-```bash
-cafe launch-cellxgene dataset.h5ad --cellxgene-cafe --port 5005
-```
-
-When running from a notebook, `FateAnnData` keeps the convenient object method:
-
-```python
-fadata.launch_cellxgene(use_cellxgene_cafe=True, port=5005)
-```
-
-## Project Schedule
-
-- [x] Main framework code
-- [x] Document construction: instruction, tutorial, API
-- [x] [Data module](./docs/development_document/shedule/data.md): FateAnnData data structure, data collection.
-- [x] [Methods module](./docs/development_document/shedule/method.md): 4 backends, trajectory methods for 8 wrappers.
-- [ ] [Benchmark](./docs/development_document/shedule/benchmark.md): Comprehensive metrics and benchmarking.
-- [x] [Plot](./docs/development_document/shedule/plot.md): Beautiful plotting capabilities.
-- [ ] [Downstream analysis](./docs/development_document/shedule/downstream_analysis.md): Interactive web platform, driver gene, and GRN analysis.
-
 ## Citation
 
 If you use Cafe in your research, please cite:
