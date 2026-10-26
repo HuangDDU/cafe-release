@@ -78,6 +78,12 @@ def plot_stream(
     List[plt.Figure]
         List of generated figures.
 
+    Notes
+    -----
+    Both modes prepare their inputs independently. STREAM annotations and layout
+    caches are stored on an internal plotting object; input obs, obsm and uns
+    remain unchanged. The expression matrix is shared for read-only plotting.
+
     Examples
     --------
     >>> import cafe
@@ -110,6 +116,10 @@ def plot_stream(
     else:
         start_cell = fadata.prior_information["start_cell"]
         root_node = fadata.get_start_milestone(start_cell=start_cell)
+
+    # TODO：save and recovery the obs dataframe, because the adapter will modify it
+    # But "mode=stream" need the "mode=cell" result.
+    # obs_bak = fadata.obs.copy() # save and recovery the obs dataframe, because the adapter will modify it
 
     # Create adapter
     adapter = StreamPlotAdapter(fadata, model_name=model_name)
@@ -164,5 +174,7 @@ def plot_stream(
                 actual_path = f"{base}_{i}{ext}"
             fig.savefig(actual_path, bbox_inches="tight", pad_inches=0.1)
             logger.info(f"Saved stream plot to '{actual_path}'")
+
+    # fadata.obs = obs_bak
 
     return figs

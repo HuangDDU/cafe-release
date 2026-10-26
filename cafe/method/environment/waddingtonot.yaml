@@ -1,0 +1,17 @@
+name: waddingtonot
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - wot==1.0.8.post2
+      - numpy==1.26.4
+      - pandas==1.5.3
+      - scipy==1.13.1
+      - anndata==0.11.4
+      - scanpy==1.11.0
+      - statsmodels==0.15.0
+      - pyyaml
+variables:
+  PYTHONNOUSERSITE: '1'

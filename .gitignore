@@ -39,3 +39,6 @@ agent_result/
 AGENTS.md
 .superpowers/
 docs/superpowers/
+
+# scverse registry packages
+ecosystem-packages

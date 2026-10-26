@@ -15,6 +15,7 @@ STREAM 绘图要求的数据结构：
 6. adata.obs['<root>_pseudotime']: 从根节点出发的伪时间
 """
 
+from copy import deepcopy
 from typing import Dict, List, Tuple
 
 import colorcet as cc
@@ -23,6 +24,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from anndata import AnnData
 
 from ..._logging import logger
 from ...data import FateAnnData, MilestoneWrapper
@@ -39,9 +41,18 @@ class StreamPlotAdapter:
             fadata: FateAnnData 对象
             model_name: 指定使用哪个模型的轨迹（如果为None则使用当前模型）
         """
-        self.fadata = fadata
         self.model_name = model_name or fadata.model_name
+        self.prior_information = dict(fadata.prior_information)
         self.milestone_wrapper: MilestoneWrapper = fadata.get_milestone_wrapper(model_name=self.model_name)
+        # STREAM writes branch annotations and layout caches. Keep them local;
+        # the expression matrix and input embedding arrays are only read.
+        self.fadata = AnnData(
+            X=fadata.X,
+            obs=fadata.obs.copy(),
+            var=fadata.var.copy(),
+            obsm=dict(fadata.obsm),
+            uns={key: deepcopy(value) for key, value in fadata.uns.items() if key.endswith(("_colors", "_color"))},
+        )
 
     def build_stream_tree(self, root_milestone: str = None) -> nx.Graph:
         """
@@ -373,18 +384,18 @@ class StreamPlotAdapter:
         self,
         embedding_basis: str = "X_umap",
         root_node: str = None,
-    ) -> FateAnnData:
+    ) -> AnnData:
         """
         为 stream.py 绘图准备 FateAnnData 对象
 
-        这个方法会在原 FateAnnData 上添加必要的字段
+        所有临时字段仅添加到适配器内部的绘图 AnnData，不修改输入对象
 
         Args:
             embedding_basis: 用于计算节点位置的 embedding
             root_node: 根节点（milestone_id，用于确定绘图方向）
 
         Returns:
-            准备好的 FateAnnData 对象
+            准备好的内部绘图 AnnData 对象
         """
         from .stream_extra import calculate_pseudotime as calc_pt
 
@@ -434,34 +445,8 @@ class StreamPlotAdapter:
         logger.info("FateAnnData prepared successfully for stream plotting")
         return self.fadata
 
-    def plot_stream_sc(
-        self,
-        root: str = "root",
-        color: List[str] = None,
-        fig_size: Tuple = (7, 4.5),
-        fig_legend_ncol: int = 1,
-        **kwargs,
-    ):
-        """
-        绘制 stream 单细胞级别的图（subway map）
-
-        Args:
-            root: 根节点标识
-            color: 要上色的列表（obs 中的列名或 var 中的基因名）
-            fig_size: 图表大小
-            fig_legend_ncol: 图例的列数
-            **kwargs: 传递给 stream.plot_stream_sc 的其他参数
-        """
-        from .stream import plot_stream_sc as _plot_stream_sc
-
-        # 使用默认的上色列
-        if color is None:
-            cluster_key = self.fadata.prior_information.get("cluster")
-            if cluster_key and cluster_key in self.fadata.obs.columns:
-                color = [cluster_key]
-            else:
-                color = ["group"] if "group" in self.fadata.obs.columns else [self.fadata.obs.columns[0]]
-
+    def _prepare_colors(self, color):
+        """Prepare categorical labels and palettes independently for either mode."""
         # 自动将 categorical 类型转换为字符串，同时保存原始类别顺序
         original_categories = {}
         for col in color:
@@ -486,9 +471,39 @@ class StreamPlotAdapter:
                         categories = list(self.fadata.obs[col].unique())
                     # 创建字典映射
                     if len(colors_array) >= len(categories):
-                        color_dict = {cat: colors_array[i] for i, cat in enumerate(categories)}
+                        color_dict = {str(cat): colors_array[i] for i, cat in enumerate(categories)}
                         self.fadata.uns[color_key] = color_dict
                         logger.debug(f"Converted {colors_key} to {color_key} dict format: {color_dict}")
+
+    def plot_stream_sc(
+        self,
+        root: str = "root",
+        color: List[str] = None,
+        fig_size: Tuple = (7, 4.5),
+        fig_legend_ncol: int = 1,
+        **kwargs,
+    ):
+        """
+        绘制 stream 单细胞级别的图（subway map）
+
+        Args:
+            root: 根节点标识
+            color: 要上色的列表（obs 中的列名或 var 中的基因名）
+            fig_size: 图表大小
+            fig_legend_ncol: 图例的列数
+            **kwargs: 传递给 stream.plot_stream_sc 的其他参数
+        """
+        from .stream import plot_stream_sc as _plot_stream_sc
+
+        # 使用默认的上色列
+        if color is None:
+            cluster_key = self.prior_information.get("cluster")
+            if cluster_key and cluster_key in self.fadata.obs.columns:
+                color = [cluster_key]
+            else:
+                color = ["group"] if "group" in self.fadata.obs.columns else [self.fadata.obs.columns[0]]
+
+        self._prepare_colors(color)
 
         logger.info(f"Plotting stream_sc with color: {color}")
 
@@ -540,11 +555,13 @@ class StreamPlotAdapter:
         from .stream import plot_stream as _plot_stream
 
         if color is None:
-            cluster_key = self.fadata.prior_information.get("cluster")
+            cluster_key = self.prior_information.get("cluster")
             if cluster_key and cluster_key in self.fadata.obs.columns:
                 color = [cluster_key]
             else:
                 color = ["group"] if "group" in self.fadata.obs.columns else [self.fadata.obs.columns[0]]
+
+        self._prepare_colors(color)
 
         logger.info(f"Plotting stream with color: {color}")
 
