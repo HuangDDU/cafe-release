@@ -25,6 +25,26 @@
 
 Comprehensive documentation is available at [here](https://cafe-release.readthedocs.io/en/latest/), including installation, tutorial, API and so on.
 
+## Contribution
+
+### Contribution guide
+If you would like to contribute to the project, please refer to [developer documentation](https://cafe-release.readthedocs.io/en/latest/development_document/contributing_guide/).
+
+### Contributors
+Thanks to all the contributors to this repository
+<table align="center">
+    <tr>
+      <th colspan="2">
+        <br><img src="https://contrib.rocks/image?repo=HuangDDU/cafe-release"><br><br>
+      </th>
+    </tr>
+</table>
+
+### Other collaborator
+We would like to thank the following WeChat Official Accounts for promoting Cafe.
+<p align="center"> <a href="https://mp.weixin.qq.com/s/j3YDXeRbyzzPnSAjMvILbA" target="_blank" rel="noreferrer"> <img src="README.assets/wechat-Cafe.jpg" alt="Cafe" width="50" height="50"/> </a> <a href="https://mp.weixin.qq.com/s/zy2fw_AueCPwq1GuYITJlg" target="_blank" rel="noreferrer"> <img src="README.assets/wechat-Biomamba.jpg" alt="Biomamba" width="50" height="50"/> </a> </p>
+
+
 ## Citation
 
 If you use Cafe in your research, please cite:
